@@ -1,18 +1,18 @@
+// src/app/layout.tsx
 import './globals.css'
 import type { ReactNode } from 'react'
-import EmotionCacheProvider from '@/@core/providers/EmotionCacheProvider'
 
 export const metadata = {
   title: 'SIS',
   description: 'Sistema de Informação de Saúde',
   icons: {
-    icon: '/logos/LogoWhite.png',
+    icon: '/logos/LogoWhite.png', // ✅ caminho correto relativo à pasta /public
   },
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <link
           href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css"
@@ -20,12 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
         <link rel="icon" href="/logos/LogoWhite.png" sizes="any" />
       </head>
-
-      <body>
-        <EmotionCacheProvider>
-          {children}
-        </EmotionCacheProvider>
-      </body>
+      <body>{children}</body>
     </html>
   )
 }
