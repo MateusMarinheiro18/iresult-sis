@@ -1,0 +1,199 @@
+// src/app/client/login/page.tsx
+'use client'
+
+import React, { useState } from 'react'
+import Link from 'next/link'
+
+// MUI
+import Typography from '@mui/material/Typography'
+import TextField from '@mui/material/TextField'
+import IconButton from '@mui/material/IconButton'
+import InputAdornment from '@mui/material/InputAdornment'
+import Checkbox from '@mui/material/Checkbox'
+import Button from '@mui/material/Button'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Divider from '@mui/material/Divider'
+
+import classnames from 'classnames'
+
+/**
+ * Desktop Logo (used on the left column)
+ */
+function LogoDesktop() {
+  return (
+    <div className="w-72">
+      <img src="/logos/LogoGreen.png" alt="logo" className="w-full h-auto" />
+    </div>
+  )
+}
+
+/**
+ * Mobile white logo (used as floating element on small screens)
+ * Place a file at: public/logos/LogoWhite.png
+ */
+function LogoMobile() {
+  return (
+    <div className="w-28">
+      <img src="/logos/LogoWhite.png" alt="logo white" className="w-full h-auto" />
+    </div>
+  )
+}
+
+const themeConfig = { templateName: 'SIS' }
+
+export default function ClientLoginPage() {
+  const [isPasswordShown, setIsPasswordShown] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const handleClickShowPassword = () => setIsPasswordShown(s => !s)
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    console.log('login submit', { email, password })
+    alert('Login submit (demo) - veja console')
+  }
+
+  return (
+    // relative so we can position the mobile logo absolute to the viewport portion of this page
+    <div className="relative min-h-screen flex">
+      {/* MOBILE floating logo: visible only < md, absolute, doesn't push content */}
+      <div className="md:hidden absolute top-32 left-1/2 transform -translate-x-1/2 z-50">
+        <LogoMobile />
+      </div>
+
+      {/* LEFT (desktop only) */}
+      <aside
+        className="hidden md:flex flex-1 flex-col items-center justify-center p-12 text-left"
+        style={{ background: '#F3F4FF' }}
+        aria-hidden
+        >
+        {/* container centralizado */}
+        <div className="flex flex-col items-start justify-center max-w-[420px] text-left">
+            <header className="mb-8">
+            <Typography variant="h4" className="text-[#0B2527] mb-2" sx={{ fontWeight: 700 }}>
+                Bem-vindo!
+            </Typography>
+            <Typography className="text-slate-700">
+                Acesse o portal para acompanhar suas pesquisas e indicadores.
+            </Typography>
+            </header>
+
+            {/* Logo maior e centralizada */}
+            <div className="w-72">
+            <LogoDesktop />
+            </div>
+        </div>
+        </aside>
+
+      {/* RIGHT - form column */}
+      <main
+        className={classnames('flex items-center justify-center flex-1 p-6 md:p-12')}
+        style={{ background: '#0B2527', color: '#ffffff' }}
+      >
+        {/* NOTE: add pt-20 on small screens so the mobile floating logo doesn't overlap inputs */}
+        <div className="w-full max-w-md pt-20 md:pt-0">
+          <div className="mb-6 text-center">
+            <Typography variant="h4" sx={{ color: '#E6EEF0', fontWeight: 300 }}>
+              {`LOGIN`}
+            </Typography>
+          </div>
+
+          <form noValidate autoComplete="off" onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <TextField
+              autoFocus
+              fullWidth
+              label="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              variant="filled"
+              InputLabelProps={{
+                style: { color: '#8A8A8A' } // cor do label
+              }}
+              inputProps={{
+                style: { color: '#8A8A8A' } // cor do texto digitado
+              }}
+              sx={{
+                backgroundColor: '#F6F7FB',
+                borderRadius: '999px', // deixa arredondado
+                '& .MuiFilledInput-root': {
+                  backgroundColor: '#F6F7FB',
+                  borderRadius: '999px',
+                  '&:hover': { backgroundColor: '#F6F7FB' },
+                  '&:before, &:after': { display: 'none' } // remove underline do filled
+                },
+                '& .MuiInputBase-input::placeholder': {
+                  color: '#8A8A8A'
+                }
+              }}
+            />
+
+            <TextField
+              fullWidth
+              label="Senha"
+              type={isPasswordShown ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              variant="filled"
+              InputLabelProps={{
+                style: { color: '#8A8A8A' }
+              }}
+              inputProps={{
+                style: { color: '#8A8A8A' }
+              }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      edge="end"
+                      onClick={handleClickShowPassword}
+                      onMouseDown={(e) => e.preventDefault()}
+                      sx={{ color: '#8A8A8A' }}
+                    >
+                      <i className={isPasswordShown ? 'ri-eye-off-line' : 'ri-eye-line'} />
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+              sx={{
+                backgroundColor: '#F6F7FB',
+                borderRadius: '999px',
+                '& .MuiFilledInput-root': {
+                  backgroundColor: '#F6F7FB',
+                  borderRadius: '999px',
+                  '&:hover': { backgroundColor: '#F6F7FB' },
+                  '&:before, &:after': { display: 'none' }
+                },
+                '& .MuiInputBase-input::placeholder': {
+                  color: '#8A8A8A'
+                }
+              }}
+            />
+
+            <div className="flex justify-center items-center flex-wrap gap-x-3 gap-y-1">
+              <Link href="/client/forgot" className="text-sky-300 hover:underline" style={{ color: '#F0F1F1' }}>
+                Esqueci a senha
+              </Link>
+            </div>
+
+            <Button
+              fullWidth
+              variant="contained"
+              type="submit"
+              sx={{
+                py: 1.5,
+                borderRadius: '999px',
+                backgroundColor: '#0B2527',
+                border: '2px solid #F6F7FB',
+                '&:hover': { backgroundColor: '#233A3C' }
+              }}
+            >
+              Acessar
+            </Button>
+          </form>
+        </div>
+      </main>
+    </div>
+  )
+}
