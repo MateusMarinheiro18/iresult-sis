@@ -24,22 +24,41 @@ export default function CompanyRowActions({ companyId }: { companyId: number }) 
   }, [open]);
 
   async function handleDelete() {
+    if (loading) return;
     if (!confirm('Confirmar exclusão desta empresa?')) return;
+
     setLoading(true);
     setOpen(false);
+
     try {
-      const res = await fetch(`/api/companies/${companyId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/companies/${companyId}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json' },
+      });
+
+      // tenta extrair JSON (se houver)
+      let body: any = null;
+      try {
+        body = await res.json();
+      } catch (e) {
+        // ignore JSON parse errors
+      }
+
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        alert(j?.message || 'Erro ao deletar');
+        const msg = body?.message ?? `Erro ao deletar (status ${res.status})`;
+        alert(msg);
         setLoading(false);
         return;
       }
-      // atualiza a lista (server component)
+
+      // sucesso
+      // body may contain { message: 'deleted', item: {...} }
+      alert(body?.message ?? 'Empresa deletada com sucesso.');
+      // refresha dados server-side / revalidates Server Components
       router.refresh();
     } catch (err) {
-      console.error(err);
-      alert('Erro inesperado');
+      console.error('Erro ao deletar empresa', err);
+      alert('Erro inesperado ao deletar. Veja o console.');
     } finally {
       setLoading(false);
     }
@@ -65,7 +84,7 @@ export default function CompanyRowActions({ companyId }: { companyId: number }) 
         <div className="menu" role="menu">
           <button className="menu-item" onClick={() => {
             setOpen(false);
-            router.push(`/admin/empresas/${companyId}`);
+            router.push(`/admin/empresas/${companyId}/edit`);
           }}>
             Editar
           </button>

@@ -468,8 +468,42 @@ function formatCnpj(c?: string | null) {
 
 function formatPhone(p?: string | null) {
   if (!p) return '—';
-  const d = String(p).replace(/\D/g, '');
-  if (d.length === 11) return d.replace(/^(\d{2})(\d{1})(\d{4})(\d{4})$/, '($1) $2 $3-$4');
-  if (d.length === 10) return d.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
-  return p;
+  const digits = String(p).replace(/\D/g, '');
+
+  // se muito curto, retorna como veio (mais seguro)
+  if (digits.length < 8) return p;
+
+  let country = '';
+  let rest = digits;
+
+  if (digits.length > 11) {
+    const countryLen = digits.length - 11; // ex: 13 - 11 = 2 -> +55
+    country = digits.slice(0, countryLen);
+    rest = digits.slice(countryLen);
+  }
+
+  // Agora rest deve conter area(2) + number(8 ou 9) ou similar
+  if (rest.length < 8) {
+    // fallback: não temos area+numero esperados — retorna raw
+    return p;
+  }
+
+  const area = rest.slice(0, 2);
+  const number = rest.slice(2);
+
+  let formattedNumber: string;
+  if (number.length === 9) {
+    // celular: 5 + 4
+    formattedNumber = `${number.slice(0, 5)}-${number.slice(5)}`;
+  } else if (number.length === 8) {
+    // fixo: 4 + 4
+    formattedNumber = `${number.slice(0, 4)}-${number.slice(4)}`;
+  } else {
+    // casos inesperados: quebra no meio (primeira metade / segunda metade)
+    const half = Math.ceil(number.length / 2);
+    formattedNumber = `${number.slice(0, half)}-${number.slice(half)}`;
+  }
+
+  const countryPrefix = country ? `+${country} ` : '';
+  return `${countryPrefix}(${area}) ${formattedNumber}`;
 }

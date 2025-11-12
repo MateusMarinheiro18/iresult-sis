@@ -1,17 +1,22 @@
-'use client';
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import CompanyForm from '@/components/admin/company/addForm/CompanyForm';
+'use client'
 
-export default function NewCompanyPage() {
-  const router = useRouter();
+import React from 'react'
+import { useRouter } from 'next/navigation'
+import CompanyEditForm from '@/components/admin/company/editForm/CompanyEditForm'
+
+type EditPageClientProps = {
+  company: any // Use o tipo correto da sua empresa
+}
+
+export default function EditPageClient({ company }: EditPageClientProps) {
+  const router = useRouter()
 
   return (
     <div className="page-root">
       <main className="container">
         {/* Header com título e botão voltar */}
         <div className="header-row">
-          <h1 className="title">EMPRESA - NOVO</h1>
+          <h1 className="title">EMPRESA - EDITAR</h1>
           <button
             className="back-btn"
             onClick={() => router.push('/admin/empresas')}
@@ -37,7 +42,7 @@ export default function NewCompanyPage() {
           </div>
 
           <div className="card-body">
-            <CompanyForm />
+            <CompanyEditForm initial={company} />
           </div>
         </section>
       </main>
@@ -55,7 +60,6 @@ export default function NewCompanyPage() {
           margin: 0 auto;
         }
 
-        /* === HEADER COM TÍTULO E BOTÃO VOLTAR === */
         .header-row {
           display: flex;
           justify-content: space-between;
@@ -90,7 +94,6 @@ export default function NewCompanyPage() {
           stroke: #0B2527;
         }
 
-        /* === CARD DO FORMULÁRIO === */
         .card {
           background: #fff;
           border-radius: 14px;
@@ -114,7 +117,6 @@ export default function NewCompanyPage() {
           padding: 24px;
         }
 
-        /* === RESPONSIVO === */
         @media (max-width: 640px) {
           .container {
             padding: 8px;
@@ -136,5 +138,5 @@ export default function NewCompanyPage() {
         }
       `}</style>
     </div>
-  );
+  )
 }
