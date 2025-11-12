@@ -123,18 +123,6 @@ export default function CompanyForm({ initial }: { initial?: any }) {
         <button type="submit" className="btn primary" disabled={saving}>
           {saving ? 'Salvando...' : 'SALVAR'}
         </button>
-
-        <button
-          type="button"
-          className="btn secondary"
-          onClick={() => {
-            if (confirm('Deseja deletar esta empresa?')) {
-              alert('Função de deletar será disponibilizada no modo edição.');
-            }
-          }}
-        >
-          DELETAR
-        </button>
       </div>
 
       <style jsx>{`

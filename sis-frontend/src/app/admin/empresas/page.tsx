@@ -1,7 +1,7 @@
 // src/app/admin/empresas/page.tsx
 import React from 'react';
 import { prisma } from '@/lib/prisma';
-import CompaniesTableClient from '@/components/admin/company/CompanyTableClient';
+import CompaniesTableClient from '@/components/admin/company/table/CompanyTableClient';
 import Link from 'next/link';
 
 export const revalidate = 0;

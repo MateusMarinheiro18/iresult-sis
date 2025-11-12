@@ -13,8 +13,11 @@ type Company = {
   created?: string | Date | null;
 };
 
+const ITEMS_PER_PAGE = 5;
+
 export default function CompaniesTableClient({ initialData }: { initialData: Company[] }) {
   const [query, setQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
   // filtra por nome (razaoSocial) - case insensitive
@@ -23,6 +26,37 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
     if (!q) return initialData;
     return initialData.filter((c) => (c.razaoSocial ?? '').toLowerCase().includes(q));
   }, [initialData, query]);
+
+  // Reseta para página 1 quando a busca muda
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [query]);
+
+  // Cálculos de paginação
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentItems = filtered.slice(startIndex, endIndex);
+
+  // Números de página visíveis (máximo 3)
+  const getVisiblePages = () => {
+    const pages: number[] = [];
+    let start = Math.max(1, currentPage - 1);
+    let end = Math.min(totalPages, start + 2);
+    
+    // Ajusta o início se estiver no final
+    if (end - start < 2) {
+      start = Math.max(1, end - 2);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
+  const visiblePages = getVisiblePages();
 
   return (
     <div className="wrapper">
@@ -65,7 +99,7 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
           </thead>
 
           <tbody>
-            {filtered.map((c) => (
+            {currentItems.map((c) => (
               <tr key={c.id}>
                 <td className="cell id-cell">#{c.id}</td>
 
@@ -80,9 +114,23 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
                 <td className="cell phone-cell">{formatPhone(c.telefone)}</td>
 
                 <td className="cell users-cell">
-                  <a href={`/admin/empresas/${c.id}/funcionarios`} className="pill-btn">
+                  <Link 
+                    href={`/admin/empresas/${c.id}/funcionarios`} 
+                    className="pill-btn"
+                    style={{
+                      display: 'inline-block',
+                      padding: '7px 18px',
+                      background: '#0B2527',
+                      color: 'white',
+                      borderRadius: '999px',
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
                     Usuários
-                  </a>
+                  </Link>
                 </td>
 
                 <td className="cell action-cell">
@@ -90,7 +138,7 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {currentItems.length === 0 && (
               <tr>
                 <td colSpan={6} className="no-results">Nenhuma empresa encontrada.</td>
               </tr>
@@ -98,6 +146,56 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
           </tbody>
         </table>
       </div>
+
+      {/* Paginação */}
+      {totalItems > 0 && (
+        <div className="pagination-wrapper">
+          <div className="pagination-info">
+            Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems} {totalItems === 1 ? 'empresa' : 'empresas'}
+          </div>
+
+          <div className="pagination-controls">
+            {/* Botão Anterior */}
+            <button
+              className="page-arrow"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              aria-label="Página anterior"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            {/* Números de página */}
+            <div className="page-numbers">
+              {visiblePages.map(page => (
+                <button
+                  key={page}
+                  className={`page-number ${currentPage === page ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(page)}
+                  aria-label={`Página ${page}`}
+                  aria-current={currentPage === page ? 'page' : undefined}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+
+            {/* Botão Próximo */}
+            <button
+              className="page-arrow"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              aria-label="Próxima página"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .wrapper {
@@ -155,6 +253,12 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
           text-decoration: none;
           font-weight: 700;
           cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .btn-new:hover {
+          background: #0b2527;
+          color: white;
         }
 
         /* scroll wrapper: permite rolagem horizontal em small screens */
@@ -165,12 +269,13 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
           border-radius: 12px;
           background: #fff;
           box-shadow: 0 6px 18px rgba(11,37,39,0.06);
+          margin-bottom: 20px;
         }
 
         table.companies-table {
           width: 100%;
           border-collapse: collapse;
-          min-width: 900px; /* garante que em telas pequenas apareça scroll horizontal */
+          min-width: 900px;
         }
 
         thead th {
@@ -237,24 +342,6 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
           text-align: left;
         }
 
-        /* pill button for users - VERDE ARREDONDADO */
-        .pill-btn {
-          display: inline-block;
-          padding: 7px 18px;
-          background: #0B2527;
-          color: white;
-          border-radius: 999px;
-          text-decoration: none;
-          font-weight: 600;
-          font-size: 13px;
-          transition: background 0.2s ease;
-          white-space: nowrap;
-        }
-        
-        .pill-btn:hover {
-          background:rgba(11, 37, 39, 0.87);
-        }
-
         .action-cell { 
           width: 80px; 
           text-align: center;
@@ -268,13 +355,103 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
           color: #6b7280;
         }
 
-        /* Responsive: when viewport is narrow, allow horizontal scroll (user can pan) */
+        /* Paginação */
+        .pagination-wrapper {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-top: 20px;
+          padding: 0 4px;
+        }
+
+        .pagination-info {
+          font-size: 14px;
+          color: #6b7280;
+          font-weight: 500;
+        }
+
+        .pagination-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .page-arrow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          cursor: pointer;
+          color: #6B7280;
+          transition: all 0.2s ease;
+        }
+
+        .page-arrow:hover:not(:disabled) {
+          background: #f9fafb;
+          border-color: #d1d5db;
+        }
+
+        .page-arrow:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .page-numbers {
+          display: flex;
+          gap: 6px;
+        }
+
+        .page-number {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 36px;
+          height: 36px;
+          padding: 0 8px;
+          border: 1px solid #e5e7eb;
+          background: white;
+          border-radius: 100%;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 600;
+          color: #374151;
+          transition: all 0.2s ease;
+        }
+
+        .page-number:hover {
+          background: #f9fafb;
+          border-color: #d1d5db;
+        }
+
+        .page-number.active {
+          background: #0b2527;
+          color: white;
+          border-color: #0b2527;
+        }
+
+        /* Responsive */
         @media (max-width: 960px) {
           .controls-row { flex-direction: column; align-items: stretch; gap: 12px; }
           .search-box { max-width: 100%; }
           .right-actions { justify-content: flex-end; }
-          table.companies-table { min-width: 700px; } /* keep some scroll but not too large */
+          table.companies-table { min-width: 700px; }
           .action-cell { padding-right: 12px; }
+          
+          .pagination-wrapper {
+            flex-direction: column;
+            gap: 16px;
+            align-items: center;
+          }
+          
+          .pagination-info {
+            order: 2;
+          }
+          
+          .pagination-controls {
+            order: 1;
+          }
         }
       `}</style>
     </div>

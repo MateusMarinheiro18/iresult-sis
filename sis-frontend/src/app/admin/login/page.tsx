@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 // MUI
 import Typography from '@mui/material/Typography'
@@ -39,19 +40,19 @@ function LogoMobile() {
   )
 }
 
-const themeConfig = { templateName: 'SIS' }
-
 export default function ClientLoginPage() {
+  const router = useRouter() 
   const [isPasswordShown, setIsPasswordShown] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
   const handleClickShowPassword = () => setIsPasswordShown(s => !s)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    console.log('login submit', { email, password })
-    alert('Login submit (demo) - veja console')
+
+    console.log('Simulando login...', { email, password })
+    router.push('/admin/dashboard')
   }
 
   return (
