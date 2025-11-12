@@ -1,0 +1,18 @@
+// prisma/models/empresa.prisma
+model Empresa {
+  id           Int       @id @default(autoincrement()) @map("id_empresa")
+  razaoSocial  String    @map("razao_social")
+  cnpj         String?   @map("CNPJ")
+  email        String?   @map("email")
+  telefone     String?   @map("telefone")
+  cep          String?   @map("CEP")
+  ativo        Int?      @map("ativo")
+  created      DateTime? @map("created")
+  createdBy    Int?      @map("created_by")
+  deleted      DateTime? @map("deleted")
+  deletedBy    Int?      @map("deleted_by")
+  updated      DateTime? @map("updated")
+  updatedBy    Int?      @map("updated_by")
+
+  @@map("_empresa")
+}

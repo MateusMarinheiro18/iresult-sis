@@ -1,34 +1,30 @@
-// src/app/client/dashboard/page.tsx
-import React from "react";
+// src/app/admin/empresas/page.tsx
+import React from 'react';
+import { prisma } from '@/lib/prisma';
+import CompaniesTableClient from '@/components/admin/company/CompanyTableClient';
+import Link from 'next/link';
 
-export default function ClientDashboardPage() {
+export const revalidate = 0;
+
+export default async function EmpresasPage() {
+  const companies = await prisma.empresa.findMany({
+    where: { deleted: null },
+    orderBy: { created: 'desc' },
+    select: {
+      id: true,
+      razaoSocial: true,
+      cnpj: true,
+      telefone: true,
+      created: true,
+    },
+  });
+
   return (
-    <section>
-      <h2 className="text-2xl font-semibold mb-4">Dashboard — Cliente</h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-lg p-4 bg-white shadow-sm">
-          <h3 className="text-sm text-gray-500">Pesquisas Ativas</h3>
-          <p className="text-3xl font-bold">12</p>
-        </div>
-        <div className="rounded-lg p-4 bg-white shadow-sm">
-          <h3 className="text-sm text-gray-500">Respostas (últimos 7d)</h3>
-          <p className="text-3xl font-bold">312</p>
-        </div>
-        <div className="rounded-lg p-4 bg-white shadow-sm">
-          <h3 className="text-sm text-gray-500">NPS Médio</h3>
-          <p className="text-3xl font-bold">78</p>
-        </div>
-      </div>
-
-      <div className="mt-6 rounded-lg bg-white shadow-sm p-4">
-        <h3 className="font-medium mb-2">Últimas pesquisas</h3>
-        <ul className="divide-y">
-          <li className="py-3">Pesquisa: Bem-estar — 120 respostas</li>
-          <li className="py-3">Pesquisa: Segurança — 85 respostas</li>
-          <li className="py-3">Pesquisa: Comunicação — 107 respostas</li>
-        </ul>
-      </div>
-    </section>
+    <div style={{ background: '#f3f4ff', minHeight: '100vh', padding: 28, boxSizing: 'border-box' }}>
+      <main style={{ maxWidth: 1180, margin: '0 auto' }}>
+        {/* pass companies to client component (client handles search/filter) */}
+        <CompaniesTableClient initialData={companies} />
+      </main>
+    </div>
   );
 }

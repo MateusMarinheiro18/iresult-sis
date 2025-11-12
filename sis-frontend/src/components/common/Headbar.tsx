@@ -45,7 +45,7 @@ export default function Headbar({ variant = "client", dynamicCounts = {}, onTogg
   }, []);
 
   return (
-    <header className="w-full bg-white/95 backdrop-blur-sm border-b border-gray-100">
+    <header className="w-full backdrop-blur-sm border-b border-gray-100 bg-[#F3F4FF]">
       <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center gap-4">
         {/* Left: hamburger (mobile) + search */}
         <div className="flex items-center gap-3">
