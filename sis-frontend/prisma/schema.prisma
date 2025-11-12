@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +12,74 @@ datasource db {
 // ---- empresa.prisma ----
 // prisma/models/empresa.prisma
 model Empresa {
-  id           Int       @id @default(autoincrement()) @map("id_empresa")
-  razaoSocial  String    @map("razao_social")
-  cnpj         String?   @map("CNPJ")
-  email        String?   @map("email")
-  telefone     String?   @map("telefone")
-  cep          String?   @map("CEP")
-  ativo        Int?      @map("ativo")
-  created      DateTime? @map("created")
-  createdBy    Int?      @map("created_by")
-  deleted      DateTime? @map("deleted")
-  deletedBy    Int?      @map("deleted_by")
-  updated      DateTime? @map("updated")
-  updatedBy    Int?      @map("updated_by")
+  id          Int       @id @default(autoincrement()) @map("id_empresa")
+  razaoSocial String    @map("razao_social")
+  cnpj        String?   @map("CNPJ")
+  email       String?   @map("email")
+  telefone    String?   @map("telefone")
+  cep         String?   @map("CEP")
+  ativo       Int?      @map("ativo")
+  created     DateTime? @map("created")
+  createdBy   Int?      @map("created_by")
+  deleted     DateTime? @map("deleted")
+  deletedBy   Int?      @map("deleted_by")
+  updated     DateTime? @map("updated")
+  updatedBy   Int?      @map("updated_by")
+
+  // relations (lado oposto)
+  usuarios     EmpresaUsuario[]     @relation("EmpresaUsuarios")
+  funcionarios EmpresaFuncionario[] @relation("EmpresaFuncionarios")
 
   @@map("_empresa")
 }
 
+// ---- empresa_funcionario.prisma ----
+// prisma/models/empresa_funcionario.prisma
+model EmpresaFuncionario {
+  id_funcionario    Int       @id @default(autoincrement()) @map("id_funcionario")
+  nome              String?   @map("nome")
+  gestor            String?   @map("gestor")
+  email             String?   @map("email")
+  telefone          String?   @map("telefone")
+  data_nascimento   DateTime? @map("data_nascimento")
+  cidade_nascimento String?   @map("cidade_nascimento")
+
+  id_empresa Int?     @map("id_empresa")
+  empresa    Empresa? @relation("EmpresaFuncionarios", fields: [id_empresa], references: [id])
+
+  ativo      Int?      @map("ativo")
+  created    DateTime? @map("created")
+  created_by Int?      @map("created_by")
+  deleted    DateTime? @map("deleted")
+  deleted_by Int?      @map("deleted_by")
+  updated    DateTime? @map("updated")
+  updated_by Int?      @map("updated_by")
+
+  @@map("empresa_funcionario")
+}
+
+// ---- empresa_usuario.prisma ----
+// prisma/models/empresa_usuario.prisma
+model EmpresaUsuario {
+  id_usuario_rh   Int       @id @default(autoincrement()) @map("id_usuario_rh")
+  nome            String?   @map("nome")
+  data_nascimento DateTime? @map("data_nascimento")
+  email           String?   @map("email")
+  telefone        String?   @map("telefone")
+  gestor          String?   @map("gestor")
+  cidade          String?   @map("cidade")
+  senha_hash      String?   @map("senha_hash")
+
+  id_empresa Int?     @map("id_empresa")
+  empresa    Empresa? @relation("EmpresaUsuarios", fields: [id_empresa], references: [id])
+
+  ativo      Int?      @map("ativo")
+  created    DateTime? @map("created")
+  created_by Int?      @map("created_by")
+  deleted    DateTime? @map("deleted")
+  deleted_by Int?      @map("deleted_by")
+  updated    DateTime? @map("updated")
+  updated_by Int?      @map("updated_by")
+
+  @@map("empresa_usuario")
+}
