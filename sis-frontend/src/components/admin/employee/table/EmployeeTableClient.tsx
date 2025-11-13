@@ -154,7 +154,7 @@ export default function EmployeesTableClient({ companyId, initialData }: { compa
             <tr>
               <th className="col-id">ID</th>
               <th className="col-name">Nome</th>
-              <th className="col-created">Data criação</th>
+              <th className="col-created">Data Nasc.</th>
               <th className="col-gestor">Gestor</th>
               <th className="col-cidade">Cidade Nasc.</th>
               <th className="col-email">Email</th>
