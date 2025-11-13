@@ -64,7 +64,7 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     // IMPORTANTE: Await params primeiro
     const resolvedParams = await params;
@@ -112,21 +112,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     }
 
-    const created = await prisma.empresaFuncionario.create({
+    const newEmployee = await prisma.empresaFuncionario.create({
       data: {
         id_empresa: companyId,
         nome,
-        email: email || null,
-        telefone: telefone || null,
-        // Ajusta a data para meio-dia UTC para evitar problemas de fuso horário
+        email,
+        telefone,
         data_nascimento: data_nascimento ? new Date(data_nascimento + 'T12:00:00.000Z') : null,
-        cidade_nascimento: cidade_nascimento || null,
-        gestor: gestor || null,
-        ativo: Number(ativo),
+        cidade_nascimento,
+        gestor,
+        ativo: ativo ?? 1,
       },
     });
 
-    return NextResponse.json({ data: created }, { status: 201 });
+    return NextResponse.json({ data: newEmployee }, { status: 201 });
   } catch (err) {
     console.error('POST /employees error', err);
     return NextResponse.json({ error: 'Erro interno ao criar funcionário.' }, { status: 500 });

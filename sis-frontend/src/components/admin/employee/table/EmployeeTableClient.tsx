@@ -70,11 +70,22 @@ export default function EmployeesTableClient({ companyId, initialData }: { compa
   };
   const visiblePages = getVisiblePages();
 
-  function formatDate(value?: string | Date | null) {
-    if (!value) return '—';
-    const d = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString();
+  // Função para formatar data no formato brasileiro
+  function formatDateBR(date: string | Date | null | undefined): string {
+    if (!date) return '—';
+    
+    try {
+      const d = typeof date === 'string' ? new Date(date) : date;
+      
+      // Usa UTC para evitar problemas de timezone
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const year = d.getUTCFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch {
+      return '—';
+    }
   }
 
   // handlers do dropdown
@@ -173,7 +184,7 @@ export default function EmployeesTableClient({ companyId, initialData }: { compa
                   </Link>
                 </td>
 
-                <td className="cell created-cell">{formatDate(e.created ?? e.updated ?? e.data_nascimento)}</td>
+                <td className="cell created-cell">{formatDateBR(e.created ?? e.updated ?? e.data_nascimento)}</td>
 
                 <td className="cell gestor-cell">{e.gestor ?? '—'}</td>
 

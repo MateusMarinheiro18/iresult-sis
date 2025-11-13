@@ -11,18 +11,48 @@ type Props = {
 };
 
 export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, onEditCell, onRemoveRow }: Props) {
-  // Função helper para formatar data ISO para formato brasileiro
+  // Função para formatar data ISO para formato brasileiro DD/MM/YYYY
   function formatDateForDisplay(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
     
-    // Se já está em formato ISO (YYYY-MM-DD), converte para DD/MM/YYYY
-    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    // Se está em formato ISO (YYYY-MM-DD), converte para DD/MM/YYYY
+    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (isoMatch) {
       return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
     }
     
-    // Se já está em formato brasileiro, retorna como está
+    // Se já está em formato brasileiro DD/MM/YYYY, retorna como está
+    const brMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (brMatch) {
+      return dateStr;
+    }
+    
+    // Tenta fazer parse da data
+    try {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const year = d.getUTCFullYear();
+        return `${day}/${month}/${year}`;
+      }
+    } catch {}
+    
     return dateStr;
+  }
+
+  // Função para converter DD/MM/YYYY de volta para ISO ao editar
+  function handleDateEdit(idx: number, value: string) {
+    // Se usuário digitou em formato DD/MM/YYYY, converte para ISO
+    const brMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (brMatch) {
+      const isoDate = `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+      onEditCell(idx, 'data_nascimento', isoDate);
+      return;
+    }
+    
+    // Se está em formato ISO ou outro, passa direto
+    onEditCell(idx, 'data_nascimento', value);
   }
 
   return (
@@ -47,7 +77,13 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
               <td><input value={r.nome ?? ''} onChange={(e) => onEditCell(idx, 'nome', e.target.value)} /></td>
               <td><input value={r.email ?? ''} onChange={(e) => onEditCell(idx, 'email', e.target.value)} /></td>
               <td><input value={r.telefone ?? ''} onChange={(e) => onEditCell(idx, 'telefone', e.target.value)} /></td>
-              <td><input value={formatDateForDisplay(r.data_nascimento)} onChange={(e) => onEditCell(idx, 'data_nascimento', e.target.value)} /></td>
+              <td>
+                <input 
+                  value={formatDateForDisplay(r.data_nascimento)} 
+                  onChange={(e) => handleDateEdit(idx, e.target.value)}
+                  placeholder="DD/MM/AAAA"
+                />
+              </td>
               <td><input value={r.cidade_nascimento ?? ''} onChange={(e) => onEditCell(idx, 'cidade_nascimento', e.target.value)} /></td>
               <td><input value={r.gestor ?? ''} onChange={(e) => onEditCell(idx, 'gestor', e.target.value)} /></td>
               <td><button className="btn small danger" onClick={() => onRemoveRow(idx)}>Remover</button></td>
