@@ -29,17 +29,20 @@
     "mysql2": "^3.15.3",
     "next": "16.0.1",
     "next-auth": "^4.24.13",
+    "papaparse": "^5.5.3",
     "prisma": "^6.19.0",
     "react": "19.2.0",
     "react-dialog": "^0.1.0",
     "react-dom": "19.2.0",
     "react-perfect-scrollbar": "^1.5.8",
     "react-toastify": "^11.0.5",
-    "react-use": "^17.6.0"
+    "react-use": "^17.6.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/papaparse": "^5.5.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

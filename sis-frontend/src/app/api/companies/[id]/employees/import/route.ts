@@ -4,18 +4,6 @@ import { prisma } from '@/lib/prisma';
 import { parseDateStringMaybe, EmployeeRow } from '@/lib/employeeValidators';
 import { chunkArray } from '@/lib/utils';
 
-/**
- * Fluxo simples:
- * 1) Recebe body { rows: EmployeeRow[] }
- * 2) deleteMany onde id_empresa = companyId
- * 3) inserir todos os rows (após mapear/normalizar) em batches com createMany
- *
- * Observações:
- * - NÃO faz backup
- * - NÃO verifica permissão (assumido que o admin tem acesso)
- * - Validação mínima: ignora linhas sem nome (nome obrigatório)
- */
-
 type ImportBody = {
   rows: EmployeeRow[];
 };
