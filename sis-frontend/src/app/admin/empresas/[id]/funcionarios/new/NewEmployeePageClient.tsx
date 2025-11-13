@@ -2,7 +2,7 @@
 'use client';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import EmployeeForm from '@/components/admin/employee/EmployeeForm';
+import EmployeeForm from '@/components/admin/employee/addForm/EmployeeForm';
 import Link from 'next/link';
 
 type Props = {

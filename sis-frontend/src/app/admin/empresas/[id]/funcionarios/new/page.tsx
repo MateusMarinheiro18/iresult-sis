@@ -1,6 +1,6 @@
 // src/app/admin/empresas/[id]/funcionarios/new/page.tsx
 import React from 'react';
-import EmployeeForm from '@/components/admin/employee/EmployeeForm';
+import EmployeeForm from '@/components/admin/employee/addForm/EmployeeForm';
 import { prisma } from '@/lib/prisma';
 import NewEmployeePageClient from './NewEmployeePageClient';
 

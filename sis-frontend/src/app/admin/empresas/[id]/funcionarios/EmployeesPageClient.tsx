@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import EmployeesTableClient from '@/components/admin/employee/EmployeeTableClient';
+import EmployeesTableClient from '@/components/admin/employee/table/EmployeeTableClient';
 
 export default function EmployeesPageClient({
   companyId,
