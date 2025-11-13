@@ -11,8 +11,10 @@ type Query = {
 // -----------------------------
 // GET - listar funcionários
 // -----------------------------
-export async function GET(req: Request, { params }: { params: { companyId: string } }) {
-  const { companyId } = params;
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const companyId = resolvedParams.id;
+  
   const url = new URL(req.url);
   const q = url.searchParams.get('q') ?? undefined;
   const page = parseInt(url.searchParams.get('page') ?? '1', 10);
@@ -60,9 +62,11 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export async function POST(request: Request, { params }: { params: { companyId: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const companyId = Number(params.companyId);
+    const resolvedParams = await params;
+    const companyId = Number(resolvedParams.id);
+    
     if (Number.isNaN(companyId) || companyId <= 0) {
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }

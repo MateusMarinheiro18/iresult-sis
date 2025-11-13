@@ -16,7 +16,7 @@ function sanitizeDigits(s?: string) {
   return s ? s.replace(/\D/g, '') : undefined;
 }
 
-export default function EmployeeForm({ companyId, initial }: { companyId: number; initial?: any }) {
+export default function EmployeeForm({ companyId, initial }: { companyId?: number; initial?: any }) {
   const [nome, setNome] = useState(initial?.nome ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [telefone, setTelefone] = useState(initial?.telefone ?? '');
@@ -31,7 +31,6 @@ export default function EmployeeForm({ companyId, initial }: { companyId: number
   function formatDateForInput(d: string | Date) {
     const date = d instanceof Date ? d : new Date(d);
     if (Number.isNaN(date.getTime())) return '';
-    // yyyy-mm-dd
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
@@ -58,6 +57,13 @@ export default function EmployeeForm({ companyId, initial }: { companyId: number
       return;
     }
 
+    // --- NEW: check companyId before sending ---
+    console.log('EmployeeForm: companyId prop =', companyId);
+    if (!companyId || Number.isNaN(Number(companyId)) || Number(companyId) <= 0) {
+      setError('companyId inválido — impossível enviar. Verifique se você abriu a página com a rota correta ou se o parent passou companyId corretamente.');
+      return;
+    }
+
     setSaving(true);
 
     const payload: Payload = {
@@ -71,24 +77,32 @@ export default function EmployeeForm({ companyId, initial }: { companyId: number
     };
 
     try {
+      // log útil
+      console.log('Enviando payload para API:', `/api/companies/${companyId}/employees`, payload);
+
       const res = await fetch(`/api/companies/${companyId}/employees`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      const body = await res.json().catch(() => ({}));
+      // tenta ler o body (JSON ou text)
+      const text = await res.text().catch(() => '');
+      let body: any = {};
+      try { body = text ? JSON.parse(text) : {}; } catch (e) { body = { text }; }
 
       if (!res.ok) {
-        setError(body?.error ?? `Erro ao salvar (status ${res.status})`);
+        // log detalhado para debug
+        console.error('API POST /employees retornou erro', { status: res.status, body });
+        setError(body?.error ?? body?.message ?? `Erro ao salvar (status ${res.status})`);
         setSaving(false);
         return;
       }
 
-      // success: redirect to list
+      // sucesso -> redireciona para a listagem
       router.push(`/admin/empresas/${companyId}/funcionarios`);
     } catch (err) {
-      console.error('Erro ao salvar funcionário', err);
+      console.error('Erro ao salvar funcionário (fetch)', err);
       setError('Erro de rede ao salvar funcionário.');
       setSaving(false);
     }
