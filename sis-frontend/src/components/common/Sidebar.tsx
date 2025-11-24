@@ -36,6 +36,7 @@ interface SidebarProps {
   onRequestClose?: () => void;
   openOnMobile?: boolean;
   canAccess?: (permission?: string) => boolean;
+  onCollapseChange?: (collapsed: boolean) => void;
 }
 
 const DEFAULT_MENUS: Record<Variant, MenuItem[]> = {
@@ -66,6 +67,7 @@ export default function Sidebar({
   onRequestClose,
   openOnMobile = false,
   canAccess = (p?: string) => true,
+  onCollapseChange,
 }: SidebarProps) {
   const pathname = usePathname?.() ?? "";
   const menu = menuItems ?? DEFAULT_MENUS[variant];
@@ -79,18 +81,22 @@ export default function Sidebar({
 
   useEffect(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem(SIDEBAR_COLLAPSE_KEY) : null;
-    if (saved === "1") setCollapsed(true);
-  }, []);
+    if (saved === "1") {
+      setCollapsed(true);
+      onCollapseChange?.(true);
+    }
+  }, [onCollapseChange]);
 
   useEffect(() => {
     try {
       if (typeof window !== "undefined") {
         localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? "1" : "0");
+        onCollapseChange?.(collapsed);
       }
     } catch {
       /* ignore */
     }
-  }, [collapsed]);
+  }, [collapsed, onCollapseChange]);
 
   const isExpanded = !collapsed || hoverOpen;
   const desktopWidth = isExpanded ? "w-72" : "w-20";
@@ -197,18 +203,6 @@ export default function Sidebar({
           <ChevronLeftOutlined className="text-[#F3F4FF]" />
         </button>
       )}
-
-      {/* Botão para expandir quando colapsado */}
-      {!isExpanded && !hoverOpen && (
-        <button
-          aria-label="Expandir barra lateral"
-          title="Expandir"
-          onClick={handleToggleCollapse}
-          className="absolute right-2 flex items-center justify-center rounded-md p-1 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/20"
-        >
-          <ChevronRightOutlined className="text-[#F3F4FF] text-sm" />
-        </button>
-      )}
     </div>
   );
 
@@ -224,7 +218,7 @@ export default function Sidebar({
         onMouseLeave={() => {
           if (collapsed) setHoverOpen(false);
         }}
-        className={`hidden min-[851px]:flex flex-col ${desktopWidth} bg-[#0B2527] text-[#F3F4FF] shadow-lg ${className} transition-all duration-200 ease-in-out`}
+        className={`hidden min-[851px]:flex fixed left-0 top-0 h-screen flex-col ${desktopWidth} bg-[#0B2527] text-[#F3F4FF] shadow-lg ${className} transition-all duration-200 ease-in-out z-30`}
       >
         <Logo />
 
