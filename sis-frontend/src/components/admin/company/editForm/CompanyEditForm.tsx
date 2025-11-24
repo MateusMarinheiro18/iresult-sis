@@ -1,7 +1,14 @@
-'use client'
+// src/components/admin/company/CompanyEditForm.tsx
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+
+/*
+  Reference prototype (local file):
+  /mnt/data/Psyqué Protótipo Basico.pdf
+*/
 
 type Payload = {
   razaoSocial: string;
@@ -13,6 +20,19 @@ type Payload = {
 
 function sanitizeDigits(s?: string) {
   return s ? s.replace(/\D/g, '') : undefined;
+}
+
+/** tenta extrair uma mensagem legível de diferentes formatos de body */
+function extractMessageFromBody(body: any): string | null {
+  if (!body && body !== 0) return null;
+  if (typeof body === 'string' && body.trim()) return body.trim();
+  if (typeof body === 'object') {
+    if (typeof body.message === 'string' && body.message.trim()) return body.message.trim();
+    if (typeof body.msg === 'string' && body.msg.trim()) return body.msg.trim();
+    if (typeof body.error === 'string' && body.error.trim()) return body.error.trim();
+    if (typeof body.data === 'string' && body.data.trim()) return body.data.trim();
+  }
+  return null;
 }
 
 export default function CompanyEditForm({
@@ -40,7 +60,7 @@ export default function CompanyEditForm({
     e.preventDefault();
 
     if (!razaoSocial.trim()) {
-      alert('Razão social é obrigatória.');
+      toast.error('Razão social é obrigatória.');
       return;
     }
 
@@ -61,17 +81,35 @@ export default function CompanyEditForm({
         body: JSON.stringify(payload),
       });
 
+      // tenta ler como json, mas pode ser string — por isso o catch
+      const body = await res.text().then((t) => {
+        try {
+          return t ? JSON.parse(t) : {};
+        } catch {
+          return t;
+        }
+      });
+
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        alert(body?.message ?? 'Erro ao atualizar empresa.');
+        const msg = extractMessageFromBody(body) ?? 'Erro ao atualizar empresa.';
+        toast.error(msg);
         setSaving(false);
         return;
       }
 
-      router.push('/admin/empresas');
-    } catch (err) {
+      // sucesso: normaliza mensagem se existir, senão usa padrão
+      const successMsg = extractMessageFromBody(body) ?? 'Empresa atualizada com sucesso.';
+      const id = toast.success(successMsg);
+
+      // dá um pequeno delay para o usuário enxergar o toast antes de redirecionar
+      setTimeout(() => {
+        router.push('/admin/empresas');
+      }, 700);
+
+    } catch (err: any) {
       console.error(err);
-      alert('Erro inesperado. Veja o console.');
+      const msg = err?.message ? String(err.message) : 'Erro inesperado. Veja o console.';
+      toast.error(msg);
       setSaving(false);
     }
   }
@@ -141,7 +179,7 @@ export default function CompanyEditForm({
         <button type="submit" className="btn primary" disabled={saving}>
           {saving ? 'Salvando...' : 'SALVAR'}
         </button>
-        
+
         <button type="button" className="btn secondary" onClick={handleCancel} disabled={saving}>
           CANCELAR
         </button>
@@ -188,10 +226,6 @@ export default function CompanyEditForm({
           color: #9ca3af; /* cor do placeholder (cinza claro) */
           opacity: 1; /* garante compatibilidade cross-browser */
         }
-
-        /* Se quiser um placeholder mais escuro, troque por:
-           color: #6b7280;
-        */
 
         .input:focus {
           border-color: #0b2527;

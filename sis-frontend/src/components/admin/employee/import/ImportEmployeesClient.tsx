@@ -1,5 +1,7 @@
+// src/components/import/ImportEmployeesClient.tsx
 'use client';
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import FileUploader from './FileUploader';
 import PreviewTable from './PreviewTable';
 import { EmployeeRow, validateRows } from './validators';
@@ -16,19 +18,19 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
     const errs = validateRows(parsedRows);
     setRows(parsedRows);
     setErrorsByRow(errs);
-    
+
     const errorCount = Object.keys(errs).length;
     if (errorCount > 0) {
+      toast.error(`${parsedRows.length} linhas processadas. ${errorCount} com problemas.`);
       setMessage(`${parsedRows.length} linhas processadas. ${errorCount} com problemas que precisam ser corrigidos.`);
     } else {
+      toast.success(`${parsedRows.length} linhas processadas com sucesso!`);
       setMessage(`${parsedRows.length} linhas processadas com sucesso!`);
     }
   }
 
   function handleRemoveRow(index: number) {
     setRows((s) => s.filter((_, i) => i !== index));
-    
-    // Rebuild errors map
     setErrorsByRow((prev) => {
       const newMap: Record<number, string[]> = {};
       let j = 0;
@@ -48,13 +50,11 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
       copy[idx][key] = value;
       return copy;
     });
-    
-    // Revalidate row
+
     setErrorsByRow((prev) => {
       const copy = { ...prev };
       const r = { ...rows[idx], [key]: value };
       const issues: string[] = [];
-      
       const nome = (r.nome ?? '').toString().trim();
       if (!nome || nome.length < 2) issues.push('nome obrigatório (min 2 chars)');
       if (r.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) issues.push('email inválido');
@@ -62,7 +62,6 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
         const parsed = new Date(r.data_nascimento);
         if (Number.isNaN(parsed.getTime())) issues.push('data_nascimento inválida');
       }
-      
       if (issues.length) copy[idx] = issues;
       else delete copy[idx];
       return copy;
@@ -72,36 +71,45 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
   async function handleImport() {
     setMessage(null);
     if (rows.length === 0) {
+      toast.error('Nenhuma linha para importar.');
       setMessage('Nenhuma linha para importar.');
       return;
     }
     if (Object.keys(errorsByRow).length > 0) {
+      toast.error('Existem linhas com problemas. Corrija ou remova antes de importar.');
       setMessage('Existem linhas com problemas. Corrija ou remova antes de importar.');
       return;
     }
 
     setImporting(true);
+    const toastId = toast.loading('Importando funcionários…');
     try {
       const res = await fetch(`/api/companies/${companyId}/employees/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rows }),
       });
-      
+
       const body = await res.json().catch(() => null);
-      
       if (!res.ok) {
-        setMessage(`${body?.error ?? `Erro ao importar (status ${res?.status})`}`);
+        const msg = body?.error ?? `Erro ao importar (status ${res.status})`;
+        toast.error(msg, { id: toastId });
+        setMessage(msg);
         setImporting(false);
         return;
       }
-      
+
       const summary = body?.summary ?? null;
-      setMessage(`✓ Importação concluída! ${summary ? `Inseridos: ${summary.inserted ?? summary.imported ?? 0}` : ''}`);
+      const successMsg = `✓ Importação concluída! ${
+        summary ? `Inseridos: ${summary.inserted ?? summary.imported ?? 0}` : ''
+      }`;
+      toast.success(successMsg, { id: toastId });
+      setMessage(successMsg);
       setRows([]);
       setErrorsByRow({});
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error('Erro inesperado ao importar. Veja o console.', { id: toastId });
       setMessage('Erro inesperado ao importar. Veja o console.');
     } finally {
       setImporting(false);
@@ -112,32 +120,23 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
     setRows([]);
     setErrorsByRow({});
     setMessage(null);
+    toast('Pré-visualização limpa.');
   }
 
   return (
     <div className="root">
-      {/* Upload Section */}
       <div className="upload-section">
-        <FileUploader 
-          onParsed={handleParsed} 
-          setMessage={setMessage} 
-          setParsing={setParsing} 
-        />
+        <FileUploader onParsed={handleParsed} setMessage={setMessage} setParsing={setParsing} />
       </div>
 
-      {/* Actions */}
       {rows.length > 0 && (
         <div className="actions">
-          <button 
-            className="btn clear" 
-            onClick={handleClear} 
-            disabled={parsing || importing}
-          >
+          <button className="btn clear" onClick={handleClear} disabled={parsing || importing}>
             Limpar preview
           </button>
-          <button 
-            className="btn success" 
-            onClick={handleImport} 
+          <button
+            className="btn success"
+            onClick={handleImport}
             disabled={importing || parsing || rows.length === 0 || Object.keys(errorsByRow).length > 0}
           >
             {importing ? 'Importando...' : '✓ Salvar (importar)'}
@@ -145,7 +144,6 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
         </div>
       )}
 
-      {/* Summary */}
       {rows.length > 0 && (
         <div className="summary">
           <div className="summary-item">
@@ -157,14 +155,16 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
         </div>
       )}
 
-      {/* Message */}
       {message && (
-        <div className={`message ${message.includes('❌') ? 'error' : message.includes('⚠️') ? 'warning' : 'success'}`}>
+        <div
+          className={`message ${
+            message.includes('❌') ? 'error' : message.includes('⚠️') ? 'warning' : 'success'
+          }`}
+        >
           {message}
         </div>
       )}
 
-      {/* Preview Table */}
       <div className="preview">
         {rows.length === 0 ? (
           <div className="empty">
@@ -179,13 +179,11 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
               onEditCell={handleEditCell}
               onRemoveRow={handleRemoveRow}
             />
-
             {rows.length > previewLimit && (
               <div className="more">
                 ℹ️ Mostrando {previewLimit} de {rows.length} linhas.
               </div>
             )}
-
             {Object.keys(errorsByRow).length > 0 && (
               <div className="errors">
                 <h4>⚠️ Erros por linha</h4>
@@ -201,148 +199,6 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
           </>
         )}
       </div>
-
-      <style jsx>{`
-        .root {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .upload-section {
-          margin-bottom: 8px;
-        }
-
-        .actions {
-          display: flex;
-          gap: 12px;
-          justify-content: flex-end;
-        }
-
-        .btn {
-          padding: 10px 20px;
-          border-radius: 8px;
-          border: none;
-          cursor: pointer;
-          font-weight: 600;
-          font-size: 14px;
-          transition: all 0.2s ease;
-        }
-
-        .btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .btn.clear {
-          background: #f3f4f6;
-          color: #374151;
-        }
-
-        .btn.clear:hover:not(:disabled) {
-          background: #e5e7eb;
-        }
-
-        .btn.success {
-          background: #10b981;
-          color: white;
-        }
-
-        .btn.success:hover:not(:disabled) {
-          background: #059669;
-        }
-
-        .summary {
-          display: flex;
-          gap: 24px;
-          padding: 16px;
-          background: #f9fafb;
-          border-radius: 8px;
-          border: 1px solid #e5e7eb;
-        }
-
-        .summary-item {
-          color: #374151;
-          font-size: 14px;
-        }
-
-        .summary-item strong {
-          color: #0B2527;
-          font-size: 16px;
-        }
-
-        .summary-item.error strong {
-          color: #ef4444;
-        }
-
-        .message {
-          padding: 12px 16px;
-          border-radius: 8px;
-          font-weight: 500;
-        }
-
-        .message.success {
-          background: #d1fae5;
-          color: #065f46;
-          border: 1px solid #10b981;
-        }
-
-        .message.warning {
-          background: #fef3c7;
-          color: #92400e;
-          border: 1px solid #f59e0b;
-        }
-
-        .message.error {
-          background: #fee2e2;
-          color: #7f1d1d;
-          border: 1px solid #ef4444;
-        }
-
-        .preview {
-          margin-top: 8px;
-        }
-
-        .empty {
-          color: #6b7280;
-          padding: 40px 20px;
-          text-align: center;
-          background: #f9fafb;
-          border-radius: 8px;
-          border: 2px dashed #e5e7eb;
-        }
-
-        .more {
-          margin-top: 12px;
-          color: #6b7280;
-          font-size: 14px;
-          text-align: center;
-        }
-
-        .errors {
-          margin-top: 16px;
-          background: #fee2e2;
-          border: 1px solid #ef4444;
-          padding: 16px;
-          border-radius: 8px;
-        }
-
-        .errors h4 {
-          color: #7f1d1d;
-          margin: 0 0 12px 0;
-          font-size: 16px;
-        }
-
-        .errors ul {
-          margin: 0;
-          padding-left: 20px;
-          color: #991b1b;
-        }
-
-        .errors li {
-          margin-bottom: 6px;
-        }
-      `}</style>
     </div>
   );
 }

@@ -1,6 +1,14 @@
+// src/components/admin/company/CompanyForm.tsx
 'use client';
+
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+
+/*
+  Reference prototype:
+  /mnt/data/Psyqué Protótipo Basico.pdf
+*/
 
 type Payload = {
   razaoSocial: string;
@@ -14,6 +22,19 @@ function sanitizeDigits(s?: string) {
   return s ? s.replace(/\D/g, '') : undefined;
 }
 
+/** extrai mensagens legíveis do body retornado pela API */
+function extractMessageFromBody(body: any): string | null {
+  if (!body && body !== 0) return null;
+  if (typeof body === 'string' && body.trim()) return body.trim();
+  if (typeof body === 'object') {
+    if (typeof body.message === 'string' && body.message.trim()) return body.message.trim();
+    if (typeof body.msg === 'string' && body.msg.trim()) return body.msg.trim();
+    if (typeof body.error === 'string' && body.error.trim()) return body.error.trim();
+    if (typeof body.data === 'string' && body.data.trim()) return body.data.trim();
+  }
+  return null;
+}
+
 export default function CompanyForm({ initial }: { initial?: any }) {
   const [razaoSocial, setRazaoSocial] = useState(initial?.razaoSocial ?? '');
   const [cnpj, setCnpj] = useState(initial?.cnpj ?? '');
@@ -25,8 +46,9 @@ export default function CompanyForm({ initial }: { initial?: any }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
     if (!razaoSocial.trim()) {
-      alert('Razão social é obrigatória.');
+      toast.error('Razão social é obrigatória.');
       return;
     }
 
@@ -47,17 +69,29 @@ export default function CompanyForm({ initial }: { initial?: any }) {
         body: JSON.stringify(payload),
       });
 
+      const text = await res.text().catch(() => '');
+      let body: any = {};
+      try {
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        body = text;
+      }
+
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        alert(body?.message ?? 'Erro ao salvar empresa.');
+        const msg = extractMessageFromBody(body) ?? 'Erro ao salvar empresa.';
+        toast.error(msg);
         setSaving(false);
         return;
       }
 
-      router.push('/admin/empresas');
-    } catch (err) {
+      const successMsg = extractMessageFromBody(body) ?? 'Empresa cadastrada com sucesso.';
+      toast.success(successMsg);
+
+      setTimeout(() => router.push('/admin/empresas'), 700);
+    } catch (err: any) {
       console.error(err);
-      alert('Erro inesperado. Veja o console.');
+      const msg = err?.message ? String(err.message) : 'Erro inesperado. Veja o console.';
+      toast.error(msg);
       setSaving(false);
     }
   }
@@ -159,17 +193,13 @@ export default function CompanyForm({ initial }: { initial?: any }) {
           font-size: 14px;
           outline: none;
           transition: box-shadow 0.12s ease, border-color 0.12s ease;
-          color: #111827; /* cor do texto digitado */
+          color: #111827;
         }
 
         .input::placeholder {
-          color: #9ca3af; /* cor do placeholder (cinza claro) */
-          opacity: 1; /* garante compatibilidade cross-browser */
+          color: #9ca3af;
+          opacity: 1;
         }
-
-        /* Se quiser um placeholder mais escuro, troque por:
-           color: #6b7280;
-        */
 
         .input:focus {
           border-color: #0b2527;
@@ -198,12 +228,6 @@ export default function CompanyForm({ initial }: { initial?: any }) {
           background: #0b2527;
           color: white;
           box-shadow: 0 6px 20px rgba(11, 37, 39, 0.12);
-        }
-
-        .btn.secondary {
-          background: white;
-          color: #0b2527;
-          border: 1px solid #0b2527;
         }
 
         @media (max-width: 960px) {
