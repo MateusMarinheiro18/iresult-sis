@@ -1,0 +1,20 @@
+// prisma/models/trilha.prisma
+model Trilha {
+  id          Int                 @id @default(autoincrement()) @map("id_trilha")
+  nome        String              @map("nome")
+  dataCriacao DateTime?           @map("data_criacao")   // DATE no diagram, mapeado como DateTime?
+  ativo       Int?                @map("ativo")
+  created     DateTime?           @map("created")
+  createdBy   Int?                @map("created_by")
+  deleted     DateTime?           @map("deleted")
+  deletedBy   Int?                @map("deleted_by")
+  updated     DateTime?           @map("updated")
+  updatedBy   Int?                @map("updated_by")
+
+  // relations
+  empresas    EmpresaHasTrilha[]  @relation("TrilhaEmpresas")
+  itens       TrilhaItem[]        @relation("TrilhaItens")
+
+  @@map("tab_trilha")
+}
+    

@@ -1,0 +1,12 @@
+// prisma/models/empresa_has_trilha.prisma
+model EmpresaHasTrilha {
+  idEmpresa Int @map("id_empresa")
+  idTrilha  Int @map("id_trilha")
+
+  // relations
+  empresa Empresa @relation("EmpresaTrilhas", fields: [idEmpresa], references: [id], onDelete: Cascade)
+  trilha  Trilha  @relation("TrilhaEmpresas", fields: [idTrilha], references: [id], onDelete: Cascade)
+
+  @@id([idEmpresa, idTrilha])   // chave composta (não há id autonumérico no diagrama)
+  @@map("tab_empresa_has_trilha")
+}

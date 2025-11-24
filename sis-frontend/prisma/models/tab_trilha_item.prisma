@@ -1,0 +1,21 @@
+// prisma/models/trilha_item.prisma
+model TrilhaItem {
+  id         Int      @id @default(autoincrement()) @map("id_itens")
+  nome       String   @map("nome")
+  tipo       String?  @map("tipo")
+  data       DateTime?@map("data")
+  detalhes   String?  @map("detalhes")
+  idTrilha   Int      @map("id_trilha")
+  ativo      Int?     @map("ativo")
+  created    DateTime?@map("created")
+  createdBy  Int?     @map("created_by")
+  deleted    DateTime?@map("deleted")
+  deletedBy  Int?     @map("deleted_by")
+  updated    DateTime?@map("updated")
+  updatedBy  Int?     @map("updated_by")
+
+  // relation to Trilha
+  trilha Trilha @relation("TrilhaItens", fields: [idTrilha], references: [id], onDelete: Cascade)
+
+  @@map("tab_trilha_item")
+}

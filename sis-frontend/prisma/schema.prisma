@@ -9,59 +9,108 @@ datasource db {
 
 // models will be merged from prisma/models/*.prisma
 
-// ---- empresa.prisma ----
+// ---- tab_administrador.prisma ----
+// prisma/models/administrador.prisma
+model Administrador {
+  id         Int    @id @default(autoincrement()) @map("id_administrador")
+  nome       String @map("nome")
+  email      String @map("email")
+  senhaHash  String @map("senha_hash")
+
+  @@map("tab_administrador")
+}
+
+// ---- tab_empresa.prisma ----
 // prisma/models/empresa.prisma
 model Empresa {
-  id          Int       @id @default(autoincrement()) @map("id_empresa")
-  razaoSocial String    @map("razao_social")
-  cnpj        String?   @map("CNPJ")
-  email       String?   @map("email")
-  telefone    String?   @map("telefone")
-  cep         String?   @map("CEP")
-  ativo       Int?      @map("ativo")
-  created     DateTime? @map("created")
-  createdBy   Int?      @map("created_by")
-  deleted     DateTime? @map("deleted")
-  deletedBy   Int?      @map("deleted_by")
-  updated     DateTime? @map("updated")
-  updatedBy   Int?      @map("updated_by")
+  id            Int       @id @default(autoincrement()) @map("id_empresa")
+  razaoSocial   String    @map("razao_social")
+  cnpj          String?   @map("CNPJ")
+  email         String?   @map("email")
+  telefone      String?   @map("telefone")
+  cep           String?   @map("CEP")
+  ativo         Int?      @map("ativo")
+  created       DateTime? @map("created")
+  createdBy     Int?      @map("created_by")
+  deleted       DateTime? @map("deleted")
+  deletedBy     Int?      @map("deleted_by")
+  updated       DateTime? @map("updated")
+  updatedBy     Int?      @map("updated_by")
 
-  // relations (lado oposto)
-  usuarios     EmpresaUsuario[]     @relation("EmpresaUsuarios")
-  funcionarios EmpresaFuncionario[] @relation("EmpresaFuncionarios")
+  usuarios         EmpresaUsuario[]      @relation("EmpresaUsuarios")
+  funcionarios     EmpresaFuncionario[]  @relation("EmpresaFuncionarios")
+  relatorios       EmpresaRelatorio[]    @relation("EmpresaRelatorios")
+  empresasTrilhas  EmpresaHasTrilha[]    @relation("EmpresaTrilhas")
+  escalasEmpresas  EscalaHasEmpresa[]    @relation("EscalaHasEmpresas")
 
-  @@map("_empresa")
+  @@map("tab_empresa")
 }
 
-// ---- empresa_funcionario.prisma ----
+// ---- tab_empresa_funcionario.prisma ----
 // prisma/models/empresa_funcionario.prisma
 model EmpresaFuncionario {
-  id_funcionario    Int       @id @default(autoincrement()) @map("id_funcionario")
-  nome              String?   @map("nome")
-  gestor            String?   @map("gestor")
-  email             String?   @map("email")
-  telefone          String?   @map("telefone")
-  data_nascimento   DateTime? @map("data_nascimento")
-  cidade_nascimento String?   @map("cidade_nascimento")
+  id_funcionario   Int       @id @map("id_funcionario") @default(autoincrement())
+  nome             String?   @map("nome")
+  gestor           String?   @map("gestor")
+  email            String?   @map("email")
+  telefone         String?   @map("telefone")
+  data_nascimento  DateTime? @map("data_nascimento")
+  cidade_nascimento String?  @map("cidade_nascimento")
 
-  id_empresa Int?     @map("id_empresa")
-  empresa    Empresa? @relation("EmpresaFuncionarios", fields: [id_empresa], references: [id])
+  id_empresa       Int?      @map("id_empresa")
+  empresa          Empresa?  @relation("EmpresaFuncionarios", fields: [id_empresa], references: [id])
 
-  ativo      Int?      @map("ativo")
-  created    DateTime? @map("created")
-  created_by Int?      @map("created_by")
-  deleted    DateTime? @map("deleted")
-  deleted_by Int?      @map("deleted_by")
-  updated    DateTime? @map("updated")
-  updated_by Int?      @map("updated_by")
+  ativo            Int?      @map("ativo")
+  created          DateTime? @map("created")
+  created_by       Int?      @map("created_by")
+  deleted          DateTime? @map("deleted")
+  deleted_by       Int?      @map("deleted_by")
+  updated          DateTime? @map("updated")
+  updated_by       Int?      @map("updated_by")
 
-  @@map("empresa_funcionario")
+  @@map("tab_empresa_funcionario")
 }
 
-// ---- empresa_usuario.prisma ----
+// ---- tab_empresa_has_trilha.prisma ----
+// prisma/models/empresa_has_trilha.prisma
+model EmpresaHasTrilha {
+  idEmpresa Int @map("id_empresa")
+  idTrilha  Int @map("id_trilha")
+
+  // relations
+  empresa Empresa @relation("EmpresaTrilhas", fields: [idEmpresa], references: [id], onDelete: Cascade)
+  trilha  Trilha  @relation("TrilhaEmpresas", fields: [idTrilha], references: [id], onDelete: Cascade)
+
+  @@id([idEmpresa, idTrilha])   // chave composta (não há id autonumérico no diagrama)
+  @@map("tab_empresa_has_trilha")
+}
+
+// ---- tab_empresa_relatorio.prisma ----
+// prisma/models/empresa_relatorio.prisma
+model EmpresaRelatorio {
+  id            Int       @id @default(autoincrement()) @map("id_relatorio")
+  titulo        String    @map("titulo")
+  dataPublicacao DateTime? @map("data_publicacao")
+  texto         String?   @map("texto")
+  idEmpresa     Int       @map("id_empresa")
+  ativo         Int?      @map("ativo")
+  created       DateTime? @map("created")
+  createdBy     Int?      @map("created_by")
+  deleted       DateTime? @map("deleted")
+  deletedBy     Int?      @map("deleted_by")
+  updated       DateTime? @map("updated")
+  updatedBy     Int?      @map("updated_by")
+
+  // Relação com Empresa
+  empresa Empresa @relation(fields: [idEmpresa], references: [id], onDelete: Cascade)
+
+  @@map("tab_empresa_relatorio")
+}
+
+// ---- tab_empresa_usuario.prisma ----
 // prisma/models/empresa_usuario.prisma
 model EmpresaUsuario {
-  id_usuario_rh   Int       @id @default(autoincrement()) @map("id_usuario_rh")
+  id_usuario_rh   Int       @id @map("id_usuario_rh") @default(autoincrement())
   nome            String?   @map("nome")
   data_nascimento DateTime? @map("data_nascimento")
   email           String?   @map("email")
@@ -70,16 +119,172 @@ model EmpresaUsuario {
   cidade          String?   @map("cidade")
   senha_hash      String?   @map("senha_hash")
 
-  id_empresa Int?     @map("id_empresa")
-  empresa    Empresa? @relation("EmpresaUsuarios", fields: [id_empresa], references: [id])
+  id_empresa      Int?      @map("id_empresa")
+  empresa         Empresa?  @relation("EmpresaUsuarios", fields: [id_empresa], references: [id])
 
-  ativo      Int?      @map("ativo")
-  created    DateTime? @map("created")
-  created_by Int?      @map("created_by")
-  deleted    DateTime? @map("deleted")
-  deleted_by Int?      @map("deleted_by")
-  updated    DateTime? @map("updated")
-  updated_by Int?      @map("updated_by")
+  ativo           Int?      @map("ativo")
+  created         DateTime? @map("created")
+  created_by      Int?      @map("created_by")
+  deleted         DateTime? @map("deleted")
+  deleted_by      Int?      @map("deleted_by")
+  updated         DateTime? @map("updated")
+  updated_by      Int?      @map("updated_by")
 
-  @@map("empresa_usuario")
+  @@map("tab_empresa_usuario")
 }
+
+// ---- tab_escala.prisma ----
+// prisma/models/escala.prisma
+model Escala {
+  id           Int                    @id @default(autoincrement()) @map("id_escala")
+  nome         String                 @map("nome")
+  dataVencimento DateTime?            @map("data_vencimento")
+  ativo        Int?                   @map("ativo")
+  created      DateTime?              @map("created")
+  createdBy    Int?                   @map("created_by")
+  deleted      DateTime?              @map("deleted")
+  deletedBy    Int?                   @map("deleted_by")
+  updated      DateTime?              @map("updated")
+  updatedBy    Int?                   @map("updated_by")
+
+  // relations
+  empresas     EscalaHasEmpresa[]     @relation("EscalaEmpresas")
+  perguntas    EscalaPergunta[]       @relation("EscalaPerguntas")
+
+  @@map("tab_escala")
+}
+
+// ---- tab_escala_has_empresa.prisma ----
+// prisma/models/escala_has_empresa.prisma
+model EscalaHasEmpresa {
+  idEscala  Int @map("id_escala")
+  idEmpresa Int @map("id_empresa")
+
+  // relations
+  escala  Escala   @relation("EscalaEmpresas", fields: [idEscala], references: [id], onDelete: Cascade)
+  empresa Empresa  @relation("EscalaHasEmpresas", fields: [idEmpresa], references: [id], onDelete: Cascade)
+
+  @@id([idEscala, idEmpresa])
+  @@map("tab_escala_has_empresa")
+}
+
+// ---- tab_escala_pergunta.prisma ----
+// prisma/models/escala_pergunta.prisma
+model EscalaPergunta {
+  id                            Int       @id @default(autoincrement()) @map("id_pergunta")
+  pergunta                      String    @map("pergunta")
+  idEscala                      Int       @map("id_escala")
+
+  valorInicialFavoravel         Decimal?  @map("valor_inicial_favoravel") @db.Decimal(10,2)
+  valorFinalFavoravel           Decimal?  @map("valor_final_favoravel")   @db.Decimal(10,2)
+  valorInicialIntermediario     Decimal?  @map("valor_inicial_intermediario") @db.Decimal(10,2)
+  valorFinalIntermediario       Decimal?  @map("valor_final_intermediario")   @db.Decimal(10,2)
+  valorInicialRisco             Decimal?  @map("valor_inicial_risco") @db.Decimal(10,2)
+  valorFinalRisco               Decimal?  @map("valor_final_risco")   @db.Decimal(10,2)
+
+  ativo                         Int?      @map("ativo")
+  created                       DateTime? @map("created")
+  createdBy                     Int?      @map("created_by")
+  deleted                       DateTime? @map("deleted")
+  deletedBy                     Int?      @map("deleted_by")
+  updated                       DateTime? @map("updated")
+  updatedBy                     Int?      @map("updated_by")
+
+  // relations
+  escala                        Escala    @relation("EscalaPerguntas", fields: [idEscala], references: [id], onDelete: Cascade)
+  respostasPossiveis            EscalaPerguntaResposta[] @relation("PerguntaRespostas")
+  respostasFuncionarios         RespostaFuncionario[]    @relation("PerguntaRespostasFuncionario")
+
+  @@map("tab_escala_pergunta")
+}
+
+// ---- tab_escala_pergunta_resposta.prisma ----
+// prisma/models/escala_pergunta_resposta.prisma
+model EscalaPerguntaResposta {
+  id         Int      @id @default(autoincrement()) @map("id_resposta")
+  resposta   String   @map("resposta")
+  idPergunta Int      @map("id_pergunta")
+  ativo      Int?     @map("ativo")
+  created    DateTime?@map("created")
+  createdBy  Int?     @map("created_by")
+  deleted    DateTime?@map("deleted")
+  deletedBy  Int?     @map("deleted_by")
+  updated    DateTime?@map("updated")
+  updatedBy  Int?     @map("updated_by")
+
+  // relations
+  pergunta   EscalaPergunta @relation("PerguntaRespostas", fields: [idPergunta], references: [id], onDelete: Cascade)
+  respostasFuncionario RespostaFuncionario[] @relation("RespostaPossivelFuncionarios")
+
+  @@map("tab_escala_pergunta_resposta")
+}
+
+// ---- tab_resposta_funcionario.prisma ----
+// prisma/models/resposta_funcionario.prisma
+model RespostaFuncionario {
+  id                 Int       @id @default(autoincrement()) @map("id_resposta_funcionario")
+  dataResposta       DateTime? @map("data_resposta")
+  idResposta         Int?      @map("id_resposta")       // FK para tabela de respostas possíveis
+  idPergunta         Int?      @map("id_pergunta")       // FK para pergunta
+  idEscala           Int?      @map("id_escala")         // FK para escala
+  ativo              Int?      @map("ativo")
+  created            DateTime? @map("created")
+  createdBy          Int?      @map("created_by")
+  deleted            DateTime? @map("deleted")
+  deletedBy          Int?      @map("deleted_by")
+  updated            DateTime? @map("updated")
+  updatedBy          Int?      @map("updated_by")
+
+  // relations
+  respostaPossivel   EscalaPerguntaResposta? @relation("RespostaPossivelFuncionarios", fields: [idResposta], references: [id], onDelete: SetNull)
+  pergunta           EscalaPergunta?         @relation("PerguntaRespostasFuncionario", fields: [idPergunta], references: [id], onDelete: SetNull)
+  escala             Escala?                 @relation(fields: [idEscala], references: [id], onDelete: SetNull)
+  // funcionario relation omitted here (adicione quando existir o model Funcionario/EmpresaFuncionario)
+
+  @@map("tab_resposta_funcionario")
+}
+
+// ---- tab_trilha.prisma ----
+// prisma/models/trilha.prisma
+model Trilha {
+  id          Int                 @id @default(autoincrement()) @map("id_trilha")
+  nome        String              @map("nome")
+  dataCriacao DateTime?           @map("data_criacao")   // DATE no diagram, mapeado como DateTime?
+  ativo       Int?                @map("ativo")
+  created     DateTime?           @map("created")
+  createdBy   Int?                @map("created_by")
+  deleted     DateTime?           @map("deleted")
+  deletedBy   Int?                @map("deleted_by")
+  updated     DateTime?           @map("updated")
+  updatedBy   Int?                @map("updated_by")
+
+  // relations
+  empresas    EmpresaHasTrilha[]  @relation("TrilhaEmpresas")
+  itens       TrilhaItem[]        @relation("TrilhaItens")
+
+  @@map("tab_trilha")
+}
+
+// ---- tab_trilha_item.prisma ----
+// prisma/models/trilha_item.prisma
+model TrilhaItem {
+  id         Int      @id @default(autoincrement()) @map("id_itens")
+  nome       String   @map("nome")
+  tipo       String?  @map("tipo")
+  data       DateTime?@map("data")
+  detalhes   String?  @map("detalhes")
+  idTrilha   Int      @map("id_trilha")
+  ativo      Int?     @map("ativo")
+  created    DateTime?@map("created")
+  createdBy  Int?     @map("created_by")
+  deleted    DateTime?@map("deleted")
+  deletedBy  Int?     @map("deleted_by")
+  updated    DateTime?@map("updated")
+  updatedBy  Int?     @map("updated_by")
+
+  // relation to Trilha
+  trilha Trilha @relation("TrilhaItens", fields: [idTrilha], references: [id], onDelete: Cascade)
+
+  @@map("tab_trilha_item")
+}
+

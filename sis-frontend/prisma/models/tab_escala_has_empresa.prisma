@@ -1,0 +1,12 @@
+// prisma/models/escala_has_empresa.prisma
+model EscalaHasEmpresa {
+  idEscala  Int @map("id_escala")
+  idEmpresa Int @map("id_empresa")
+
+  // relations
+  escala  Escala   @relation("EscalaEmpresas", fields: [idEscala], references: [id], onDelete: Cascade)
+  empresa Empresa  @relation("EscalaHasEmpresas", fields: [idEmpresa], references: [id], onDelete: Cascade)
+
+  @@id([idEscala, idEmpresa])
+  @@map("tab_escala_has_empresa")
+}

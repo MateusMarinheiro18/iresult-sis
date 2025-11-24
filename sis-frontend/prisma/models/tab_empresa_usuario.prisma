@@ -20,5 +20,5 @@ model EmpresaUsuario {
   updated         DateTime? @map("updated")
   updated_by      Int?      @map("updated_by")
 
-  @@map("empresa_usuario")
+  @@map("tab_empresa_usuario")
 }
