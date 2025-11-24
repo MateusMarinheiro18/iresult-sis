@@ -110,7 +110,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       where: { id },
       data: { deleted: new Date() },
     });
-    return NextResponse.json({ message: 'deleted', item: deleted }, { status: 200 });
+    return NextResponse.json({ message: 'Empresa deletado com sucesso!', item: deleted }, { status: 200 });
   } catch (error: any) {
     console.error('DELETE /api/companies/[id] error', error);
     if (error?.code === 'P2025') {

@@ -12,3 +12,4 @@ export default function EmpresasLayout({ children }: { children: React.ReactNode
     </AdminShell>
   );
 }
+  

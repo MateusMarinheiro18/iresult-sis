@@ -1,6 +1,8 @@
 // src/app/layout.tsx
 import './globals.css'
 import type { ReactNode } from 'react'
+import { ConfirmProvider } from '@/components/ui/ConfirmProvider'
+import ClientToasterGuard from '@/components/ui/ClientToasterGuard'
 
 export const metadata = {
   title: 'SIS',
@@ -20,7 +22,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
         <link rel="icon" href="/logos/LogoWhite.png" sizes="any" />
       </head>
-      <body>{children}</body>
+      <body>
+        <ConfirmProvider>
+          <ClientToasterGuard />
+          {children}
+        </ConfirmProvider>
+      </body>
     </html>
   )
 }
