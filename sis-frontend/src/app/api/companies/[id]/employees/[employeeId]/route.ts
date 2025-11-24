@@ -1,11 +1,13 @@
-// src/app/api/companies/[id]/employees/[employeeId]/route.ts
+// File: src/app/api/companies/[id]/employees/[employeeId]/route.ts
+// (debug/reference file uploaded: /mnt/data/Psyqué Protótipo Basico.pdf)
+
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseDateStringMaybe } from '@/lib/employeeValidators';
 
-// placeholder auth
+// placeholder auth - keep async in case you check DB / tokens later
 async function checkAdminForCompany(req: Request, companyId: number) {
-  // TODO: implement
+  // TODO: implement real auth/authorization
   return true;
 }
 
@@ -23,10 +25,21 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string; employeeId: string } }) {
+/**
+ * NOTE: In Next App Router dynamic route handlers `params` can be a Promise.
+ * Always `await params` before accessing its properties.
+ */
+
+/* -------------------- PATCH -------------------- */
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string; employeeId: string }> }
+) {
   try {
-    const companyId = Number(params.id);
-    const employeeId = Number(params.employeeId);
+    const p = await params; // unwrap params
+    const companyId = Number(p.id);
+    const employeeId = Number(p.employeeId);
+
     if (Number.isNaN(companyId) || companyId <= 0) {
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
@@ -39,12 +52,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string; em
 
     const body = (await req.json()) as PatchBody;
 
-    const existing = await prisma.empresaFuncionario.findUnique({ where: { id_funcionario: employeeId } });
+    const existing = await prisma.empresaFuncionario.findUnique({
+      where: { id_funcionario: employeeId },
+    });
+
     if (!existing || existing.id_empresa !== companyId) {
       return NextResponse.json({ error: 'Funcionário não encontrado para essa empresa.' }, { status: 404 });
     }
 
-    const updates: any = {};
+    const updates: Record<string, any> = {};
 
     if (body.nome !== undefined) {
       const nome = (body.nome ?? '').toString().trim();
@@ -123,10 +139,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string; em
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string; employeeId: string } }) {
+/* -------------------- DELETE -------------------- */
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string; employeeId: string }> }
+) {
   try {
-    const companyId = Number(params.id);
-    const employeeId = Number(params.employeeId);
+    const p = await params; // unwrap params
+    const companyId = Number(p.id);
+    const employeeId = Number(p.employeeId);
+
     if (Number.isNaN(companyId) || companyId <= 0) {
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
@@ -137,11 +159,20 @@ export async function DELETE(req: Request, { params }: { params: { id: string; e
     const allowed = await checkAdminForCompany(req, companyId);
     if (!allowed) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
 
-    const existing = await prisma.empresaFuncionario.findUnique({ where: { id_funcionario: employeeId } });
-    if (!existing || existing.id_empresa !== companyId) {
+    // fetch record
+    const existing = await prisma.empresaFuncionario.findUnique({
+      where: { id_funcionario: employeeId },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Funcionário não encontrado.' }, { status: 404 });
+    }
+
+    if (existing.id_empresa !== companyId) {
       return NextResponse.json({ error: 'Funcionário não encontrado para essa empresa.' }, { status: 404 });
     }
 
+    // if you use soft-delete: mark deleted timestamp
     const deleted = await prisma.empresaFuncionario.update({
       where: { id_funcionario: employeeId },
       data: { deleted: new Date() },

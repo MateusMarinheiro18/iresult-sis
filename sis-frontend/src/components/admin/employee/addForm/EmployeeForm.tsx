@@ -48,6 +48,30 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
     return null;
   }
 
+  function formatPhone(value: string) {
+    const digits = value.replace(/\D/g, ''); // remove tudo que não for número
+    let formatted = digits;
+  
+    if (digits.startsWith('55')) {
+      formatted = '+' + digits.slice(0, 2) + ' ';
+      if (digits.length > 2) {
+        formatted += '(' + digits.slice(2, 4);
+        if (digits.length >= 4) formatted += ') ';
+        if (digits.length >= 5) formatted += digits.slice(4, 9);
+        if (digits.length >= 9) formatted += '-' + digits.slice(9, 13);
+      }
+    } else if (digits.length > 0) {
+      formatted = '+55 ';
+      if (digits.length >= 2) formatted += '(' + digits.slice(0, 2);
+      if (digits.length >= 2) formatted += ') ';
+      if (digits.length >= 3) formatted += digits.slice(2, 7);
+      if (digits.length >= 7) formatted += '-' + digits.slice(7, 11);
+    }
+  
+    return formatted.trim();
+  }
+  
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -140,7 +164,10 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
           <input
             className="input"
             value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
+            onChange={(e) => {
+              const formatted = formatPhone(e.target.value);
+              setTelefone(formatted);
+            }}
             placeholder="+55 (11) 99999-9999"
             aria-label="Telefone"
           />
