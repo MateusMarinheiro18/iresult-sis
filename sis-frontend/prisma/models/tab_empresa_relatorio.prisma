@@ -14,7 +14,7 @@ model EmpresaRelatorio {
   updatedBy     Int?      @map("updated_by")
 
   // Relação com Empresa
-  empresa Empresa @relation(fields: [idEmpresa], references: [id], onDelete: Cascade)
+  empresa Empresa @relation("EmpresaRelatorios", fields: [idEmpresa], references: [id], onDelete: Cascade)
 
   @@map("tab_empresa_relatorio")
 }

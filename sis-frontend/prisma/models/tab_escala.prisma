@@ -14,6 +14,7 @@ model Escala {
   // relations
   empresas     EscalaHasEmpresa[]     @relation("EscalaEmpresas")
   perguntas    EscalaPergunta[]       @relation("EscalaPerguntas")
+  respostas    RespostaFuncionario[]  @relation("EscalaRespostas")
 
   @@map("tab_escala")
 }
