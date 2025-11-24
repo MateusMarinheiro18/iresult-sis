@@ -7,6 +7,7 @@ import Headbar from "@/components/common/Headbar";
 
 export default function ClientShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const onResize = () => {
@@ -21,9 +22,18 @@ export default function ClientShell({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen flex bg-white">
-      <Sidebar variant="client" openOnMobile={mobileOpen} onRequestClose={() => setMobileOpen(false)} />
+      <Sidebar 
+        variant="client" 
+        openOnMobile={mobileOpen} 
+        onRequestClose={() => setMobileOpen(false)}
+        onCollapseChange={setSidebarCollapsed}
+      />
 
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div 
+        className={`flex-1 flex flex-col min-h-screen transition-all duration-200 ${
+          sidebarCollapsed ? 'min-[851px]:ml-20' : 'min-[851px]:ml-72'
+        }`}
+      >
         {/* Headbar não controla o mobile state — recebe callback */}
         <Headbar variant="client" dynamicCounts={dynamicCounts} onToggleMobile={() => setMobileOpen((s) => !s)} />
 
