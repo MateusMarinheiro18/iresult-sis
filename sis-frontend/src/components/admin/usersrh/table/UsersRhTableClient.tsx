@@ -1,5 +1,5 @@
 'use client';
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import UsersRhRowActions from './UsersRhRowActions';
@@ -31,20 +31,6 @@ export default function UsersRhTableClient({
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
-  // Dropdown state
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  // fecha o menu quando clicar fora
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
-  }, [menuOpen]);
-
   // filtro por nome ou email (case-insensitive)
   const filtered = useMemo(() => {
     const q = String(query || '').trim().toLowerCase();
@@ -55,7 +41,7 @@ export default function UsersRhTableClient({
   }, [initialData, query]);
 
   // reset página ao mudar busca
-  useEffect(() => {
+  React.useEffect(() => {
     setCurrentPage(1);
   }, [query]);
 
@@ -95,13 +81,7 @@ export default function UsersRhTableClient({
     }
   }
 
-  // handlers do dropdown
-  function goToImport() {
-    setMenuOpen(false);
-    router.push(`/admin/empresas/${companyId}/usuariosrh/import`);
-  }
   function goToCreate() {
-    setMenuOpen(false);
     router.push(`/admin/empresas/${companyId}/usuariosrh/new`);
   }
 
@@ -125,44 +105,15 @@ export default function UsersRhTableClient({
           />
         </div>
 
-        <div className="right-actions" ref={menuRef}>
-          {/* Dropdown main button */}
-          <div className="dropdown-root">
-            <button
-              className="btn-new"
-              onClick={() => setMenuOpen((s) => !s)}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              aria-label="Novo usuário RH opções"
-              title="Novo usuário RH"
-            >
-              Novo Usuário RH
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style={{ marginLeft: 8 }} xmlns="http://www.w3.org/2000/svg">
-                <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-
-            {menuOpen && (
-              <div className="menu" role="menu" aria-label="Opções novo usuário RH">
-                <button className="menu-item" role="menuitem" onClick={goToImport}>
-                  {/* ícone documento */}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 10 }} xmlns="http://www.w3.org/2000/svg">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Importar
-                </button>
-
-                <button className="menu-item" role="menuitem" onClick={goToCreate}>
-                  {/* ícone plus */}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 10 }} xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Criar
-                </button>
-              </div>
-            )}
-          </div>
+        <div className="right-actions">
+          <button
+            className="btn-new"
+            onClick={goToCreate}
+            aria-label="Criar novo usuário RH"
+            title="Novo usuário RH"
+          >
+            Novo Usuário RH
+          </button>
         </div>
       </div>
 
@@ -302,8 +253,6 @@ export default function UsersRhTableClient({
         .search-input::placeholder { color: #9ca3af; }
 
         .right-actions { display: flex; gap: 8px; position: relative; }
-        /* dropdown root */
-        .dropdown-root { position: relative; display: inline-flex; align-items: center; }
 
         .btn-new {
           background: transparent;
@@ -320,41 +269,6 @@ export default function UsersRhTableClient({
           gap: 6px;
         }
         .btn-new:hover { background: #0b2527; color: white; }
-
-        .menu {
-          position: absolute;
-          right: 0;
-          top: calc(100% + 8px);
-          min-width: 180px;
-          background: #fff;
-          border: 1px solid rgba(11,37,39,0.08);
-          box-shadow: 0 12px 30px rgba(11,37,39,0.12);
-          border-radius: 10px;
-          overflow: hidden;
-          z-index: 40;
-          display: flex;
-          flex-direction: column;
-          padding: 6px;
-        }
-
-        .menu-item {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 12px;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          font-weight: 600;
-          color: #0b2527;
-          text-align: left;
-          width: 100%;
-          border-radius: 8px;
-        }
-        .menu-item:hover {
-          background:rgb(11, 37, 39);
-          color: white;
-        }
 
         .table-scroll {
           width: 100%;

@@ -7,7 +7,7 @@ type Payload = {
   email?: string | null;
   telefone?: string | null;
   data_nascimento?: string | null;
-  cidade_nascimento?: string | null;
+  cidade?: string | null;
   gestor?: string | null;
   ativo?: number;
 };
@@ -16,12 +16,12 @@ function sanitizeDigits(s?: string) {
   return s ? s.replace(/\D/g, '') : undefined;
 }
 
-export default function EmployeeForm({ companyId, initial }: { companyId?: number; initial?: any }) {
+export default function UsersRhForm({ companyId, initial }: { companyId?: number; initial?: any }) {
   const [nome, setNome] = useState(initial?.nome ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [telefone, setTelefone] = useState(initial?.telefone ?? '');
   const [dataNascimento, setDataNascimento] = useState(initial?.data_nascimento ? formatDateForInput(initial.data_nascimento) : '');
-  const [cidade, setCidade] = useState(initial?.cidade_nascimento ?? '');
+  const [cidade, setCidade] = useState(initial?.cidade ?? '');
   const [gestor, setGestor] = useState(initial?.gestor ?? '');
   const [ativo, setAtivo] = useState(initial?.ativo === 0 ? false : true);
   const [saving, setSaving] = useState(false);
@@ -39,7 +39,7 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
 
   function validate(): string | null {
     if (!nome || nome.trim().length < 2) return 'Nome é obrigatório (mínimo 2 caracteres).';
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email inválido.';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email é obrigatório e deve ser válido.';
     if (dataNascimento) {
       const d = new Date(dataNascimento);
       if (Number.isNaN(d.getTime())) return 'Data de nascimento inválida.';
@@ -49,9 +49,8 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
   }
 
   function formatPhone(value: string) {
-    const digits = value.replace(/\D/g, ''); // remove tudo que não for número
+    const digits = value.replace(/\D/g, '');
     let formatted = digits;
-  
     if (digits.startsWith('55')) {
       formatted = '+' + digits.slice(0, 2) + ' ';
       if (digits.length > 2) {
@@ -67,10 +66,8 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
       if (digits.length >= 3) formatted += digits.slice(2, 7);
       if (digits.length >= 7) formatted += '-' + digits.slice(7, 11);
     }
-  
     return formatted.trim();
   }
-  
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -81,10 +78,8 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
       return;
     }
 
-    // --- NEW: check companyId before sending ---
-    console.log('EmployeeForm: companyId prop =', companyId);
     if (!companyId || Number.isNaN(Number(companyId)) || Number(companyId) <= 0) {
-      setError('companyId inválido — impossível enviar. Verifique se você abriu a página com a rota correta ou se o parent passou companyId corretamente.');
+      setError('companyId inválido — impossível enviar. Verifique se você abriu a página com a rota correta.');
       return;
     }
 
@@ -95,39 +90,33 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
       email: email.trim() || undefined,
       telefone: sanitizeDigits(telefone) || undefined,
       data_nascimento: dataNascimento || undefined,
-      cidade_nascimento: cidade.trim() || undefined,
+      cidade: cidade.trim() || undefined,
       gestor: gestor.trim() || undefined,
       ativo: ativo ? 1 : 0,
     };
 
     try {
-      // log útil
-      console.log('Enviando payload para API:', `/api/companies/${companyId}/employees`, payload);
-
-      const res = await fetch(`/api/companies/${companyId}/employees`, {
+      const res = await fetch(`/api/companies/${companyId}/usersrh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      // tenta ler o body (JSON ou text)
       const text = await res.text().catch(() => '');
       let body: any = {};
       try { body = text ? JSON.parse(text) : {}; } catch (e) { body = { text }; }
 
       if (!res.ok) {
-        // log detalhado para debug
-        console.error('API POST /employees retornou erro', { status: res.status, body });
+        console.error('API POST /usersrh retornou erro', { status: res.status, body });
         setError(body?.error ?? body?.message ?? `Erro ao salvar (status ${res.status})`);
         setSaving(false);
         return;
       }
 
-      // sucesso -> redireciona para a listagem
-      router.push(`/admin/empresas/${companyId}/funcionarios`);
+      router.push(`/admin/empresas/${companyId}/usuariosrh`);
     } catch (err) {
-      console.error('Erro ao salvar funcionário (fetch)', err);
-      setError('Erro de rede ao salvar funcionário.');
+      console.error('Erro ao salvar usuário RH (fetch)', err);
+      setError('Erro de rede ao salvar usuário RH.');
       setSaving(false);
     }
   }
@@ -143,19 +132,18 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
             onChange={(e) => setNome(e.target.value)}
             placeholder="Nome completo"
             required
-            aria-label="Nome"
           />
         </div>
 
         <div className="field">
-          <label className="label">Email</label>
+          <label className="label">Email *</label>
           <input
             className="input"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="contato@exemplo.com"
-            aria-label="Email"
+            placeholder="usuario@empresa.com"
+            required
           />
         </div>
 
@@ -164,12 +152,8 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
           <input
             className="input"
             value={telefone}
-            onChange={(e) => {
-              const formatted = formatPhone(e.target.value);
-              setTelefone(formatted);
-            }}
+            onChange={(e) => setTelefone(formatPhone(e.target.value))}
             placeholder="+55 (11) 99999-9999"
-            aria-label="Telefone"
           />
         </div>
 
@@ -180,18 +164,16 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
             type="date"
             value={dataNascimento}
             onChange={(e) => setDataNascimento(e.target.value)}
-            aria-label="Data de Nascimento"
           />
         </div>
 
         <div className="field">
-          <label className="label">Cidade de Nascimento</label>
+          <label className="label">Cidade</label>
           <input
             className="input"
             value={cidade}
             onChange={(e) => setCidade(e.target.value)}
-            placeholder="Cidade de Nascimento"
-            aria-label="Cidade de Nascimento"
+            placeholder="Cidade"
           />
         </div>
 
@@ -202,7 +184,6 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
             value={gestor}
             onChange={(e) => setGestor(e.target.value)}
             placeholder="Nome do gestor"
-            aria-label="Gestor"
           />
         </div>
 
@@ -214,9 +195,10 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
               type="checkbox"
               checked={ativo}
               onChange={(e) => setAtivo(e.target.checked)}
-              aria-label="Ativo"
             />
-            <label htmlFor="ativo-checkbox" style={{ fontSize: 13, color: '#374151' }}>{ativo ? 'Sim' : 'Não'}</label>
+            <label htmlFor="ativo-checkbox" style={{ fontSize: 13, color: '#374151' }}>
+              {ativo ? 'Sim' : 'Não'}
+            </label>
           </div>
         </div>
       </div>
