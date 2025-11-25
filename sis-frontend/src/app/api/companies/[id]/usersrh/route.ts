@@ -3,13 +3,14 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { sendUserAccessEmail } from '@/lib/email/sendUserAccess';
 
 /**
  * NOTE:
  * - Admin NÃO fornece senha.
  * - Backend gera uma senha temporária forte, hasheia com bcrypt e salva em `senha_hash`.
  * - A senha em texto **NÃO** é retornada pela API.
- * - Mais à frente você implementará envio de e-mail ou fluxo de ativação.
+ * - O envio de e-mail é disparado em background (fire-and-forget).
  */
 
 // checagem de autorização (stub — substitua pela sua lógica)
@@ -94,7 +95,12 @@ type CreateBody = {
 
 function generateRandomPassword(length = 12) {
   // gera string base64-url segura e corta no tamanho desejado
-  return crypto.randomBytes(Math.ceil(length * 0.75)).toString('base64').replace(/\+/g, 'A').replace(/\//g, 'B').slice(0, length);
+  return crypto
+    .randomBytes(Math.ceil(length * 0.75))
+    .toString('base64')
+    .replace(/\+/g, 'A')
+    .replace(/\//g, 'B')
+    .slice(0, length);
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -185,10 +191,27 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       },
     });
 
-    // IMPORTANTE: NÃO retornamos a senha gerada. 
-    // Opcional: aqui você pode enfileirar um e-mail para notificar o usuário com link de ativação (fluxo futuro).
-    // Ex.: await sendActivationEmail(newUser.email, newUser.nome, ...)
+    // Dispara envio de e-mail em background (fire-and-forget).
+    // NÃO aguardamos (await) para não atrasar a resposta ao admin.
+    // Caso o envio falhe, vamos logar o erro — você pode opcionalmente persistir em uma tabela email_log.
+    try {
+      sendUserAccessEmail({
+        to: newUser.email ?? '',
+        name: newUser.nome ?? '',
+        email: newUser.email ?? '',
+        plainPassword, // PASSADO APENAS EM MEMÓRIA para o util de envio
+      }).catch((sendErr) => {
+        // erros no envio são tratados aqui (não bloqueiam a resposta)
+        console.error('Erro enviando e-mail de acesso ao usuário RH:', sendErr);
+        // opcional: criar um registro em uma tabela email_log via prisma aqui
+        // await prisma.emailLog.create({ data: { to: newUser.email, type: 'user_access', success: false, error: String(sendErr), payload: {} } });
+      });
+    } catch (err) {
+      // caso algo improvável ocorra ao iniciar o envio
+      console.error('Erro iniciando envio de e-mail (não fatal):', err);
+    }
 
+    // IMPORTANTE: NÃO retornamos a senha gerada.
     return NextResponse.json({ data: newUser }, { status: 201 });
   } catch (err) {
     console.error('POST /usersrh error', err);
