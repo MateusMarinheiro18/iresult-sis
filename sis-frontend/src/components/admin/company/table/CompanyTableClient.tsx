@@ -1,4 +1,3 @@
-// src/components/admin/company/CompaniesTableClient.tsx
 'use client';
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -94,6 +93,7 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
               <th className="col-cnpj">CNPJ</th>
               <th className="col-phone">Telefone</th>
               <th className="col-users">Funcionários</th>
+              <th className="col-usersrh">Usuários RH</th>
               <th className="col-action">Ação</th>
             </tr>
           </thead>
@@ -129,7 +129,28 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    Usuários
+                    Funcionários
+                  </Link>
+                </td>
+
+                <td className="cell usersrh-cell">
+                  <Link 
+                    href={`/admin/empresas/${c.id}/usuariosrh`} 
+                    className="pill-btn"
+                    style={{
+                      display: 'inline-block',
+                      padding: '7px 18px',
+                      background: 'white',
+                      color: '#0B2527',
+                      borderRadius: '999px',
+                      border: '1px solid #0B2527',
+                      textDecoration: 'none',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Usuários RH
                   </Link>
                 </td>
 
@@ -140,7 +161,7 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
             ))}
             {currentItems.length === 0 && (
               <tr>
-                <td colSpan={6} className="no-results">Nenhuma empresa encontrada.</td>
+                <td colSpan={7} className="no-results">Nenhuma empresa encontrada.</td>
               </tr>
             )}
           </tbody>
@@ -338,7 +359,7 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
           white-space: nowrap;
         }
 
-        .users-cell {
+        .users-cell, .usersrh-cell {
           text-align: left;
         }
 
