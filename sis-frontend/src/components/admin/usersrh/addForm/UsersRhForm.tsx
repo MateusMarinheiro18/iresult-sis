@@ -1,6 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 type Payload = {
   nome: string;
@@ -26,7 +27,6 @@ export default function UsersRhForm({ companyId, initial }: { companyId?: number
   const [ativo, setAtivo] = useState(initial?.ativo === 0 ? false : true);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
 
   function formatDateForInput(d: string | Date) {
     const date = d instanceof Date ? d : new Date(d);
@@ -71,15 +71,14 @@ export default function UsersRhForm({ companyId, initial }: { companyId?: number
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     const v = validate();
     if (v) {
-      setError(v);
+      toast.error(v);
       return;
     }
 
     if (!companyId || Number.isNaN(Number(companyId)) || Number(companyId) <= 0) {
-      setError('companyId inválido — impossível enviar. Verifique se você abriu a página com a rota correta.');
+      toast.error('companyId inválido — impossível enviar.');
       return;
     }
 
@@ -95,6 +94,8 @@ export default function UsersRhForm({ companyId, initial }: { companyId?: number
       ativo: ativo ? 1 : 0,
     };
 
+    const loadingId = toast.loading('Salvando usuário RH...');
+
     try {
       const res = await fetch(`/api/companies/${companyId}/usersrh`, {
         method: 'POST',
@@ -107,16 +108,17 @@ export default function UsersRhForm({ companyId, initial }: { companyId?: number
       try { body = text ? JSON.parse(text) : {}; } catch (e) { body = { text }; }
 
       if (!res.ok) {
-        console.error('API POST /usersrh retornou erro', { status: res.status, body });
-        setError(body?.error ?? body?.message ?? `Erro ao salvar (status ${res.status})`);
+        console.error('Erro API /usersrh', { status: res.status, body });
+        toast.error(body?.error ?? 'Erro ao salvar usuário RH.', { id: loadingId });
         setSaving(false);
         return;
       }
 
+      toast.success('Usuário RH criado com sucesso!', { id: loadingId });
       router.push(`/admin/empresas/${companyId}/usuariosrh`);
     } catch (err) {
       console.error('Erro ao salvar usuário RH (fetch)', err);
-      setError('Erro de rede ao salvar usuário RH.');
+      toast.error('Erro de rede ao salvar usuário RH.');
       setSaving(false);
     }
   }
@@ -203,8 +205,6 @@ export default function UsersRhForm({ companyId, initial }: { companyId?: number
         </div>
       </div>
 
-      {error && <div className="form-error" role="alert">{error}</div>}
-
       <div className="buttons">
         <button type="submit" className="btn primary" disabled={saving}>
           {saving ? 'Salvando...' : 'SALVAR'}
@@ -237,7 +237,6 @@ export default function UsersRhForm({ companyId, initial }: { companyId?: number
         }
         .input::placeholder { color: #9ca3af; opacity:1; }
         .input:focus { border-color: #0b2527; box-shadow: 0 0 0 3px rgba(11,37,39,0.06); }
-        .form-error { margin-top: 12px; color: #b91c1c; font-weight:600; }
         .buttons { margin-top: 26px; display:flex; gap:16px; justify-content:center; align-items:center; }
         .btn { min-width: 180px; height:44px; border-radius:999px; font-weight:700; letter-spacing:0.6px; cursor:pointer; border:none; }
         .btn.primary { background: #0b2527; color: white; box-shadow: 0 6px 20px rgba(11,37,39,0.12); }
