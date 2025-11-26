@@ -55,6 +55,60 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
     onEditCell(idx, 'data_nascimento', value);
   }
 
+  // sanitize digits helper (mantido conforme padrão do projeto)
+  function sanitizeDigits(s?: string | null) {
+    return s ? s.replace(/\D/g, '') : '';
+  }
+
+  // Formata telefone BR incremental (exibe máscara), exibe +country quando detectado
+  function formatPhoneForDisplay(value?: string | null) {
+    const raw = (value ?? '').replace(/\D/g, '');
+    if (!raw) return '';
+
+    let digits = raw;
+    let country = '';
+
+    if (digits.length > 11) {
+      country = digits.slice(0, digits.length - 11);
+      digits = digits.slice(digits.length - 11);
+    }
+
+    const parts: string[] = [];
+    if (country) parts.push(`+${country}`);
+
+    if (digits.length <= 2) {
+      parts.push(digits);
+      return parts.join(' ').trim();
+    }
+
+    const ddd = digits.slice(0, 2);
+    const rest = digits.slice(2);
+
+    if (rest.length === 0) {
+      parts.push(`(${ddd})`);
+      return parts.join(' ').trim();
+    }
+
+    if (rest.length <= 4) {
+      parts.push(`(${ddd}) ${rest}`);
+      return parts.join(' ').trim();
+    }
+
+    if (rest.length <= 7) {
+      parts.push(`(${ddd}) ${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`);
+      return parts.join(' ').trim();
+    }
+
+    if (rest.length <= 10) {
+      parts.push(`(${ddd}) ${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`);
+      return parts.join(' ').trim();
+    }
+
+    // 11+ digits
+    parts.push(`(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5, 9)}`);
+    return parts.join(' ').trim();
+  }
+
   return (
     <div className="table-wrap">
       <table>
@@ -71,24 +125,63 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
           </tr>
         </thead>
         <tbody>
-          {rows.slice(0, previewLimit).map((r, idx) => (
-            <tr key={idx} className={errorsByRow[idx] ? 'row-error' : ''}>
-              <td>{r.origem_linha ?? idx + 1}</td>
-              <td><input value={r.nome ?? ''} onChange={(e) => onEditCell(idx, 'nome', e.target.value)} /></td>
-              <td><input value={r.email ?? ''} onChange={(e) => onEditCell(idx, 'email', e.target.value)} /></td>
-              <td><input value={r.telefone ?? ''} onChange={(e) => onEditCell(idx, 'telefone', e.target.value)} /></td>
-              <td>
-                <input 
-                  value={formatDateForDisplay(r.data_nascimento)} 
-                  onChange={(e) => handleDateEdit(idx, e.target.value)}
-                  placeholder="DD/MM/AAAA"
-                />
-              </td>
-              <td><input value={r.cidade_nascimento ?? ''} onChange={(e) => onEditCell(idx, 'cidade_nascimento', e.target.value)} /></td>
-              <td><input value={r.gestor ?? ''} onChange={(e) => onEditCell(idx, 'gestor', e.target.value)} /></td>
-              <td><button className="btn small danger" onClick={() => onRemoveRow(idx)}>Remover</button></td>
-            </tr>
-          ))}
+          {rows.slice(0, previewLimit).map((r, idx) => {
+            const telefoneDisplay = formatPhoneForDisplay(r.telefone ?? '');
+            return (
+              <tr key={idx} className={errorsByRow[idx] ? 'row-error' : ''}>
+                <td>{r.origem_linha ?? idx + 1}</td>
+                <td>
+                  <input
+                    value={r.nome ?? ''}
+                    onChange={(e) => onEditCell(idx, 'nome', e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={r.email ?? ''}
+                    onChange={(e) => onEditCell(idx, 'email', e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={telefoneDisplay}
+                    onChange={(e) => {
+                      // formata para exibição e envia apenas dígitos para o row
+                      const rawDigits = sanitizeDigits(e.target.value);
+                      const formatted = formatPhoneForDisplay(rawDigits);
+                      // atualiza visual (controlled by parent rows prop — we still call onEditCell with digits)
+                      onEditCell(idx, 'telefone', rawDigits);
+                      // Note: the visual value comes from rows[...] after parent updates state.
+                      // If you want immediate visual feedback before parent updates, you'd need local state per-row.
+                      // Here we rely on parent to re-render with the updated value.
+                    }}
+                  />
+                </td>
+                <td>
+                  <input 
+                    value={formatDateForDisplay(r.data_nascimento)} 
+                    onChange={(e) => handleDateEdit(idx, e.target.value)}
+                    placeholder="DD/MM/AAAA"
+                  />
+                </td>
+                <td>
+                  <input
+                    value={r.cidade_nascimento ?? ''}
+                    onChange={(e) => onEditCell(idx, 'cidade_nascimento', e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={r.gestor ?? ''}
+                    onChange={(e) => onEditCell(idx, 'gestor', e.target.value)}
+                  />
+                </td>
+                <td>
+                  <button type="button" className="btn small danger" onClick={() => onRemoveRow(idx)}>Remover</button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Payload = {
@@ -17,17 +17,7 @@ function sanitizeDigits(s?: string) {
 }
 
 export default function EmployeeForm({ companyId, initial }: { companyId?: number; initial?: any }) {
-  const [nome, setNome] = useState(initial?.nome ?? '');
-  const [email, setEmail] = useState(initial?.email ?? '');
-  const [telefone, setTelefone] = useState(initial?.telefone ?? '');
-  const [dataNascimento, setDataNascimento] = useState(initial?.data_nascimento ? formatDateForInput(initial.data_nascimento) : '');
-  const [cidade, setCidade] = useState(initial?.cidade_nascimento ?? '');
-  const [gestor, setGestor] = useState(initial?.gestor ?? '');
-  const [ativo, setAtivo] = useState(initial?.ativo === 0 ? false : true);
-  const [saving, setSaving] = useState(false);
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-
+  // helper to format date to yyyy-mm-dd
   function formatDateForInput(d: string | Date) {
     const date = d instanceof Date ? d : new Date(d);
     if (Number.isNaN(date.getTime())) return '';
@@ -36,6 +26,80 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
     const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   }
+
+  /**
+   * Formata telefone BR incremental:
+   * - assume +55 se não houver código de país explícito
+   * - formata (DD) 9XXXX-XXXX ou (DD) XXXX-XXXX conforme comprimento
+   * - também suporta números com código de país no início (ex: 5511999999999)
+   */
+  function formatPhone(value: string) {
+    const raw = (value ?? '').replace(/\D/g, '');
+    if (!raw) return '';
+
+    let digits = raw;
+    let country = '';
+
+    // if more than 11 digits, assume leading country code(s)
+    if (digits.length > 11) {
+      country = digits.slice(0, digits.length - 11);
+      digits = digits.slice(digits.length - 11);
+    }
+
+    const parts: string[] = [];
+    if (country) parts.push(`+${country}`);
+
+    if (digits.length <= 2) {
+      parts.push(digits);
+      return parts.join(' ').trim();
+    }
+
+    const ddd = digits.slice(0, 2);
+    const rest = digits.slice(2);
+
+    if (rest.length === 0) {
+      parts.push(`(${ddd})`);
+      return parts.join(' ').trim();
+    }
+
+    // partial local numbers
+    if (rest.length <= 4) {
+      parts.push(`(${ddd}) ${rest}`);
+      return parts.join(' ').trim();
+    }
+
+    // format with hyphen when possible
+    if (rest.length <= 7) {
+      parts.push(`(${ddd}) ${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`);
+      return parts.join(' ').trim();
+    }
+
+    if (rest.length <= 10) {
+      parts.push(`(${ddd}) ${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`);
+      return parts.join(' ').trim();
+    }
+
+    // 11+ local digits (9xxxx-xxxx)
+    parts.push(`(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5, 9)}`);
+    return parts.join(' ').trim();
+  }
+
+  const [nome, setNome] = useState(initial?.nome ?? '');
+  const [email, setEmail] = useState(initial?.email ?? '');
+  const [telefone, setTelefone] = useState<string>(initial?.telefone ? formatPhone(initial.telefone) : '');
+  const [dataNascimento, setDataNascimento] = useState(initial?.data_nascimento ? formatDateForInput(initial.data_nascimento) : '');
+  const [cidade, setCidade] = useState(initial?.cidade_nascimento ?? '');
+  const [gestor, setGestor] = useState(initial?.gestor ?? '');
+  const [ativo, setAtivo] = useState(initial?.ativo === 0 ? false : true);
+  const [saving, setSaving] = useState(false);
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+
+  // Reformat phone if `initial` changes (edge-cases where server props arrive later)
+  useEffect(() => {
+    setTelefone(initial?.telefone ? formatPhone(initial.telefone) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial?.id]);
 
   function validate(): string | null {
     if (!nome || nome.trim().length < 2) return 'Nome é obrigatório (mínimo 2 caracteres).';
@@ -48,30 +112,6 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
     return null;
   }
 
-  function formatPhone(value: string) {
-    const digits = value.replace(/\D/g, ''); // remove tudo que não for número
-    let formatted = digits;
-  
-    if (digits.startsWith('55')) {
-      formatted = '+' + digits.slice(0, 2) + ' ';
-      if (digits.length > 2) {
-        formatted += '(' + digits.slice(2, 4);
-        if (digits.length >= 4) formatted += ') ';
-        if (digits.length >= 5) formatted += digits.slice(4, 9);
-        if (digits.length >= 9) formatted += '-' + digits.slice(9, 13);
-      }
-    } else if (digits.length > 0) {
-      formatted = '+55 ';
-      if (digits.length >= 2) formatted += '(' + digits.slice(0, 2);
-      if (digits.length >= 2) formatted += ') ';
-      if (digits.length >= 3) formatted += digits.slice(2, 7);
-      if (digits.length >= 7) formatted += '-' + digits.slice(7, 11);
-    }
-  
-    return formatted.trim();
-  }
-  
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -81,8 +121,6 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
       return;
     }
 
-    // --- NEW: check companyId before sending ---
-    console.log('EmployeeForm: companyId prop =', companyId);
     if (!companyId || Number.isNaN(Number(companyId)) || Number(companyId) <= 0) {
       setError('companyId inválido — impossível enviar. Verifique se você abriu a página com a rota correta ou se o parent passou companyId corretamente.');
       return;
@@ -101,7 +139,6 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
     };
 
     try {
-      // log útil
       console.log('Enviando payload para API:', `/api/companies/${companyId}/employees`, payload);
 
       const res = await fetch(`/api/companies/${companyId}/employees`, {
@@ -110,13 +147,11 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
         body: JSON.stringify(payload),
       });
 
-      // tenta ler o body (JSON ou text)
       const text = await res.text().catch(() => '');
       let body: any = {};
       try { body = text ? JSON.parse(text) : {}; } catch (e) { body = { text }; }
 
       if (!res.ok) {
-        // log detalhado para debug
         console.error('API POST /employees retornou erro', { status: res.status, body });
         setError(body?.error ?? body?.message ?? `Erro ao salvar (status ${res.status})`);
         setSaving(false);

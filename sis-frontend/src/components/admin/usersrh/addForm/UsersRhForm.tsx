@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
@@ -18,16 +18,7 @@ function sanitizeDigits(s?: string) {
 }
 
 export default function UsersRhForm({ companyId, initial }: { companyId?: number; initial?: any }) {
-  const [nome, setNome] = useState(initial?.nome ?? '');
-  const [email, setEmail] = useState(initial?.email ?? '');
-  const [telefone, setTelefone] = useState(initial?.telefone ?? '');
-  const [dataNascimento, setDataNascimento] = useState(initial?.data_nascimento ? formatDateForInput(initial.data_nascimento) : '');
-  const [cidade, setCidade] = useState(initial?.cidade ?? '');
-  const [gestor, setGestor] = useState(initial?.gestor ?? '');
-  const [ativo, setAtivo] = useState(initial?.ativo === 0 ? false : true);
-  const [saving, setSaving] = useState(false);
-  const router = useRouter();
-
+  // helper to format date to yyyy-mm-dd
   function formatDateForInput(d: string | Date) {
     const date = d instanceof Date ? d : new Date(d);
     if (Number.isNaN(date.getTime())) return '';
@@ -36,6 +27,77 @@ export default function UsersRhForm({ companyId, initial }: { companyId?: number
     const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   }
+
+  /**
+   * Formata telefone BR incremental:
+   * - assume +55 se não houver código de país explícito
+   * - formata (DD) 9XXXX-XXXX ou (DD) XXXX-XXXX conforme comprimento
+   * - também suporta números com código de país no início (ex: 5511999999999)
+   */
+  function formatPhone(value?: string) {
+    const raw = (value ?? '').replace(/\D/g, '');
+    if (!raw) return '';
+
+    let digits = raw;
+    let country = '';
+
+    // if more than 11 digits, assume leading country code(s)
+    if (digits.length > 11) {
+      country = digits.slice(0, digits.length - 11);
+      digits = digits.slice(digits.length - 11);
+    }
+
+    const parts: string[] = [];
+    if (country) parts.push(`+${country}`);
+
+    if (digits.length <= 2) {
+      parts.push(digits);
+      return parts.join(' ').trim();
+    }
+
+    const ddd = digits.slice(0, 2);
+    const rest = digits.slice(2);
+
+    if (rest.length === 0) {
+      parts.push(`(${ddd})`);
+      return parts.join(' ').trim();
+    }
+
+    if (rest.length <= 4) {
+      parts.push(`(${ddd}) ${rest}`);
+      return parts.join(' ').trim();
+    }
+
+    if (rest.length <= 7) {
+      parts.push(`(${ddd}) ${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`);
+      return parts.join(' ').trim();
+    }
+
+    if (rest.length <= 10) {
+      parts.push(`(${ddd}) ${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`);
+      return parts.join(' ').trim();
+    }
+
+    // 11+ digits (9xxxx-xxxx)
+    parts.push(`(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5, 9)}`);
+    return parts.join(' ').trim();
+  }
+
+  const [nome, setNome] = useState(initial?.nome ?? '');
+  const [email, setEmail] = useState(initial?.email ?? '');
+  const [telefone, setTelefone] = useState<string>(initial?.telefone ? formatPhone(initial.telefone) : '');
+  const [dataNascimento, setDataNascimento] = useState(initial?.data_nascimento ? formatDateForInput(initial.data_nascimento) : '');
+  const [cidade, setCidade] = useState(initial?.cidade ?? '');
+  const [gestor, setGestor] = useState(initial?.gestor ?? '');
+  const [ativo, setAtivo] = useState(initial?.ativo === 0 ? false : true);
+  const [saving, setSaving] = useState(false);
+  const router = useRouter();
+
+  // Re-format telefone caso `initial` seja carregado/alterado depois
+  useEffect(() => {
+    setTelefone(initial?.telefone ? formatPhone(initial.telefone) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial?.id]);
 
   function validate(): string | null {
     if (!nome || nome.trim().length < 2) return 'Nome é obrigatório (mínimo 2 caracteres).';
@@ -46,27 +108,6 @@ export default function UsersRhForm({ companyId, initial }: { companyId?: number
       if (d.getTime() > Date.now()) return 'Data de nascimento não pode ser no futuro.';
     }
     return null;
-  }
-
-  function formatPhone(value: string) {
-    const digits = value.replace(/\D/g, '');
-    let formatted = digits;
-    if (digits.startsWith('55')) {
-      formatted = '+' + digits.slice(0, 2) + ' ';
-      if (digits.length > 2) {
-        formatted += '(' + digits.slice(2, 4);
-        if (digits.length >= 4) formatted += ') ';
-        if (digits.length >= 5) formatted += digits.slice(4, 9);
-        if (digits.length >= 9) formatted += '-' + digits.slice(9, 13);
-      }
-    } else if (digits.length > 0) {
-      formatted = '+55 ';
-      if (digits.length >= 2) formatted += '(' + digits.slice(0, 2);
-      if (digits.length >= 2) formatted += ') ';
-      if (digits.length >= 3) formatted += digits.slice(2, 7);
-      if (digits.length >= 7) formatted += '-' + digits.slice(7, 11);
-    }
-    return formatted.trim();
   }
 
   async function handleSubmit(e: React.FormEvent) {

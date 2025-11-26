@@ -1,7 +1,7 @@
 // src/components/admin/company/CompanyForm.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
@@ -35,14 +35,70 @@ function extractMessageFromBody(body: any): string | null {
   return null;
 }
 
+/* ---------- Formatting helpers (masking while typing) ---------- */
+
+function formatCnpj(value?: string) {
+  const d = (value ?? '').replace(/\D/g, '').slice(0, 14);
+  if (!d) return '';
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
+
+function formatCep(value?: string) {
+  const d = (value ?? '').replace(/\D/g, '').slice(0, 8);
+  if (!d) return '';
+  if (d.length <= 5) return d;
+  return `${d.slice(0, 5)}-${d.slice(5)}`;
+}
+
+function formatPhoneBR(value?: string) {
+  let d = (value ?? '').replace(/\D/g, '');
+  if (!d) return '';
+
+  let country = '';
+  if (d.length > 11) {
+    country = d.slice(0, d.length - 11);
+    d = d.slice(d.length - 11);
+  }
+
+  if (d.length <= 2) {
+    return `${country ? `+${country} ` : ''}${d}`;
+  }
+
+  if (d.length <= 6) {
+    return `${country ? `+${country} ` : ''}(${d.slice(0, 2)}) ${d.slice(2)}`;
+  }
+
+  if (d.length <= 10) {
+    return `${country ? `+${country} ` : ''}(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  }
+
+  return `${country ? `+${country} ` : ''}(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+/* ---------- Component ---------- */
+
 export default function CompanyForm({ initial }: { initial?: any }) {
   const [razaoSocial, setRazaoSocial] = useState(initial?.razaoSocial ?? '');
-  const [cnpj, setCnpj] = useState(initial?.cnpj ?? '');
+  const [cnpj, setCnpj] = useState<string>(initial?.cnpj ? formatCnpj(initial.cnpj) : '');
   const [email, setEmail] = useState(initial?.email ?? '');
-  const [telefone, setTelefone] = useState(initial?.telefone ?? '');
-  const [cep, setCep] = useState(initial?.cep ?? '');
+  const [telefone, setTelefone] = useState<string>(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
+  const [cep, setCep] = useState<string>(initial?.cep ? formatCep(initial.cep) : '');
   const [saving, setSaving] = useState(false);
   const router = useRouter();
+
+  // Se `initial` for fornecido depois (edge cases), formata os valores
+  useEffect(() => {
+    setRazaoSocial(initial?.razaoSocial ?? '');
+    setCnpj(initial?.cnpj ? formatCnpj(initial.cnpj) : '');
+    setEmail(initial?.email ?? '');
+    setTelefone(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
+    setCep(initial?.cep ? formatCep(initial.cep) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial?.id]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -115,7 +171,7 @@ export default function CompanyForm({ initial }: { initial?: any }) {
           <input
             className="input"
             value={cnpj}
-            onChange={(e) => setCnpj(e.target.value)}
+            onChange={(e) => setCnpj(formatCnpj(e.target.value))}
             placeholder="00.000.000/0001-00"
           />
         </div>
@@ -137,7 +193,7 @@ export default function CompanyForm({ initial }: { initial?: any }) {
           <input
             className="input"
             value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
+            onChange={(e) => setTelefone(formatPhoneBR(e.target.value))}
             placeholder="+55 (11) 99999-9999"
           />
         </div>
@@ -147,7 +203,7 @@ export default function CompanyForm({ initial }: { initial?: any }) {
           <input
             className="input"
             value={cep}
-            onChange={(e) => setCep(e.target.value)}
+            onChange={(e) => setCep(formatCep(e.target.value))}
             placeholder="00000-000"
           />
         </div>

@@ -2,14 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { useConfirm } from '@/components/ui/ConfirmProvider';
 
 type Payload = {
-  nome: string;
+  nome?: string;
   email?: string | null;
   telefone?: string | null;
-  data_nascimento?: string | Date | null;
-  cidade_nascimento?: string | null;
+  data_nascimento?: string | null;
+  cidade?: string | null;
   gestor?: string | null;
   ativo?: number;
 };
@@ -18,17 +17,8 @@ function sanitizeDigits(s?: string) {
   return s ? s.replace(/\D/g, '') : undefined;
 }
 
-function formatDateForInput(d?: string | Date | null) {
-  if (!d) return '';
-  const date = d instanceof Date ? d : new Date(String(d));
-  if (Number.isNaN(date.getTime())) return '';
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function formatPhoneBR(value?: string) {
+/** Formata telefone BR incremental (exibe máscara) */
+function formatPhone(value?: string) {
   const raw = (value ?? '').replace(/\D/g, '');
   if (!raw) return '';
 
@@ -41,7 +31,6 @@ function formatPhoneBR(value?: string) {
     digits = digits.slice(digits.length - 11);
   }
 
-  // build formatted progressively
   const parts: string[] = [];
   if (country) parts.push(`+${country}`);
 
@@ -58,21 +47,12 @@ function formatPhoneBR(value?: string) {
     return parts.join(' ').trim();
   }
 
-  // if rest length <=4 => partial local
   if (rest.length <= 4) {
     parts.push(`(${ddd}) ${rest}`);
     return parts.join(' ').trim();
   }
 
-  // if rest length between 5 and 7 => may be beginning of 9-digit number or landline
-  if (rest.length <= 6) {
-    parts.push(`(${ddd}) ${rest}`);
-    return parts.join(' ').trim();
-  }
-
-  // 7..10 => format xxxx-xxxx or 9xxxx-xxxx
   if (rest.length <= 7) {
-    // rest e.g. 7 -> 3 + 4 (partial)
     parts.push(`(${ddd}) ${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`);
     return parts.join(' ').trim();
   }
@@ -82,49 +62,40 @@ function formatPhoneBR(value?: string) {
     return parts.join(' ').trim();
   }
 
-  // full 11-digit (9xxxx-xxxx)
+  // 11+ digits -> 9xxxx-xxxx
   parts.push(`(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5, 9)}`);
   return parts.join(' ').trim();
 }
 
-/**
- * EditEmployeeForm
- * - initial: objeto do funcionário (de Server Component)
- * - companyId: id da empresa (rota)
- *
- * Nota: o campo id será procurado em initial.id_funcionario ou initial.id
- */
-export default function EditEmployeeForm({
-  initial,
+export default function UsersRhFormEdit({
   companyId,
+  userrhId,
+  initial
 }: {
-  initial: any;
   companyId: number;
+  userrhId: number;
+  initial: any;
 }) {
   const router = useRouter();
-  const confirm = useConfirm();
-
-  const employeeId = initial?.id_funcionario ?? initial?.id ?? null;
 
   const [nome, setNome] = useState(initial?.nome ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
-  const [telefone, setTelefone] = useState<string>(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
-  const [dataNascimento, setDataNascimento] = useState(formatDateForInput(initial?.data_nascimento));
-  const [cidade, setCidade] = useState(initial?.cidade_nascimento ?? '');
+  const [telefone, setTelefone] = useState<string>(initial?.telefone ? formatPhone(initial.telefone) : '');
+  const [dataNascimento, setDataNascimento] = useState(initial?.data_nascimento ?? '');
+  const [cidade, setCidade] = useState(initial?.cidade ?? '');
   const [gestor, setGestor] = useState(initial?.gestor ?? '');
   const [ativo, setAtivo] = useState(initial?.ativo === 0 ? false : true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Reformat initial telefone caso `initial` seja carregado/alterado depois
+  // reformat telefone se initial mudar
   useEffect(() => {
-    setTelefone(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
+    setTelefone(initial?.telefone ? formatPhone(initial.telefone) : '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
 
   function validate(): string | null {
     if (!nome || nome.trim().length < 2) return 'Nome é obrigatório (mínimo 2 caracteres).';
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email inválido.';
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email deve ser válido.';
     if (dataNascimento) {
       const d = new Date(dataNascimento);
       if (Number.isNaN(d.getTime())) return 'Data de nascimento inválida.';
@@ -135,77 +106,49 @@ export default function EditEmployeeForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
 
     const v = validate();
-    if (v) {
-      setError(v);
-      toast.error(v);
-      return;
-    }
-
-    if (!companyId || Number.isNaN(Number(companyId)) || Number(companyId) <= 0) {
-      const msg = 'companyId inválido — impossível enviar. Verifique a rota.';
-      setError(msg);
-      toast.error(msg);
-      return;
-    }
-
-    if (!employeeId) {
-      const msg = 'employeeId inválido — impossível enviar. Verifique a rota.';
-      setError(msg);
-      toast.error(msg);
-      return;
-    }
+    if (v) return toast.error(v);
 
     setSaving(true);
+    const loadingId = toast.loading('Atualizando usuário RH...');
 
     const payload: Payload = {
       nome: nome.trim(),
-      email: email.trim() || undefined,
-      telefone: sanitizeDigits(telefone) || undefined,
-      data_nascimento: dataNascimento || undefined,
-      cidade_nascimento: cidade.trim() || undefined,
-      gestor: gestor.trim() || undefined,
+      email: email.trim() || null,
+      telefone: sanitizeDigits(telefone) || null,
+      data_nascimento: dataNascimento || null,
+      cidade: cidade.trim() || null,
+      gestor: gestor.trim() || null,
       ativo: ativo ? 1 : 0,
     };
 
-    const toastId = toast.loading('Atualizando funcionário…', { duration: Infinity });
-
     try {
-      const res = await fetch(`/api/companies/${companyId}/employees/${employeeId}`, {
+      const res = await fetch(`/api/companies/${companyId}/usersrh/${userrhId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      // tenta ler body tanto como json quanto como text
       const text = await res.text().catch(() => '');
       let body: any = {};
-      try { body = text ? JSON.parse(text) : {}; } catch { body = text; }
+      try {
+        body = text ? JSON.parse(text) : {};
+      } catch (e) {
+        body = { text };
+      }
 
       if (!res.ok) {
-        const msg = body?.error ?? body?.message ?? `Erro ao atualizar (status ${res.status})`;
-        toast.error(msg, { id: toastId, duration: 4000 });
-        setError(msg);
+        toast.error(body?.error ?? 'Erro ao atualizar usuário RH.', { id: loadingId });
         setSaving(false);
         return;
       }
 
-      const successMsg = body?.message ?? 'Funcionário atualizado com sucesso.';
-      toast.success(successMsg, { id: toastId, duration: 4000 });
-
-      // pequeno delay para mostrar toast antes de redirecionar
-      setTimeout(() => {
-        router.push(`/admin/empresas/${companyId}/funcionarios`);
-      }, 700);
-    } catch (err: any) {
-      console.error('Erro ao atualizar funcionário', err);
-      const msg = err?.message ?? 'Erro de rede ao atualizar funcionário.';
-      toast.error(msg, { id: toastId, duration: 4000 });
-      setError(msg);
-      setSaving(false);
-    } finally {
+      toast.success('Usuário RH atualizado com sucesso!', { id: loadingId });
+      router.push(`/admin/empresas/${companyId}/usuariosrh`);
+    } catch (err) {
+      console.error('Erro ao atualizar usuário RH:', err);
+      toast.error('Erro de rede ao atualizar usuário RH.', { id: loadingId });
       setSaving(false);
     }
   }
@@ -221,19 +164,17 @@ export default function EditEmployeeForm({
             onChange={(e) => setNome(e.target.value)}
             placeholder="Nome completo"
             required
-            aria-label="Nome"
           />
         </div>
 
         <div className="field">
-          <label className="label">Email</label>
+          <label className="label">Email *</label>
           <input
             className="input"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="contato@exemplo.com"
-            aria-label="Email"
+            placeholder="usuario@empresa.com"
           />
         </div>
 
@@ -242,9 +183,8 @@ export default function EditEmployeeForm({
           <input
             className="input"
             value={telefone}
-            onChange={(e) => setTelefone(formatPhoneBR(e.target.value))}
+            onChange={(e) => setTelefone(formatPhone(e.target.value))}
             placeholder="+55 (11) 99999-9999"
-            aria-label="Telefone"
           />
         </div>
 
@@ -255,18 +195,16 @@ export default function EditEmployeeForm({
             type="date"
             value={dataNascimento}
             onChange={(e) => setDataNascimento(e.target.value)}
-            aria-label="Data de Nascimento"
           />
         </div>
 
         <div className="field">
-          <label className="label">Cidade de Nascimento</label>
+          <label className="label">Cidade</label>
           <input
             className="input"
             value={cidade}
             onChange={(e) => setCidade(e.target.value)}
             placeholder="Cidade"
-            aria-label="Cidade de Nascimento"
           />
         </div>
 
@@ -277,7 +215,6 @@ export default function EditEmployeeForm({
             value={gestor}
             onChange={(e) => setGestor(e.target.value)}
             placeholder="Nome do gestor"
-            aria-label="Gestor"
           />
         </div>
 
@@ -285,33 +222,24 @@ export default function EditEmployeeForm({
           <label className="label">Ativo</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
-              id="ativo-checkbox-edit"
               type="checkbox"
               checked={ativo}
               onChange={(e) => setAtivo(e.target.checked)}
-              aria-label="Ativo"
             />
-            <label htmlFor="ativo-checkbox-edit" style={{ fontSize: 13, color: '#374151' }}>
+            <span style={{ fontSize: 13, color: '#374151' }}>
               {ativo ? 'Sim' : 'Não'}
-            </label>
+            </span>
           </div>
         </div>
       </div>
-
-      {error && <div className="form-error" role="alert">{error}</div>}
 
       <div className="buttons">
         <button type="submit" className="btn primary" disabled={saving}>
           {saving ? 'Salvando...' : 'SALVAR'}
         </button>
 
-        <button
-          type="button"
-          className="btn secondary"
-          disabled={saving}
-          onClick={() => history.back()}
-        >
-          CANCELAR
+        <button type="button" className="btn secondary" disabled={saving} onClick={() => history.back()}>
+          Cancelar
         </button>
       </div>
 
@@ -338,14 +266,11 @@ export default function EditEmployeeForm({
         }
         .input::placeholder { color: #9ca3af; opacity:1; }
         .input:focus { border-color: #0b2527; box-shadow: 0 0 0 3px rgba(11,37,39,0.06); }
-        .form-error { margin-top: 12px; color: #b91c1c; font-weight:600; }
-        .buttons { margin-top: 26px; display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap; }
+        .buttons { margin-top: 26px; display:flex; gap:16px; justify-content:center; align-items:center; }
         .btn { min-width: 180px; height:44px; border-radius:999px; font-weight:700; letter-spacing:0.6px; cursor:pointer; border:none; }
         .btn.primary { background: #0b2527; color: white; box-shadow: 0 6px 20px rgba(11,37,39,0.12); }
         .btn.primary:disabled { opacity:0.6; cursor:not-allowed; }
         .btn.secondary { background: white; color: #0b2527; border: 1px solid #0b2527; }
-        .btn.danger { background: #fff; color:#dc2626; border: 1px solid rgba(220,38,38,0.08); font-weight:700; }
-        .btn.danger:hover { background: rgba(254,242,242,1); }
         @media (max-width: 960px) {
           .grid { grid-template-columns: 1fr; }
           .buttons { flex-direction: column; }
