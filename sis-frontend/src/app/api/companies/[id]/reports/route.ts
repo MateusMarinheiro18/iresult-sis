@@ -2,8 +2,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-/** stub de autorização — substitua pela sua lógica real */
-async function checkAdminForCompany(req: Request, companyId: number) {
+/** stub de autorização — substitua pela sua lógica real quando integrar auth */
+async function checkAdminForCompany(_req: Request, _companyId: number) {
   return true;
 }
 
@@ -17,9 +17,6 @@ function extractBodyText(body: any) {
   return null;
 }
 
-/** Helper para suportar params named [companyId] ou [id]
- *  Agora recebe o params já *resolvido* (não Promise).
- */
 function resolveCompanyIdFromResolvedParams(resolvedParams: { [key: string]: any } | null | undefined) {
   if (!resolvedParams) return NaN;
   const maybe = resolvedParams.companyId ?? resolvedParams.id ?? resolvedParams.company ?? null;
@@ -27,71 +24,86 @@ function resolveCompanyIdFromResolvedParams(resolvedParams: { [key: string]: any
   return Number.isFinite(num) && num > 0 ? num : NaN;
 }
 
-/** POST — criar um novo relatório (sem arquivo) */
+/** POST — criar novo relatório (ou atualizar se for enviado reportId por engano) */
 export async function POST(
   req: Request,
   context: { params: Promise<{ [key: string]: any }> | { [key: string]: any } }
 ) {
   try {
-    // unwrap params (suporta Promise ou objeto já resolvido)
     const resolvedParams = await context.params;
     const companyId = resolveCompanyIdFromResolvedParams(resolvedParams);
     if (Number.isNaN(companyId)) {
       return NextResponse.json({ message: 'companyId inválido' }, { status: 400 });
     }
 
-    const isAllowed = await checkAdminForCompany(req, companyId);
-    if (!isAllowed) return NextResponse.json({ message: 'Não autorizado' }, { status: 403 });
+    // autorização (stub)
+    const allowed = await checkAdminForCompany(req, companyId);
+    if (!allowed) return NextResponse.json({ message: 'Não autorizado' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const tituloRaw = body?.titulo ?? '';
+    const tituloRaw = (body?.titulo ?? '').trim();
     const textoRaw = body?.texto ?? null;
+    const maybeReportId = body?.reportId ?? null;
 
-    const titulo = typeof tituloRaw === 'string' ? tituloRaw.trim() : '';
-    const texto = textoRaw == null ? null : (typeof textoRaw === 'string' ? textoRaw.trim() : String(textoRaw));
+    if (!tituloRaw) return NextResponse.json({ message: 'Título do relatório é obrigatório.' }, { status: 400 });
+    if (tituloRaw.length > 300) return NextResponse.json({ message: 'Título muito longo (máx 300).' }, { status: 400 });
+    if (textoRaw && String(textoRaw).length > 100000) return NextResponse.json({ message: 'Texto muito grande.' }, { status: 400 });
 
-    if (!titulo) return NextResponse.json({ message: 'Título do relatório é obrigatório.' }, { status: 400 });
-    if (titulo.length > 300) return NextResponse.json({ message: 'Título muito longo (máx 300 caracteres).' }, { status: 400 });
-    if (texto && texto.length > 100000) return NextResponse.json({ message: 'Texto do relatório muito grande.' }, { status: 400 });
+    // Se veio um reportId (provavelmente por engano do front), tenta atualizar em vez de criar
+    if (maybeReportId) {
+      const rid = Number(maybeReportId);
+      if (!Number.isFinite(rid) || rid <= 0) {
+        return NextResponse.json({ message: 'reportId inválido' }, { status: 400 });
+      }
 
-    const empresa = await prisma.empresa.findUnique({
-      where: { id: companyId },
-      select: { id: true, razaoSocial: true, ativo: true },
-    });
+      const existing = await prisma.empresaRelatorio.findUnique({ where: { id: rid }, select: { idEmpresa: true } });
+      if (!existing || existing.idEmpresa !== companyId) {
+        return NextResponse.json({ message: 'Relatório para atualizar não encontrado.' }, { status: 404 });
+      }
+
+      const now = new Date();
+      const updated = await prisma.empresaRelatorio.update({
+        where: { id: rid },
+        data: {
+          titulo: tituloRaw,
+          texto: textoRaw == null ? null : String(textoRaw).trim(),
+          updated: now,
+        },
+        select: { id: true, titulo: true, texto: true, dataPublicacao: true, ativo: true },
+      });
+
+      return NextResponse.json(updated, { status: 200 });
+    }
+
+    // fluxo normal de criação
+    const empresa = await prisma.empresa.findUnique({ where: { id: companyId }, select: { id: true, ativo: true } });
     if (!empresa) return NextResponse.json({ message: 'Empresa não encontrada.' }, { status: 404 });
     if (empresa.ativo !== 1) return NextResponse.json({ message: 'Empresa inativa.' }, { status: 400 });
 
-    const createdBy = undefined; // integrar com auth/session quando houver
     const now = new Date();
-
     const created = await prisma.empresaRelatorio.create({
       data: {
-        titulo,
-        texto,
+        titulo: tituloRaw,
+        texto: textoRaw == null ? null : String(textoRaw).trim(),
         idEmpresa: companyId,
         ativo: 1,
         dataPublicacao: now,
         created: now,
-        createdBy: createdBy ?? undefined,
       },
-      select: {
-        id: true,
-        titulo: true,
-        dataPublicacao: true,
-      },
+      select: { id: true, titulo: true, dataPublicacao: true, ativo: true },
     });
 
     return NextResponse.json(created, { status: 201 });
   } catch (err: any) {
-    console.error('API POST /api/companies/[id]/reports error:', err);
-    const msg = extractBodyText(err) ?? 'Erro interno ao criar relatório.';
+    console.error('API POST /reports error:', err);
+    const msg = extractBodyText(err) ?? 'Erro interno ao criar/atualizar relatório.';
     return NextResponse.json({ message: msg }, { status: 500 });
   }
 }
 
-/** GET — listar relatórios da empresa */
+/** GET — listar relatórios da empresa (apenas ativos e não-deletados) */
 export async function GET(
-  req: Request,
+  _req: Request,
   context: { params: Promise<{ [key: string]: any }> | { [key: string]: any } }
 ) {
   try {
@@ -102,14 +114,14 @@ export async function GET(
     }
 
     const rels = await prisma.empresaRelatorio.findMany({
-      where: { idEmpresa: companyId, deleted: null },
+      where: { idEmpresa: companyId, deleted: null, ativo: 1 },
       orderBy: { dataPublicacao: 'desc' },
       select: { id: true, titulo: true, dataPublicacao: true, ativo: true },
     });
 
     return NextResponse.json(rels);
-  } catch (err) {
-    console.error('API GET /api/companies/[id]/reports error:', err);
-    return NextResponse.json({ message: 'Erro interno' }, { status: 500 });
+  } catch (err: any) {
+    console.error('API GET /reports error:', err);
+    return NextResponse.json({ message: 'Erro interno ao listar relatórios.' }, { status: 500 });
   }
 }

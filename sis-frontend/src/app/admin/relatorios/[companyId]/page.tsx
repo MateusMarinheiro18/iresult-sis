@@ -44,6 +44,7 @@ export default async function CompanyReportsPage(props: Props) {
     where: {
       idEmpresa: companyId,
       deleted: null,
+      ativo: 1,
     },
     orderBy: {
       dataPublicacao: 'desc',
