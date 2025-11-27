@@ -333,16 +333,20 @@ export default function CompanyReportsPageClient({
         }
 
         .btn-new-report {
-          background: #0b2527;
-          color: #ffffff;
+          background: transparent;
+          border: 1px solid #0b2527;
+          color: #0b2527;
+          padding: 8px 14px;
           border-radius: 999px;
-          margin-top: 10px;
-          border: none;
-          padding: 8px 18px;
-          font-size: 14px;
+          text-decoration: none;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.2s ease;
+        }
+        
+        .btn-new-report:hover {
+          background: #0b2527;
+          color: white;
         }
 
         .controls-row {
@@ -469,11 +473,6 @@ export default function CompanyReportsPageClient({
           box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
         }
 
-        .open-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-        }
-
         /* Menu 3 pontos */
         .menu-wrapper {
           position: relative;
@@ -520,10 +519,11 @@ export default function CompanyReportsPageClient({
         .menu-item {
           width: 100%;
           border: none;
+          border-radius: 10px;
           background: transparent;
           padding: 8px 14px;
           text-align: left;
-          font-size: 13px;
+          font-size: 15px;
           color: #111827;
           cursor: pointer;
           white-space: nowrap;
