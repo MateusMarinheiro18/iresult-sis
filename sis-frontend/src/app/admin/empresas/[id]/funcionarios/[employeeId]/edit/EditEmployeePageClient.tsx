@@ -85,7 +85,6 @@ export default function EditEmployeePageClient({ companyId, companyName, initial
         .header-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:12px; flex-wrap:wrap; }
         .title { font-size:20px; font-weight:700; color:#0b2527; margin:0; }
         .back-btn { display:inline-flex; align-items:center; gap:6px; color:#0B2527; border:none; border-radius:8px; font-size:14px; font-weight:600; padding:8px 14px; cursor:pointer; background:transparent; }
-        .back-btn:hover { background: rgba(11,37,39,0.06); }
         .card { background:#fff; border-radius:14px; box-shadow:0 6px 18px rgba(11,37,39,0.06); overflow:hidden; }
         .card-header { background:#0b2527; padding:18px 24px; }
         .card-header h2 { color:#fff; margin:0; font-size:16px; font-weight:700; }

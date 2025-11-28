@@ -30,6 +30,7 @@ export default function CompanyReportsPageClient({
     Array.isArray(initialReports) ? initialReports : []
   );
   const [query, setQuery] = useState('');
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
 
   const filteredReports = useMemo(() => {
     const q = String(query || '').trim().toLowerCase();
@@ -41,8 +42,12 @@ export default function CompanyReportsPageClient({
     router.push(`/admin/relatorios/${companyId}/${reportId}`);
   }
 
-  function handleNewReport() {
+  function handleCreateReport() {
     router.push(`/admin/relatorios/${companyId}/new`);
+  }
+
+  function handleImportReport() {
+    router.push(`/admin/relatorios/${companyId}/import`);
   }
 
   function handleEditReport(reportId: number) {
@@ -76,15 +81,50 @@ export default function CompanyReportsPageClient({
 
         <div className="card-body">
           {reports.length === 0 ? (
-            <EmptyState onNew={handleNewReport} />
+            <EmptyState
+              onCreate={() => handleCreateReport()}
+              onImport={() => handleImportReport()}
+            />
           ) : (
             <>
               <div className="controls-row">
-                <SearchBox value={query} onChange={(v) => setQuery(v)} placeholder="Buscar relatório" />
+                <SearchBox
+                  value={query}
+                  onChange={(v) => setQuery(v)}
+                  placeholder="Buscar relatório"
+                />
                 <div className="right-actions">
-                  <button className="btn-new-report" onClick={handleNewReport}>
-                    Novo Relatório
-                  </button>
+                  <div className="new-report-wrapper">
+                    <button
+                      className="btn-new-report"
+                      type="button"
+                      onClick={() => setNewMenuOpen((open) => !open)}
+                    >
+                      Novo Relatório
+                    </button>
+                    {newMenuOpen && (
+                      <div className="new-report-menu">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewMenuOpen(false);
+                            handleCreateReport();
+                          }}
+                        >
+                          Criar Relatório
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewMenuOpen(false);
+                            handleImportReport();
+                          }}
+                        >
+                          Importar Relatório
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -100,10 +140,20 @@ export default function CompanyReportsPageClient({
       </main>
 
       <style jsx>{`
-        .page-root { padding: 24px; background: #f3f4ff; box-sizing: border-box; min-height: 100vh; }
-        .container { max-width: 1180px; margin: 0 auto; }
+        .page-root {
+          padding: 24px;
+          background: #f3f4ff;
+          box-sizing: border-box;
+          min-height: 100vh;
+        }
+        .container {
+          max-width: 1180px;
+          margin: 0 auto;
+        }
 
-        .card-body { margin-top: 8px; }
+        .card-body {
+          margin-top: 8px;
+        }
 
         .controls-row {
           display: flex;
@@ -112,6 +162,12 @@ export default function CompanyReportsPageClient({
           margin-bottom: 16px;
           gap: 12px;
           flex-wrap: wrap;
+        }
+
+        .right-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
         }
 
         .btn-new-report {
@@ -125,10 +181,50 @@ export default function CompanyReportsPageClient({
           cursor: pointer;
         }
 
+        .new-report-wrapper {
+          position: relative;
+          display: inline-block;
+        }
+
+        .new-report-menu {
+          position: absolute;
+          right: 0;
+          margin-top: 4px;
+          background: #fff;
+          border-radius: 10px;
+          box-shadow: 0 6px 18px rgba(11, 37, 39, 0.12);
+          padding: 4px 0;
+          min-width: 190px;
+          z-index: 10;
+        }
+
+        .new-report-menu button {
+          width: 100%;
+          padding: 8px 12px;
+          background: transparent;
+          border: none;
+          text-align: left;
+          font-size: 13px;
+          cursor: pointer;
+          color: #0b2527;
+          font-weight: 500;
+        }
+
+        .new-report-menu button:hover {
+          background: #f3f4ff;
+        }
+
         @media (max-width: 640px) {
-          .container { padding: 8px; }
-          .controls-row { flex-direction: column; align-items: stretch; }
-          .right-actions { justify-content: flex-start; }
+          .container {
+            padding: 8px;
+          }
+          .controls-row {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .right-actions {
+            justify-content: flex-start;
+          }
         }
       `}</style>
     </div>

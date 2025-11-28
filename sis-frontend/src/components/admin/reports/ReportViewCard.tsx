@@ -41,35 +41,6 @@ export default function ReportViewCard({
     router.push(`/admin/relatorios/${companyId}`);
   }
 
-  function handleEdit() {
-    router.push(`/admin/relatorios/${companyId}/${report.id}/edit`);
-  }
-
-  async function handleDelete() {
-    const ok = await confirm({
-      title: 'Excluir relatório',
-      description: 'Tem certeza que deseja excluir este relatório? Esta ação não pode ser desfeita.',
-      confirmLabel: 'Excluir',
-      cancelLabel: 'Cancelar',
-      danger: true,
-    });
-    if (!ok) return;
-
-    setBusy(true);
-    const loadingId = toast.loading('Excluindo relatório…');
-    try {
-      const res = await fetch(`/api/companies/${companyId}/reports/${report.id}`, { method: 'DELETE' });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body?.message || 'Erro ao excluir relatório');
-      toast.success(body?.message || 'Relatório excluído', { id: loadingId });
-      router.push(`/admin/relatorios/${companyId}`);
-      router.refresh();
-    } catch (err: any) {
-      toast.error(err?.message || 'Erro ao excluir', { id: loadingId });
-      setBusy(false);
-    }
-  }
-
   function paragraphsFromText(text: string) {
     const normalized = text.replace(/\r\n/g, '\n').trim();
     if (!normalized) return [];
@@ -97,13 +68,6 @@ export default function ReportViewCard({
           <header className="doc-header">
             <h1 className="doc-title">{report.titulo}</h1>
 
-            {/* Ações dentro do cartão */}
-            <div className="doc-actions">
-              <button className="icon-btn" onClick={handleEdit} disabled={busy}>Editar</button>
-              <button className="icon-btn danger" onClick={handleDelete} disabled={busy}>
-                {busy ? '…' : 'Excluir'}
-              </button>
-            </div>
           </header>
 
           <div className="doc-sub">
@@ -211,11 +175,6 @@ export default function ReportViewCard({
           border-radius: 8px;
           cursor: pointer;
           font-weight: 700;
-        }
-        .icon-btn.danger {
-          background: transparent;
-          color: #b91c1c;
-          border: 1px solid #fca5a5;
         }
 
         .doc-sub {

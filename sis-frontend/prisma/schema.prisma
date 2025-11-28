@@ -101,6 +101,11 @@ model EmpresaRelatorio {
   updated        DateTime? @map("updated")
   updatedBy      Int?      @map("updated_by")
 
+  // novos campos (apenas estes três)
+  fileKey        String?   @map("file_key")
+  fileName       String?   @map("file_name")
+  versionSuffix  Int?      @default(1) @map("version_suffix")
+
   // Relação com Empresa
   empresa Empresa @relation("EmpresaRelatorios", fields: [idEmpresa], references: [id], onDelete: Cascade)
 
