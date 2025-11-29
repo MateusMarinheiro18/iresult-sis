@@ -54,7 +54,7 @@ export default function EscalasPageClient({ initialData }: { initialData: Escala
   }
 
   function handleEdit(id: number) {
-    router.push(`/admin/escalas/${id}`);
+    router.push(`/admin/escalas/${id}/edit`);
   }
 
   return (

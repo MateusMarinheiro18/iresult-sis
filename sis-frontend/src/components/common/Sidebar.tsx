@@ -11,6 +11,10 @@ import {
   FilterOutlined,
   MenuOutlined,
   CalendarTodayOutlined,
+  MapOutlined,
+  LocalPostOfficeOutlined,
+  BusinessCenter,
+  SearchOutlined,
   PersonOutline,
   IntegrationInstructionsOutlined,
   ChevronLeftOutlined,
@@ -50,11 +54,11 @@ const DEFAULT_MENUS: Record<Variant, MenuItem[]> = {
   ],
   admin: [
     { key: "dashboard", label: "Dashboard", href: "/admin/dashboard", icon: <HomeOutlined /> },
-    { key: "escalas", label: "Escalas", href: "/admin/escalas", icon: <FilterOutlined /> },
-    { key: "funcionarios", label: "Funcionários", href: "/admin/funcionarios", icon: <TramOutlined /> },
-    { key: "empresas", label: "Empresas", href: "/admin/empresas", icon: <PersonOutline /> },
-    { key: "relatorios", label: "Relatórios", href: "/admin/relatorios", icon: <BarChartOutlined /> },
-    { key: "integracoes", label: "Integrações", href: "/admin/integracoes", icon: <IntegrationInstructionsOutlined />, permission: "integrations.view" },
+    { key: "calendario", label: "Calendário", href: "/admin/calendario", icon: <CalendarTodayOutlined /> },
+    { key: "trilhas", label: "Trilhas", href: "/admin/trilhas", icon: <MapOutlined /> },
+    { key: "escalas", label: "Escalas", href: "/admin/escalas", icon: <SearchOutlined /> },
+    { key: "empresas", label: "Empresas", href: "/admin/empresas", icon: <BusinessCenter /> },
+    { key: "administrador", label: "Administrador", href: "/admin/administrador", icon: <PersonOutline />, permission: "integrations.view" },
   ],
 };
 
