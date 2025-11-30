@@ -1,21 +1,29 @@
 model RespostaFuncionario {
-  id                 Int       @id @default(autoincrement()) @map("id_resposta_funcionario")
-  dataResposta       DateTime? @map("data_resposta")
-  idResposta         Int?      @map("id_resposta")       // FK para tabela de respostas possíveis
-  idPergunta         Int?      @map("id_pergunta")       // FK para pergunta
-  idEscala           Int?      @map("id_escala")         // FK para escala
-  ativo              Int?      @map("ativo")
-  created            DateTime? @map("created")
-  createdBy          Int?      @map("created_by")
-  deleted            DateTime? @map("deleted")
-  deletedBy          Int?      @map("deleted_by")
-  updated            DateTime? @map("updated")
-  updatedBy          Int?      @map("updated_by")
+  id           Int       @id @default(autoincrement()) @map("id_resposta_funcionario")
+  dataResposta DateTime? @map("data_resposta")
+
+  idResposta   Int?      @map("id_resposta")   // FK para tabela de respostas possíveis
+  idPergunta   Int?      @map("id_pergunta")   // FK para pergunta
+  idEscala     Int?      @map("id_escala")     // FK para escala
+
+  // NOVO: FK para empresa (para sabermos de qual empresa é a resposta)
+  idEmpresa    Int?      @map("id_empresa")
+
+  ativo        Int?      @map("ativo")
+  created      DateTime? @map("created")
+  createdBy    Int?      @map("created_by")
+  deleted      DateTime? @map("deleted")
+  deletedBy    Int?      @map("deleted_by")
+  updated      DateTime? @map("updated")
+  updatedBy    Int?      @map("updated_by")
 
   // relations
-  respostaPossivel   EscalaPerguntaResposta? @relation("RespostaPossivelFuncionarios", fields: [idResposta], references: [id], onDelete: SetNull)
-  pergunta           EscalaPergunta?         @relation("PerguntaRespostasFuncionario", fields: [idPergunta], references: [id], onDelete: SetNull)
-  escala             Escala?                 @relation("EscalaRespostas", fields: [idEscala], references: [id], onDelete: SetNull)
+  respostaPossivel EscalaPerguntaResposta? @relation("RespostaPossivelFuncionarios", fields: [idResposta], references: [id], onDelete: SetNull)
+  pergunta         EscalaPergunta?         @relation("PerguntaRespostasFuncionario", fields: [idPergunta], references: [id], onDelete: SetNull)
+  escala           Escala?                 @relation("EscalaRespostas", fields: [idEscala], references: [id], onDelete: SetNull)
+
+  // NOVO: relação com Empresa (lado "muitos")
+  empresa          Empresa?                @relation("EmpresaRespostasFuncionario", fields: [idEmpresa], references: [id], onDelete: SetNull)
 
   @@map("tab_resposta_funcionario")
 }
