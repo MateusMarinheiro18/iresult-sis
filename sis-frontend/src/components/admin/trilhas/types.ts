@@ -1,4 +1,5 @@
 // src/components/admin/trilhas/types.ts
+
 export type TrilhaItemFormState = {
     tempId: string;
     id?: number;
@@ -11,7 +12,6 @@ export type TrilhaItemFormState = {
   export type TrilhaFormState = {
     id?: number;
     nome: string;
-    dataCriacao: string; // yyyy-mm-dd
     ativo: boolean;
     itens: TrilhaItemFormState[];
   };

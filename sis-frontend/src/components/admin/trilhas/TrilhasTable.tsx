@@ -1,3 +1,4 @@
+// src/components/admin/trilhas/TrilhasTable.tsx
 'use client';
 
 import React from 'react';
@@ -6,26 +7,26 @@ import Link from 'next/link';
 export type TrilhaRow = {
   id: number;
   nome: string;
-  dataCriacao?: string | Date | null;
+  // string "yyyy-mm-dd" ou null
+  dataCriacao?: string | null;
 };
 
 type Props = {
   items: TrilhaRow[];
-  onDetalhes: (id: number) => void;
+  onDetails: (id: number) => void;
 };
 
-function formatDate(d?: string | Date | null) {
-  if (!d) return '—';
-  const date = typeof d === 'string' ? new Date(d) : d;
-  if (Number.isNaN(date.getTime())) return '—';
-
-  const dia = String(date.getDate()).padStart(2, '0');
-  const mes = String(date.getMonth() + 1).padStart(2, '0');
-  const ano = date.getFullYear();
-  return `${dia}/${mes}/${ano}`;
+// Formata "yyyy-mm-dd" -> "dd/mm/yyyy" sem mexer com Date/UTC
+function formatDate(dateStr?: string | null) {
+  if (!dateStr) return '—';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return '—';
+  const [yyyy, mm, dd] = parts;
+  if (!yyyy || !mm || !dd) return '—';
+  return `${dd}/${mm}/${yyyy}`;
 }
 
-export default function TrilhasTable({ items, onDetalhes }: Props) {
+export default function TrilhasTable({ items, onDetails }: Props) {
   return (
     <div className="table-scroll">
       <table className="trilhas-table" cellPadding={0} cellSpacing={0}>
@@ -53,8 +54,8 @@ export default function TrilhasTable({ items, onDetalhes }: Props) {
 
               <td className="cell action-cell">
                 <button
-                  className="pill-btn pill-primary"
-                  onClick={() => onDetalhes(t.id)}
+                  className="pill-btn pill-secondary"
+                  onClick={() => onDetails(t.id)}
                 >
                   Detalhes
                 </button>
@@ -173,17 +174,6 @@ export default function TrilhasTable({ items, onDetalhes }: Props) {
           white-space: nowrap;
           text-decoration: none;
           transition: all 0.2s ease;
-        }
-
-        .pill-primary {
-          background: #0b2527;
-          color: white;
-          border-color: #0b2527;
-        }
-
-        .pill-primary:hover {
-          background: #134148;
-          border-color: #134148;
         }
 
         .pill-secondary {

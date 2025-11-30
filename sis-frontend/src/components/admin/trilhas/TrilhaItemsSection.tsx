@@ -1,4 +1,6 @@
 // src/components/admin/trilhas/TrilhaItemsSection.tsx
+'use client';
+
 import React from 'react';
 import type { TrilhaItemFormState } from './types';
 
@@ -8,6 +10,16 @@ type Props = {
   onEdit: (tempId: string) => void;
   onRemove: (tempId: string) => void;
 };
+
+// Formata string "yyyy-mm-dd" em "dd/mm/yyyy" sem usar Date (evita problema de fuso)
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '—';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return '—';
+  const [yyyy, mm, dd] = parts;
+  if (!yyyy || !mm || !dd) return '—';
+  return `${dd}/${mm}/${yyyy}`;
+}
 
 export default function TrilhaItemsSection({
   items,
@@ -21,8 +33,8 @@ export default function TrilhaItemsSection({
         <div>
           <h2 className="card-title">Eventos da trilha</h2>
           <p className="card-subtitle">
-            Adicione os eventos (encontros, workshops, sessões, etc.) que fazem
-            parte desta trilha.
+            Cadastre os eventos (workshops, encontros, comunicações, etc.) que
+            fazem parte desta trilha.
           </p>
         </div>
 
@@ -42,28 +54,15 @@ export default function TrilhaItemsSection({
               <th className="col-actions">Ações</th>
             </tr>
           </thead>
+
           <tbody>
-            {items.map((item, index) => (
+            {items.map((item) => (
               <tr key={item.tempId}>
-                <td className="cell name-cell">
-                  {item.nome || `Evento ${index + 1}`}
-                </td>
+                <td className="cell name-cell">{item.nome || '—'}</td>
                 <td className="cell type-cell">{item.tipo || '—'}</td>
-                <td className="cell date-cell">
-                  {item.data
-                    ? new Date(item.data).toLocaleDateString('pt-BR')
-                    : '—'}
-                </td>
+                <td className="cell date-cell">{formatDate(item.data)}</td>
                 <td className="cell details-cell">
-                  {item.detalhes ? (
-                    <span title={item.detalhes}>
-                      {item.detalhes.length > 60
-                        ? item.detalhes.slice(0, 60) + '...'
-                        : item.detalhes}
-                    </span>
-                  ) : (
-                    '—'
-                  )}
+                  {item.detalhes ? item.detalhes : '—'}
                 </td>
                 <td className="cell actions-cell">
                   <button
@@ -87,8 +86,7 @@ export default function TrilhaItemsSection({
             {items.length === 0 && (
               <tr>
                 <td colSpan={5} className="no-results">
-                  Nenhum evento adicionado ainda. Clique em{' '}
-                  <strong>“Adicionar evento”</strong> para começar.
+                  Nenhum evento cadastrado nesta trilha.
                 </td>
               </tr>
             )}

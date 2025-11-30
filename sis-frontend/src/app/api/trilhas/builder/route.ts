@@ -11,7 +11,6 @@ type ItemPayload = {
 
 type TrilhaPayload = {
   nome: string;
-  dataCriacao?: string | null; // yyyy-mm-dd
   ativo?: number;
   itens: ItemPayload[];
 };
@@ -35,17 +34,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const dataCriacao =
-      body.dataCriacao && body.dataCriacao.trim()
-        ? new Date(body.dataCriacao)
-        : null;
-
     const now = new Date();
 
     const trilha = await prisma.trilha.create({
       data: {
         nome,
-        dataCriacao: dataCriacao ?? now,
+        dataCriacao: now,        // 👈 sempre definida no momento da criação
         ativo: body.ativo ?? 1,
         created: now,
         itens: {

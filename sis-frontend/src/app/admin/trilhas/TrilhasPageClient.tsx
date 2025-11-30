@@ -1,54 +1,32 @@
+// src/app/admin/trilhas/TrilhasPageClient.tsx
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import TrilhasTable, { TrilhaRow } from '@/components/admin/trilhas/TrilhasTable';
+import TrilhasTable, {
+  TrilhaRow,
+} from '@/components/admin/trilhas/TrilhasTable';
 
 const ITEMS_PER_PAGE = 5;
 
-export default function TrilhasPageClient() {
-  const router = useRouter();
+type Props = {
+  initialData: TrilhaRow[];
+};
 
-  const [items, setItems] = useState<TrilhaRow[]>([]);
+export default function TrilhasPageClient({ initialData }: Props) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Busca trilhas na API
-  useEffect(() => {
-    async function fetchTrilhas() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const res = await fetch('/api/trilhas');
-        if (!res.ok) {
-          throw new Error(`Erro HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        setItems(data.items ?? []);
-      } catch (err) {
-        console.error('Erro ao carregar trilhas:', err);
-        setError('Erro ao carregar trilhas.');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchTrilhas();
-  }, []);
 
   // filtra por nome - case insensitive
   const filtered = useMemo(() => {
     const q = String(query || '').trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((t) => (t.nome ?? '').toLowerCase().includes(q));
-  }, [items, query]);
+    if (!q) return initialData;
+    return initialData.filter((t) => (t.nome ?? '').toLowerCase().includes(q));
+  }, [initialData, query]);
 
   // Reseta para página 1 quando a busca muda
-  useEffect(() => {
+  useMemo(() => {
     setCurrentPage(1);
   }, [query]);
 
@@ -60,7 +38,7 @@ export default function TrilhasPageClient() {
   const currentItems = filtered.slice(startIndex, endIndex);
 
   // Números de página visíveis (máximo 3)
-  const getVisiblePages = () => {
+  const visiblePages = useMemo(() => {
     const pages: number[] = [];
     let start = Math.max(1, currentPage - 1);
     let end = Math.min(totalPages, start + 2);
@@ -73,12 +51,14 @@ export default function TrilhasPageClient() {
       pages.push(i);
     }
     return pages;
-  };
+  }, [currentPage, totalPages]);
 
-  const visiblePages = getVisiblePages();
-
-  function handleDetalhes(id: number) {
+  function handleDetails(id: number) {
     router.push(`/admin/trilhas/${id}`);
+  }
+
+  function handleNew() {
+    router.push('/admin/trilhas/new');
   }
 
   return (
@@ -87,6 +67,9 @@ export default function TrilhasPageClient() {
         <header className="header-row">
           <div>
             <h1 className="page-title">TRILHAS</h1>
+            <p className="page-subtitle">
+              Visualize e gerencie todas as trilhas cadastradas.
+            </p>
           </div>
         </header>
 
@@ -131,36 +114,21 @@ export default function TrilhasPageClient() {
             </div>
 
             <div className="right-actions">
-              <button className="btn-new" onClick={() => router.push('/admin/trilhas/new')}>
+              <button className="btn-new" onClick={handleNew}>
                 Nova Trilha
               </button>
             </div>
           </div>
 
-          {/* Mensagens de loading / erro (sem mexer no layout principal) */}
-          {loading && (
-            <div style={{ padding: '8px 4px', fontSize: 14, color: '#6b7280' }}>
-              Carregando trilhas...
-            </div>
-          )}
-          {error && (
-            <div style={{ padding: '8px 4px', fontSize: 14, color: '#b91c1c' }}>
-              {error}
-            </div>
-          )}
-
-          {/* Tabela */}
-          <TrilhasTable
-            items={currentItems}
-            onDetalhes={handleDetalhes}
-          />
+          {/* Tabela de trilhas */}
+          <TrilhasTable items={currentItems} onDetails={handleDetails} />
 
           {/* Paginação */}
           {totalItems > 0 && (
             <div className="pagination-wrapper">
               <div className="pagination-info">
-                Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems}{' '}
-                {totalItems === 1 ? 'trilha' : 'trilhas'}
+                Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de{' '}
+                {totalItems} {totalItems === 1 ? 'trilha' : 'trilhas'}
               </div>
 
               <div className="pagination-controls">
@@ -193,7 +161,9 @@ export default function TrilhasPageClient() {
                   {visiblePages.map((page) => (
                     <button
                       key={page}
-                      className={`page-number ${currentPage === page ? 'active' : ''}`}
+                      className={`page-number ${
+                        currentPage === page ? 'active' : ''
+                      }`}
                       onClick={() => setCurrentPage(page)}
                       aria-label={`Página ${page}`}
                       aria-current={currentPage === page ? 'page' : undefined}
@@ -206,7 +176,9 @@ export default function TrilhasPageClient() {
                 {/* Botão Próximo */}
                 <button
                   className="page-arrow"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages, p + 1))
+                  }
                   disabled={currentPage === totalPages}
                   aria-label="Próxima página"
                 >
@@ -232,7 +204,6 @@ export default function TrilhasPageClient() {
         </div>
       </main>
 
-      {/* CSS copiado do padrão de escalas, sem mexer na estilização */}
       <style jsx>{`
         .page-root {
           width: 100%;

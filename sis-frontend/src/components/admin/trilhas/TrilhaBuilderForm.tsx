@@ -11,8 +11,10 @@ import TrilhaItemsSection from './TrilhaItemsSection';
 import TrilhaItemModal from './TrilhaItemModal';
 
 type Props = {
-  mode: 'create'; // no futuro: 'edit'
+  mode: 'create' | 'edit';
+  trilhaId?: number; // obrigatório se mode === 'edit'
   initialData?: TrilhaFormState;
+  createdAtLabel?: string; // apenas para exibição na edição
 };
 
 function createTempId(prefix: string) {
@@ -29,22 +31,20 @@ function createEmptyItem(): TrilhaItemFormState {
   };
 }
 
-export default function TrilhaBuilderForm({ mode, initialData }: Props) {
+export default function TrilhaBuilderForm({
+  mode,
+  trilhaId,
+  initialData,
+  createdAtLabel,
+}: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
   const [state, setState] = useState<TrilhaFormState>(() => {
     if (initialData) return initialData;
 
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
-
     return {
       nome: '',
-      dataCriacao: todayStr,
       ativo: true,
       itens: [],
     };
@@ -123,10 +123,6 @@ export default function TrilhaBuilderForm({ mode, initialData }: Props) {
     setState((prev) => ({ ...prev, nome }));
   }
 
-  function updateDataCriacao(data: string) {
-    setState((prev) => ({ ...prev, dataCriacao: data }));
-  }
-
   function updateAtivo(ativo: boolean) {
     setState((prev) => ({ ...prev, ativo }));
   }
@@ -157,9 +153,9 @@ export default function TrilhaBuilderForm({ mode, initialData }: Props) {
 
     const payload = {
       nome,
-      dataCriacao: state.dataCriacao || null,
       ativo: state.ativo ? 1 : 0,
       itens: state.itens.map((i) => ({
+        id: i.id,
         nome: i.nome.trim(),
         tipo: i.tipo.trim() || null,
         data: i.data || null,
@@ -167,9 +163,27 @@ export default function TrilhaBuilderForm({ mode, initialData }: Props) {
       })),
     };
 
+    const url =
+      mode === 'create'
+        ? '/api/trilhas/builder'
+        : trilhaId
+        ? `/api/trilhas/${trilhaId}`
+        : null;
+
+    if (!url && mode === 'edit') {
+      toast.error('ID da trilha não informado para edição.');
+      return;
+    }
+
+    const method = mode === 'create' ? 'POST' : 'PUT';
+    const successMessage =
+      mode === 'create'
+        ? 'Trilha criada com sucesso!'
+        : 'Trilha atualizada com sucesso!';
+
     setSaving(true);
-    fetch('/api/trilhas/builder', {
-      method: 'POST',
+    fetch(url as string, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
@@ -178,7 +192,7 @@ export default function TrilhaBuilderForm({ mode, initialData }: Props) {
         if (!res.ok) {
           throw new Error(data?.error || 'Erro ao salvar trilha.');
         }
-        toast.success('Trilha criada com sucesso!');
+        toast.success(successMessage);
         router.push('/admin/trilhas');
       })
       .catch((err: any) => {
@@ -193,11 +207,10 @@ export default function TrilhaBuilderForm({ mode, initialData }: Props) {
       <form className="trilha-form" onSubmit={handleSubmit}>
         <TrilhaBasicDataSection
           nome={state.nome}
-          dataCriacao={state.dataCriacao}
           ativo={state.ativo}
           onChangeNome={updateNome}
-          onChangeDataCriacao={updateDataCriacao}
           onChangeAtivo={updateAtivo}
+          createdAtLabel={createdAtLabel}
         />
 
         <TrilhaItemsSection
@@ -231,7 +244,7 @@ export default function TrilhaBuilderForm({ mode, initialData }: Props) {
         onSave={handleSaveItemFromModal}
       />
 
-      {/* CSS: escopo global só dentro de .trilha-builder para não quebrar nada fora */}
+      {/* CSS escopado em .trilha-builder */}
       <style jsx global>{`
         .trilha-builder .trilha-form {
           display: flex;
@@ -269,7 +282,7 @@ export default function TrilhaBuilderForm({ mode, initialData }: Props) {
 
         .trilha-builder .field-grid {
           display: grid;
-          grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+          grid-template-columns: minmax(0, 2fr) auto;
           gap: 16px;
           align-items: flex-end;
         }

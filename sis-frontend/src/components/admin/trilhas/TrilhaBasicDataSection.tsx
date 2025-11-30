@@ -3,26 +3,24 @@ import React from 'react';
 
 type Props = {
   nome: string;
-  dataCriacao: string;
   ativo: boolean;
   onChangeNome: (value: string) => void;
-  onChangeDataCriacao: (value: string) => void;
   onChangeAtivo: (value: boolean) => void;
+  createdAtLabel?: string; // apenas para exibir (read-only) na edição
 };
 
 export default function TrilhaBasicDataSection({
   nome,
-  dataCriacao,
   ativo,
   onChangeNome,
-  onChangeDataCriacao,
   onChangeAtivo,
+  createdAtLabel,
 }: Props) {
   return (
     <section className="card">
       <h2 className="card-title">Dados da trilha</h2>
       <p className="card-subtitle">
-        Informe o nome da trilha e a data de início.
+        Informe o nome da trilha. A data de criação é gerada automaticamente.
       </p>
 
       <div className="field-grid">
@@ -39,16 +37,6 @@ export default function TrilhaBasicDataSection({
           />
         </div>
 
-        <div className="field">
-          <label className="label">Data de início</label>
-          <input
-            type="date"
-            className="input"
-            value={dataCriacao}
-            onChange={(e) => onChangeDataCriacao(e.target.value)}
-          />
-        </div>
-
         <div className="field switch-field">
           <label className="label">Ativa</label>
           <label className="switch">
@@ -61,6 +49,12 @@ export default function TrilhaBasicDataSection({
           </label>
         </div>
       </div>
+
+      {createdAtLabel && (
+        <p className="card-subtitle" style={{ marginTop: 8 }}>
+          Criada em <strong>{createdAtLabel}</strong>
+        </p>
+      )}
     </section>
   );
 }
