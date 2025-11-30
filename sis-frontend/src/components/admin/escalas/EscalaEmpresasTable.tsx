@@ -1,4 +1,3 @@
-// src/components/admin/escalas/EscalaEmpresasTable.tsx
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -12,8 +11,6 @@ export type EmpresaForEscala = {
 };
 
 type Props = {
-  // NOVO: id da escala atual, para montar o link do formulário
-  escalaId: number;
   items: EmpresaForEscala[];
   selectedIds: Set<number>;
   onToggle: (id: number) => void;
@@ -22,7 +19,6 @@ type Props = {
 const ITEMS_PER_PAGE = 5;
 
 export default function EscalaEmpresasTable({
-  escalaId,
   items,
   selectedIds,
   onToggle,
@@ -111,8 +107,6 @@ export default function EscalaEmpresasTable({
               <th className="col-name">Empresa</th>
               <th className="col-cnpj">CNPJ</th>
               <th className="col-phone">Telefone</th>
-              {/* NOVO: coluna para abrir o formulário */}
-              <th className="col-form">Formulário</th>
             </tr>
           </thead>
           <tbody>
@@ -129,23 +123,12 @@ export default function EscalaEmpresasTable({
                 <td className="cell name-cell">{c.razaoSocial ?? '—'}</td>
                 <td className="cell cnpj-cell">{formatCnpj(c.cnpj)}</td>
                 <td className="cell phone-cell">{formatPhone(c.telefone)}</td>
-
-                {/* NOVO: link de teste para o formulário */}
-                <td className="cell form-cell">
-                  <Link
-                    href={`/web/escala?escala=${escalaId}&empresa=${c.id}`}
-                    target="_blank"
-                    className="form-link"
-                  >
-                    Abrir formulário
-                  </Link>
-                </td>
               </tr>
             ))}
 
             {currentItems.length === 0 && (
               <tr>
-                {/* +1 na contagem de colunas por causa da nova coluna Formulário */}
+                {/* ainda está com colSpan 5 por causa da coluna antiga; se quiser depois ajustamos para 4 */}
                 <td colSpan={5} className="no-results">
                   Nenhuma empresa encontrada.
                 </td>

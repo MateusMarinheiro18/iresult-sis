@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import EscalaEmpresasSection from '@/components/admin/escalas/EscalaEmpresasSection';
+import toast from 'react-hot-toast';
 
 type Props = {
   escalaId: number;
@@ -17,14 +18,9 @@ export default function EscalaLinkPageClient({
 }: Props) {
   const [message, setMessage] = useState(initialMessage);
   const [sending, setSending] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    type: 'success' | 'error';
-    text: string;
-  } | null>(null);
 
   async function handleSendLinks() {
     setSending(true);
-    setFeedback(null);
 
     try {
       const res = await fetch(`/api/escalas/${escalaId}/send-links`, {
@@ -43,26 +39,27 @@ export default function EscalaLinkPageClient({
         const text =
           data?.error ??
           'Não foi possível enviar os e-mails. Tente novamente em instantes.';
-        setFeedback({ type: 'error', text });
+        toast.error(text);
         return;
       }
 
       const totalEmpresas = data?.totalEmpresas ?? 0;
       const totalDestinatarios = data?.totalDestinatarios ?? 0;
 
-      setFeedback({
-        type: 'success',
-        text:
-          totalEmpresas === 0
-            ? 'Nenhuma empresa com funcionários com e-mail foi encontrada.'
-            : `Envio concluído. Empresas com e-mail: ${totalEmpresas}. Destinatários: ${totalDestinatarios}.`,
-      });
+      if (totalEmpresas === 0 || totalDestinatarios === 0) {
+        toast('Nenhum destinatário com e-mail válido encontrado.', {
+          icon: 'ℹ️',
+        });
+      } else {
+        toast.success(
+          `Envio concluído. Empresas com e-mail: ${totalEmpresas}. Destinatários: ${totalDestinatarios}.`,
+        );
+      }
     } catch (err) {
       console.error(err);
-      setFeedback({
-        type: 'error',
-        text: 'Ocorreu um erro inesperado ao enviar os e-mails. Tente novamente.',
-      });
+      toast.error(
+        'Ocorreu um erro inesperado ao enviar os e-mails. Tente novamente.',
+      );
     } finally {
       setSending(false);
     }
@@ -120,17 +117,6 @@ export default function EscalaLinkPageClient({
             </button>
           </div>
         </section>
-
-        {/* feedback de envio */}
-        {feedback && (
-          <section
-            className={`feedback ${
-              feedback.type === 'error' ? 'feedback-error' : 'feedback-success'
-            }`}
-          >
-            {feedback.text}
-          </section>
-        )}
       </main>
 
       <style jsx>{`
@@ -249,25 +235,6 @@ export default function EscalaLinkPageClient({
         .btn-send:disabled {
           opacity: 0.6;
           cursor: not-allowed;
-        }
-
-        .feedback {
-          margin-top: 16px;
-          padding: 10px 14px;
-          border-radius: 12px;
-          font-size: 13px;
-        }
-
-        .feedback-error {
-          background: #fef2f2;
-          color: #b91c1c;
-          border: 1px solid #fecaca;
-        }
-
-        .feedback-success {
-          background: #ecfdf3;
-          color: #166534;
-          border: 1px solid #bbf7d0;
         }
 
         @media (max-width: 960px) {
