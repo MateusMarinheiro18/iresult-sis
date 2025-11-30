@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import Link from 'next/link';
 
 export type EmpresaForEscala = {
   id: number;
@@ -11,6 +12,8 @@ export type EmpresaForEscala = {
 };
 
 type Props = {
+  // NOVO: id da escala atual, para montar o link do formulário
+  escalaId: number;
   items: EmpresaForEscala[];
   selectedIds: Set<number>;
   onToggle: (id: number) => void;
@@ -19,6 +22,7 @@ type Props = {
 const ITEMS_PER_PAGE = 5;
 
 export default function EscalaEmpresasTable({
+  escalaId,
   items,
   selectedIds,
   onToggle,
@@ -107,6 +111,8 @@ export default function EscalaEmpresasTable({
               <th className="col-name">Empresa</th>
               <th className="col-cnpj">CNPJ</th>
               <th className="col-phone">Telefone</th>
+              {/* NOVO: coluna para abrir o formulário */}
+              <th className="col-form">Formulário</th>
             </tr>
           </thead>
           <tbody>
@@ -123,12 +129,24 @@ export default function EscalaEmpresasTable({
                 <td className="cell name-cell">{c.razaoSocial ?? '—'}</td>
                 <td className="cell cnpj-cell">{formatCnpj(c.cnpj)}</td>
                 <td className="cell phone-cell">{formatPhone(c.telefone)}</td>
+
+                {/* NOVO: link de teste para o formulário */}
+                <td className="cell form-cell">
+                  <Link
+                    href={`/web/escala?escala=${escalaId}&empresa=${c.id}`}
+                    target="_blank"
+                    className="form-link"
+                  >
+                    Abrir formulário
+                  </Link>
+                </td>
               </tr>
             ))}
 
             {currentItems.length === 0 && (
               <tr>
-                <td colSpan={4} className="no-results">
+                {/* +1 na contagem de colunas por causa da nova coluna Formulário */}
+                <td colSpan={5} className="no-results">
                   Nenhuma empresa encontrada.
                 </td>
               </tr>
@@ -265,7 +283,7 @@ export default function EscalaEmpresasTable({
         table.empresas-table {
           width: 100%;
           border-collapse: collapse;
-          min-width: 640px;
+          min-width: 720px;
         }
 
         thead th {
@@ -287,6 +305,10 @@ export default function EscalaEmpresasTable({
         }
         .col-name {
           min-width: 220px;
+        }
+        .col-form {
+          width: 130px;
+          text-align: center;
         }
 
         tbody tr {
@@ -321,6 +343,29 @@ export default function EscalaEmpresasTable({
 
         .phone-cell {
           white-space: nowrap;
+        }
+
+        .form-cell {
+          text-align: center;
+        }
+
+        .form-link {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 6px 12px;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 600;
+          text-decoration: none;
+          color: #0b2527;
+          border: 1px solid #0b2527;
+          transition: all 0.2s ease;
+        }
+
+        .form-link:hover {
+          background: #0b2527;
+          color: #ffffff;
         }
 
         .no-results {
@@ -407,7 +452,7 @@ export default function EscalaEmpresasTable({
 
         @media (max-width: 960px) {
           table.empresas-table {
-            min-width: 580px;
+            min-width: 680px;
           }
 
           .pagination-wrapper {

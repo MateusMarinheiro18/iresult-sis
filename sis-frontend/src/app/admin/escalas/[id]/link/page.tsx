@@ -3,14 +3,24 @@ import React from 'react';
 import { prisma } from '@/lib/prisma';
 import EscalaLinkPageClient from './EscalaLinkPageClient';
 
+type ParamsType = { id: string };
+type SearchParamsType = { msg?: string };
+
 type Props = {
-  params: Promise<{ id: string }> | { id: string };
+  params: ParamsType | Promise<ParamsType>;
+  searchParams?: SearchParamsType | Promise<SearchParamsType>;
 };
 
 export default async function EscalaLinkPage(props: Props) {
   const resolvedParams = await props.params;
   const idStr = resolvedParams?.id;
   const escalaId = idStr ? Number(idStr) : NaN;
+
+  const resolvedSearch =
+    props.searchParams ? await props.searchParams : undefined;
+  const initialMessage = resolvedSearch?.msg
+    ? String(resolvedSearch.msg)
+    : '';
 
   if (!escalaId || Number.isNaN(escalaId) || escalaId <= 0) {
     return (
@@ -41,6 +51,10 @@ export default async function EscalaLinkPage(props: Props) {
   }
 
   return (
-    <EscalaLinkPageClient escalaId={escala.id} escalaNome={escala.nome} />
+    <EscalaLinkPageClient
+      escalaId={escala.id}
+      escalaNome={escala.nome}
+      initialMessage={initialMessage}
+    />
   );
 }

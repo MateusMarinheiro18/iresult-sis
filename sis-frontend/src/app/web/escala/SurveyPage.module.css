@@ -1,0 +1,253 @@
+/* src/app/web/escala/SurveyPage.module.css */
+
+.container {
+    display: flex;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  
+  /* LADO ESQUERDO */
+  
+  .leftPanel {
+    width: 35%;
+    background-color: #0b2527;
+    color: #f3f4ff;
+    padding: 48px 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* CENTRALIZA verticalmente tudo (logo + texto) */
+  }
+  
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+  
+  .logoCircle {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 2px solid #f3f4ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  
+  .logoImage {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  
+  .brandText {
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    font-size: 16px;
+  }
+  
+  .leftContent {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  
+  .enqueteTitle {
+    font-size: 32px;
+    margin: 0 0 32px;
+    letter-spacing: 0.1em;
+  }
+  
+  .infoBox {
+    max-width: 360px;
+  }
+  
+  .infoTitle {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  
+  .infoText {
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  
+  /* LADO DIREITO */
+  
+  .rightPanel {
+    flex: 1;
+    background-color: #f5f6ff;
+    padding: 64px 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* TELA DE INÍCIO */
+  
+  .startContainer {
+    max-width: 520px;
+  }
+  
+  .startTitle {
+    font-size: 28px;
+    margin-bottom: 16px;
+    color: #1b1f3a;
+  }
+  
+  .startSubtitle {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #555a7a;
+    margin-bottom: 32px;
+  }
+  
+  /* botão de início — centralizado e com o estilo pedido */
+  .startButton {
+    padding: 14px 32px;
+    border-radius: 999px;
+    border: none;
+    background-color: #0b2527;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+    display: block;
+    margin: 0 auto; /* centraliza abaixo do texto */
+  }
+  
+  /* TELA DAS PERGUNTAS */
+  
+  .questionContainer {
+    max-width: 640px;
+    width: 100%;
+  }
+  
+  .questionHeader {
+    margin-bottom: 32px;
+  }
+  
+  .questionStep {
+    font-size: 14px;
+    color: #7b80a8;
+    margin-bottom: 8px;
+    display: inline-block;
+  }
+  
+  .questionTitle {
+    font-size: 22px;
+    color: #1b1f3a;
+    margin: 0;
+    line-height: 1.4;
+  }
+  
+  .optionsList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  
+  .option {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    border-radius: 999px;
+    border: 1px solid #dde0f0;
+    background-color: #ffffff;
+    padding: 12px 22px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease,
+      transform 0.05s ease;
+  }
+  
+  .optionSelected {
+    background-color: #6ee7b7;
+    border-color: #34d399;
+  }
+  
+  .optionIndex {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    border: 1px solid #cfd5f3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    font-size: 14px;
+    color: #555a7a;
+    background-color: #ffffff;
+  }
+  
+  .optionIndexSelected {
+    border-color: #10b981;
+    background-color: #ffffff;
+    color: #047857;
+  }
+  
+  .optionLabel {
+    font-size: 15px;
+    color: #1f2439;
+  }
+  
+  /* BOTÕES DE NAVEGAÇÃO */
+  
+  .navButtons {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  
+  .navButton {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 999px;
+    border: 1px solid #d0d3f0;
+    background-color: #ffffff;
+    color: #1f2439;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease,
+      transform 0.05s ease;
+  }
+  
+  .navButtonPrimary {
+    background-color: #ffffff;
+  }
+  
+  .navButtonDisabled,
+  .navButton:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+  
+  /* RESPONSIVO */
+  
+  @media (max-width: 900px) {
+    .container {
+      flex-direction: column;
+    }
+  
+    .leftPanel {
+      width: 100%;
+      padding: 32px 24px;
+    }
+  
+    .rightPanel {
+      width: 100%;
+      padding: 32px 24px;
+    }
+  
+    .questionContainer,
+    .startContainer {
+      max-width: 100%;
+    }
+  }
+  

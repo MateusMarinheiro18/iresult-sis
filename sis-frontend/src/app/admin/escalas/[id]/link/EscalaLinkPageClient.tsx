@@ -1,15 +1,73 @@
 // src/app/admin/escalas/[id]/link/EscalaLinkPageClient.tsx
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import EscalaEmpresasSection from '@/components/admin/escalas/EscalaEmpresasSection';
 
 type Props = {
   escalaId: number;
   escalaNome: string;
+  initialMessage?: string;
 };
 
-export default function EscalaLinkPageClient({ escalaId, escalaNome }: Props) {
+export default function EscalaLinkPageClient({
+  escalaId,
+  escalaNome,
+  initialMessage = '',
+}: Props) {
+  const [message, setMessage] = useState(initialMessage);
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  async function handleSendLinks() {
+    setSending(true);
+    setFeedback(null);
+
+    try {
+      const res = await fetch(`/api/escalas/${escalaId}/send-links`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const text =
+          data?.error ??
+          'Não foi possível enviar os e-mails. Tente novamente em instantes.';
+        setFeedback({ type: 'error', text });
+        return;
+      }
+
+      const totalEmpresas = data?.totalEmpresas ?? 0;
+      const totalDestinatarios = data?.totalDestinatarios ?? 0;
+
+      setFeedback({
+        type: 'success',
+        text:
+          totalEmpresas === 0
+            ? 'Nenhuma empresa com funcionários com e-mail foi encontrada.'
+            : `Envio concluído. Empresas com e-mail: ${totalEmpresas}. Destinatários: ${totalDestinatarios}.`,
+      });
+    } catch (err) {
+      console.error(err);
+      setFeedback({
+        type: 'error',
+        text: 'Ocorreu um erro inesperado ao enviar os e-mails. Tente novamente.',
+      });
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div className="page-root">
       <main className="container">
@@ -23,6 +81,24 @@ export default function EscalaLinkPageClient({ escalaId, escalaNome }: Props) {
           </div>
         </header>
 
+        {/* Bloco da mensagem do e-mail */}
+        <section className="email-card">
+          <h2 className="email-title">Mensagem do e-mail</h2>
+          <p className="email-subtitle">
+            Este texto será incluído no corpo do e-mail. O link para o formulário de
+            cada empresa será adicionado automaticamente ao final da mensagem.
+          </p>
+
+          <textarea
+            className="email-textarea"
+            rows={6}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Ex: Olá, tudo bem? Gostaríamos de contar com a sua participação respondendo a esta enquete..."
+          />
+        </section>
+
+        {/* seção de empresas (continua igual) */}
         <EscalaEmpresasSection escalaId={escalaId} />
 
         {/* Bloco final com botão de enviar */}
@@ -37,12 +113,24 @@ export default function EscalaLinkPageClient({ escalaId, escalaNome }: Props) {
             <button
               type="button"
               className="btn-send"
-              // futuramente aqui entra a lógica de disparo dos links
+              onClick={handleSendLinks}
+              disabled={sending}
             >
-              Enviar links para funcionários
+              {sending ? 'Enviando links...' : 'Enviar links para funcionários'}
             </button>
           </div>
         </section>
+
+        {/* feedback de envio */}
+        {feedback && (
+          <section
+            className={`feedback ${
+              feedback.type === 'error' ? 'feedback-error' : 'feedback-success'
+            }`}
+          >
+            {feedback.text}
+          </section>
+        )}
       </main>
 
       <style jsx>{`
@@ -74,6 +162,46 @@ export default function EscalaLinkPageClient({ escalaId, escalaNome }: Props) {
           font-size: 14px;
           color: #6b7280;
           margin: 0;
+        }
+
+        .email-card {
+          margin-bottom: 16px;
+          padding: 16px 18px;
+          border-radius: 12px;
+          background: #ffffff;
+          box-shadow: 0 6px 18px rgba(11, 37, 39, 0.06);
+        }
+
+        .email-title {
+          margin: 0 0 4px;
+          font-size: 16px;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .email-subtitle {
+          margin: 0 0 10px;
+          font-size: 13px;
+          color: #6b7280;
+        }
+
+        .email-textarea {
+          width: 100%;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          padding: 10px 12px;
+          font-size: 14px;
+          resize: vertical;
+          min-height: 120px;
+          box-sizing: border-box;
+          font-family: inherit;
+          color: #111827;
+        }
+
+        .email-textarea:focus {
+          outline: none;
+          border-color: #0b2527;
+          box-shadow: 0 0 0 1px #0b2527;
         }
 
         .send-section {
@@ -113,9 +241,33 @@ export default function EscalaLinkPageClient({ escalaId, escalaNome }: Props) {
           transition: all 0.15s ease;
         }
 
-        .btn-send:hover {
+        .btn-send:hover:not(:disabled) {
           background: #134148;
           border-color: #134148;
+        }
+
+        .btn-send:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .feedback {
+          margin-top: 16px;
+          padding: 10px 14px;
+          border-radius: 12px;
+          font-size: 13px;
+        }
+
+        .feedback-error {
+          background: #fef2f2;
+          color: #b91c1c;
+          border: 1px solid #fecaca;
+        }
+
+        .feedback-success {
+          background: #ecfdf3;
+          color: #166534;
+          border: 1px solid #bbf7d0;
         }
 
         @media (max-width: 960px) {

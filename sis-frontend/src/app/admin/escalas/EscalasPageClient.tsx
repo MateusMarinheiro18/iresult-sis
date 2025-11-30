@@ -12,6 +12,11 @@ export default function EscalasPageClient({ initialData }: { initialData: Escala
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
+  // estado do modal de envio
+  const [sendModalOpen, setSendModalOpen] = useState(false);
+  const [selectedEscalaId, setSelectedEscalaId] = useState<number | null>(null);
+  const [emailBody, setEmailBody] = useState('');
+
   // filtra por nome - case insensitive
   const filtered = useMemo(() => {
     const q = String(query || '').trim().toLowerCase();
@@ -49,12 +54,30 @@ export default function EscalasPageClient({ initialData }: { initialData: Escala
 
   const visiblePages = getVisiblePages();
 
+  // ao clicar em "Enviar link" abre o modal para digitar o texto do e-mail
   function handleSendLink(id: number) {
-    router.push(`/admin/escalas/${id}/link`);
+    setSelectedEscalaId(id);
+    setEmailBody('');
+    setSendModalOpen(true);
   }
 
   function handleEdit(id: number) {
     router.push(`/admin/escalas/${id}/edit`);
+  }
+
+  function closeModal() {
+    setSendModalOpen(false);
+    setSelectedEscalaId(null);
+    setEmailBody('');
+  }
+
+  function handleConfirmSend() {
+    if (!selectedEscalaId) return;
+
+    // por enquanto, só passamos o texto via query string para a página /link
+    const msgParam = emailBody ? `?msg=${encodeURIComponent(emailBody)}` : '';
+    router.push(`/admin/escalas/${selectedEscalaId}/link${msgParam}`);
+    setSendModalOpen(false);
   }
 
   return (
@@ -196,6 +219,41 @@ export default function EscalasPageClient({ initialData }: { initialData: Escala
           )}
         </div>
       </main>
+
+      {/* MODAL DE TEXTO DO E-MAIL */}
+      {sendModalOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal">
+            <h2 className="modal-title">Texto do e-mail</h2>
+            <p className="modal-subtitle">
+              Digite a mensagem que será enviada no corpo do e-mail. O link da escala será
+              incluído automaticamente ao final do texto.
+            </p>
+
+            <textarea
+              className="modal-textarea"
+              rows={6}
+              value={emailBody}
+              onChange={(e) => setEmailBody(e.target.value)}
+              placeholder="Ex: Olá, tudo bem? Gostaríamos de contar com a sua participação respondendo a esta enquete..."
+            />
+
+            <div className="modal-actions">
+              <button className="btn-outline" type="button" onClick={closeModal}>
+                Cancelar
+              </button>
+              <button
+                className="btn-primary"
+                type="button"
+                onClick={handleConfirmSend}
+                disabled={!selectedEscalaId}
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .page-root {
@@ -374,6 +432,102 @@ export default function EscalasPageClient({ initialData }: { initialData: Escala
           border-color: #0b2527;
         }
 
+        /* MODAL */
+        .modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 50;
+        }
+
+        .modal {
+          background: #ffffff;
+          border-radius: 16px;
+          padding: 24px 24px 20px;
+          max-width: 520px;
+          width: 100%;
+          box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35);
+        }
+
+        .modal-title {
+          font-size: 18px;
+          font-weight: 700;
+          color: #111827;
+          margin: 0 0 8px;
+        }
+
+        .modal-subtitle {
+          font-size: 14px;
+          color: #6b7280;
+          margin: 0 0 16px;
+        }
+
+        .modal-textarea {
+          width: 100%;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          padding: 10px 12px;
+          font-size: 14px;
+          resize: vertical;
+          min-height: 120px;
+          box-sizing: border-box;
+          font-family: inherit;
+          color: #111827;
+        }
+
+        .modal-textarea:focus {
+          outline: none;
+          border-color: #0b2527;
+          box-shadow: 0 0 0 1px #0b2527;
+        }
+
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+          margin-top: 16px;
+        }
+
+        .btn-outline,
+        .btn-primary {
+          padding: 8px 16px;
+          border-radius: 999px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          border: 1px solid transparent;
+          transition: all 0.2s ease;
+        }
+
+        .btn-outline {
+          background: #ffffff;
+          border-color: #d1d5db;
+          color: #374151;
+        }
+
+        .btn-outline:hover {
+          background: #f9fafb;
+        }
+
+        .btn-primary {
+          background: #0b2527;
+          color: #ffffff;
+          border-color: #0b2527;
+        }
+
+        .btn-primary:hover {
+          background: #134148;
+          border-color: #134148;
+        }
+
+        .btn-primary:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         /* Responsive */
         @media (max-width: 960px) {
           .controls-row {
@@ -400,6 +554,10 @@ export default function EscalasPageClient({ initialData }: { initialData: Escala
 
           .pagination-controls {
             order: 1;
+          }
+
+          .modal {
+            margin: 0 16px;
           }
         }
       `}</style>
