@@ -241,7 +241,7 @@ export default function Sidebar({
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
               <div className="flex items-center gap-3">
                 <img src="/logos/LogoWhite.png" alt="Logo" className="w-8 h-8" />
-                <span className="text-[#F3F4FF] text-xl font-semibold">PSYQUE</span>
+                <span className="text-[#F3F4FF] text-xl font-semibold">SIS</span>
               </div>
               <button 
                 onClick={onRequestClose} 
