@@ -184,7 +184,6 @@ export default function Sidebar({
         />
       </div>
 
-      {/* Texto PSYQUE - aparece/desaparece */}
       <div
         className={`flex items-center transition-all duration-200 ease-in-out ${
           isExpanded 

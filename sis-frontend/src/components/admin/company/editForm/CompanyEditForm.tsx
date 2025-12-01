@@ -5,10 +5,6 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
-/*
-  Reference prototype (local file):
-  /mnt/data/Psyqué Protótipo Basico.pdf
-*/
 
 type Payload = {
   razaoSocial: string;

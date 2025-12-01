@@ -141,11 +141,11 @@ export default function SurveyPageClient({
           <div className={styles.logoCircle}>
             <img
               src="/logos/LogoWhite.png"
-              alt="PSYQUÉ"
+              alt="SIS"
               className={styles.logoImage}
             />
           </div>
-          <span className={styles.brandText}>PSYQUÉ</span>
+          <span className={styles.brandText}>SIS</span>
         </div>
 
         <div className={styles.leftContent}>

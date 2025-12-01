@@ -4,11 +4,6 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useConfirm } from '@/components/ui/ConfirmProvider';
 
-/**
- * Arquivo do protótipo (referência)
- * Local path: /mnt/data/Psyqué Protótipo Basico.pdf
- * (usado apenas como referência - não é carregado aqui)
- */
 
 function extractMessageFromBody(body: any): string | null {
   if (!body && body !== 0) return null;
