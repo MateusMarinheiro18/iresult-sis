@@ -20,8 +20,27 @@ function buildDayKeyFromDate(d: Date): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+/**
+ * Converte uma string ISO/DATE ('2025-12-08' ou '2025-12-08T00:00:00.000Z')
+ * para uma Date no fuso local, sem o shift de timezone.
+ */
+function parseDateAsLocal(iso: string): Date {
+  if (!iso) return new Date(NaN);
+
+  const datePart = iso.substring(0, 10); // pega só 'YYYY-MM-DD'
+  const [yearStr, monthStr, dayStr] = datePart.split('-');
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+
+  if (!year || !month || !day) return new Date(NaN);
+
+  // new Date(ano, mesIndex, dia) cria no horário local (sem interpretar como UTC)
+  return new Date(year, month - 1, day);
+}
+
 function buildDayKeyFromISO(iso: string): string {
-  const d = new Date(iso);
+  const d = parseDateAsLocal(iso);
   return buildDayKeyFromDate(d);
 }
 
@@ -86,7 +105,10 @@ export default function CalendarPageClient() {
   const filteredEventsForMonth = useMemo(() => {
     return events.filter((event) => {
       if (!event.data) return false;
-      const d = new Date(event.data);
+
+      // ❗ Usa data local em vez de new Date(event.data)
+      const d = parseDateAsLocal(event.data);
+
       if (d.getMonth() !== currentMonth || d.getFullYear() !== currentYear) {
         return false;
       }
