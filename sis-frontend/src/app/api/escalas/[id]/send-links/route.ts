@@ -70,7 +70,7 @@ export async function POST(
     let totalEmpresasComDestinatarios = 0;
 
     const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      process.env.NEXT_PUBLIC_APP_URL || 'http://146.190.121.239:3001';
 
     for (const empresa of empresasValidas) {
       const funcionarios = await prisma.empresaFuncionario.findMany({
