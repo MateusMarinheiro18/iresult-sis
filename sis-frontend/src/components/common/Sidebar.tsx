@@ -192,7 +192,7 @@ export default function Sidebar({
         }`}
       >
         <span className="text-[#F3F4FF] text-xl font-semibold whitespace-nowrap">
-          PSYQUE
+          SIS
         </span>
       </div>
 
