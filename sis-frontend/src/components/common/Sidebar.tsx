@@ -45,7 +45,7 @@ interface SidebarProps {
 
 const DEFAULT_MENUS: Record<Variant, MenuItem[]> = {
   client: [
-    { key: "dashboard", label: "Dashboard", href: "/client/dashboard", icon: <HomeOutlined /> },
+//    { key: "dashboard", label: "Dashboard", href: "/client/dashboard", icon: <HomeOutlined /> },
     { key: "enquetes", label: "Minhas Pesquisas", href: "/client/enquetes", icon: <FilterOutlined /> },
     { key: "agendamentos", label: "Agenda / Trilhas", href: "/client/agenda", icon: <CalendarTodayOutlined /> },
     { key: "indicadores", label: "Indicadores", href: "/client/indicadores", icon: <BarChartOutlined /> },
@@ -53,12 +53,12 @@ const DEFAULT_MENUS: Record<Variant, MenuItem[]> = {
     { key: "perfil", label: "Meu Perfil", href: "/client/profile", icon: <PersonOutline /> },
   ],
   admin: [
-    { key: "dashboard", label: "Dashboard", href: "/admin/dashboard", icon: <HomeOutlined /> },
+//    { key: "dashboard", label: "Dashboard", href: "/admin/dashboard", icon: <HomeOutlined /> },
     { key: "calendario", label: "Calendário", href: "/admin/calendario", icon: <CalendarTodayOutlined /> },
     { key: "trilhas", label: "Trilhas", href: "/admin/trilhas", icon: <MapOutlined /> },
     { key: "escalas", label: "Escalas", href: "/admin/escalas", icon: <SearchOutlined /> },
     { key: "empresas", label: "Empresas", href: "/admin/empresas", icon: <BusinessCenter /> },
-    { key: "administrador", label: "Administrador", href: "/admin/administrador", icon: <PersonOutline />, permission: "integrations.view" },
+//    { key: "administrador", label: "Administrador", href: "/admin/administrador", icon: <PersonOutline />, permission: "integrations.view" },
   ],
 };
 
