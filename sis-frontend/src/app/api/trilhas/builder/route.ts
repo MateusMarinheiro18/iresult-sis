@@ -1,5 +1,5 @@
 // src/app/api/trilhas/builder/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 type ItemPayload = {
@@ -15,9 +15,9 @@ type TrilhaPayload = {
   itens: ItemPayload[];
 };
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = (await req.json()) as TrilhaPayload;
+    const body = (await request.json()) as TrilhaPayload;
 
     const nome = (body.nome || '').trim();
     if (!nome) {
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const trilha = await prisma.trilha.create({
       data: {
         nome,
-        dataCriacao: now,        // 👈 sempre definida no momento da criação
+        dataCriacao: now, // sempre definida no momento da criação
         ativo: body.ativo ?? 1,
         created: now,
         itens: {

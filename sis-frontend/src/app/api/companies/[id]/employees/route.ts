@@ -1,22 +1,30 @@
 // src/app/api/companies/[id]/employees/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { validateEmployeeRow } from '@/lib/employeeValidators';
 
 // Substitua pelo seu check de autenticação/autorização
-async function checkAdminForCompany(req: Request, companyId: number) {
+async function checkAdminForCompany(req: NextRequest, companyId: number) {
   // TODO: integrar com sessão/token e verificar permissão para companyId
   return true;
 }
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+type RouteParams = { id: string };
+
+// GET /api/companies/[id]/employees
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   try {
-    const companyId = Number(params.id);
+    const { id } = await context.params;
+    const companyId = Number(id);
+
     if (Number.isNaN(companyId) || companyId <= 0) {
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
 
-    const url = new URL(req.url);
+    const url = new URL(request.url);
     const q = url.searchParams.get('q') ?? undefined;
     const page = parseInt(url.searchParams.get('page') ?? '1', 10) || 1;
     const perPage = parseInt(url.searchParams.get('perPage') ?? '10', 10) || 10;
@@ -46,7 +54,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ data: employees, meta: { total, page, perPage } });
   } catch (err) {
     console.error('GET /employees error', err);
-    return NextResponse.json({ error: 'Erro interno ao listar funcionários.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro interno ao listar funcionários.' },
+      { status: 500 }
+    );
   }
 }
 
@@ -64,20 +75,25 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+// POST /api/companies/[id]/employees
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   try {
-    // IMPORTANTE: Await params primeiro
-    const resolvedParams = await params;
-    const companyId = Number(resolvedParams.id);
-    
+    const { id } = await context.params;
+    const companyId = Number(id);
+
     if (Number.isNaN(companyId) || companyId <= 0) {
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
 
-    const allowed = await checkAdminForCompany(req, companyId);
-    if (!allowed) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+    const allowed = await checkAdminForCompany(request, companyId);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+    }
 
-    const body = (await req.json()) as CreateBody;
+    const body = (await request.json()) as CreateBody;
 
     const nome = body.nome?.toString().trim() ?? '';
     const email = body.email?.toString().trim() ?? '';
@@ -85,11 +101,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const data_nascimento = body.data_nascimento?.toString().trim() ?? null;
     const cidade_nascimento = body.cidade_nascimento?.toString().trim() ?? null;
     const gestor = body.gestor?.toString().trim() ?? null;
-    const ativo = body.ativo === undefined ? 1 : (body.ativo ? 1 : 0);
+    const ativo = body.ativo === undefined ? 1 : body.ativo ? 1 : 0;
 
     // validações
     if (!nome || nome.length < 2) {
-      return NextResponse.json({ error: 'Nome é obrigatório (mínimo 2 caracteres).' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Nome é obrigatório (mínimo 2 caracteres).' },
+        { status: 400 }
+      );
     }
     if (email) {
       if (!isValidEmail(email)) {
@@ -99,16 +118,25 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         where: { id_empresa: companyId, email: email },
       });
       if (exists) {
-        return NextResponse.json({ error: 'Email já cadastrado para esta empresa.' }, { status: 409 });
+        return NextResponse.json(
+          { error: 'Email já cadastrado para esta empresa.' },
+          { status: 409 }
+        );
       }
     }
     if (data_nascimento) {
       const d = new Date(data_nascimento + 'T12:00:00.000Z'); // Adiciona meio-dia UTC
       if (Number.isNaN(d.getTime())) {
-        return NextResponse.json({ error: 'Data de nascimento inválida.' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Data de nascimento inválida.' },
+          { status: 400 }
+        );
       }
       if (d.getTime() > Date.now()) {
-        return NextResponse.json({ error: 'Data de nascimento não pode ser no futuro.' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Data de nascimento não pode ser no futuro.' },
+          { status: 400 }
+        );
       }
     }
 
@@ -118,7 +146,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         nome,
         email,
         telefone,
-        data_nascimento: data_nascimento ? new Date(data_nascimento + 'T12:00:00.000Z') : null,
+        data_nascimento: data_nascimento
+          ? new Date(data_nascimento + 'T12:00:00.000Z')
+          : null,
         cidade_nascimento,
         gestor,
         ativo: ativo ?? 1,
@@ -128,6 +158,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ data: newEmployee }, { status: 201 });
   } catch (err) {
     console.error('POST /employees error', err);
-    return NextResponse.json({ error: 'Erro interno ao criar funcionário.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro interno ao criar funcionário.' },
+      { status: 500 }
+    );
   }
 }

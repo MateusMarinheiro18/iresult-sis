@@ -7,21 +7,22 @@ async function checkAdmin(req: NextRequest) {
   return true;
 }
 
+type RouteParams = { id: string };
+
 /**
  * GET /api/escalas/[id]/empresas
  * Retorna todas as empresas ativas + flag "vinculada" para a escala.
  */
 export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
 ) {
-  const isAdmin = await checkAdmin(req);
+  const isAdmin = await checkAdmin(request);
   if (!isAdmin) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
 
-  // 👇 aqui é o ponto chave: await em params
-  const { id } = await params;
+  const { id } = await context.params;
   const escalaId = id ? Number(id) : NaN;
 
   if (!escalaId || Number.isNaN(escalaId) || escalaId <= 0) {
@@ -86,16 +87,15 @@ export async function GET(
  * Recria todos os vínculos da escala com empresas.
  */
 export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
 ) {
-  const isAdmin = await checkAdmin(req);
+  const isAdmin = await checkAdmin(request);
   if (!isAdmin) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
 
-  // 👇 idem aqui
-  const { id } = await params;
+  const { id } = await context.params;
   const escalaId = id ? Number(id) : NaN;
 
   if (!escalaId || Number.isNaN(escalaId) || escalaId <= 0) {
@@ -107,7 +107,7 @@ export async function POST(
 
   let body: any;
   try {
-    body = await req.json();
+    body = await request.json();
   } catch {
     return NextResponse.json(
       { error: 'Body JSON inválido.' },

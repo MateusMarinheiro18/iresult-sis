@@ -1,11 +1,8 @@
 // src/app/api/trilhas/[id]/empresas/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Next 13/14+ pode passar params como objeto ou Promise
-type Context =
-  | { params: { id: string } }
-  | { params: Promise<{ id: string }> };
+type RouteParams = { id: string };
 
 type Body = {
   empresaIds?: number[];
@@ -18,8 +15,11 @@ type Body = {
  * - Cria registros em EmpresaHasTrilha que faltam
  * - Remove registros que não estão mais na lista
  */
-export async function PUT(req: Request, context: Context) {
-  // resolve params (pode ser Promise)
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
+  // resolve params (Promise)
   const resolvedParams = await context.params;
   const idStr = resolvedParams?.id;
   const trilhaId = idStr ? Number(idStr) : NaN;
@@ -30,7 +30,7 @@ export async function PUT(req: Request, context: Context) {
 
   let body: Body;
   try {
-    body = (await req.json()) as Body;
+    body = (await request.json()) as Body;
   } catch {
     return NextResponse.json(
       { error: 'JSON inválido no corpo da requisição.' },

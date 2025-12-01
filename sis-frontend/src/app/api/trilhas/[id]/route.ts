@@ -1,5 +1,5 @@
 // src/app/api/trilhas/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 type ItemPayload = {
@@ -16,17 +16,23 @@ type TrilhaPayload = {
   itens?: ItemPayload[];
 };
 
-type Context =
-  | { params: { id: string } }
-  | { params: Promise<{ id: string }> };
+type RouteParams = { id: string };
+
+async function resolveTrilhaId(paramsPromise: Promise<RouteParams>) {
+  const resolved = await paramsPromise;
+  const idStr = resolved?.id;
+  const trilhaId = idStr ? Number(idStr) : NaN;
+  if (!trilhaId || Number.isNaN(trilhaId) || trilhaId <= 0) return null;
+  return trilhaId;
+}
 
 // GET /api/trilhas/:id
-export async function GET(_req: Request, context: Context) {
-  const resolvedParams = await context.params;
-  const idStr = resolvedParams?.id;
-  const trilhaId = idStr ? Number(idStr) : NaN;
-
-  if (!trilhaId || Number.isNaN(trilhaId) || trilhaId <= 0) {
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
+  const trilhaId = await resolveTrilhaId(context.params);
+  if (!trilhaId) {
     return NextResponse.json({ error: 'ID inválido.' }, { status: 400 });
   }
 
@@ -53,16 +59,16 @@ export async function GET(_req: Request, context: Context) {
 }
 
 // PUT /api/trilhas/:id
-export async function PUT(req: Request, context: Context) {
-  const resolvedParams = await context.params;
-  const idStr = resolvedParams?.id;
-  const trilhaId = idStr ? Number(idStr) : NaN;
-
-  if (!trilhaId || Number.isNaN(trilhaId) || trilhaId <= 0) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
+  const trilhaId = await resolveTrilhaId(context.params);
+  if (!trilhaId) {
     return NextResponse.json({ error: 'ID inválido.' }, { status: 400 });
   }
 
-  const body = (await req.json()) as TrilhaPayload;
+  const body = (await request.json()) as TrilhaPayload;
 
   const nome = (body.nome || '').trim();
   if (!nome) {
@@ -167,12 +173,12 @@ export async function PUT(req: Request, context: Context) {
 }
 
 // DELETE /api/trilhas/:id
-export async function DELETE(_req: Request, context: Context) {
-  const resolvedParams = await context.params;
-  const idStr = resolvedParams?.id;
-  const trilhaId = idStr ? Number(idStr) : NaN;
-
-  if (!trilhaId || Number.isNaN(trilhaId) || trilhaId <= 0) {
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
+  const trilhaId = await resolveTrilhaId(context.params);
+  if (!trilhaId) {
     return NextResponse.json({ error: 'ID inválido.' }, { status: 400 });
   }
 

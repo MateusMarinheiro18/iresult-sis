@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-async function checkAdmin(req: NextRequest) {
+async function checkAdmin(request: NextRequest) {
   // TODO: integrar com autenticação real
   return true;
 }
@@ -61,8 +61,8 @@ function parseDecimal(value: unknown): string | null {
   return null;
 }
 
-export async function POST(req: NextRequest) {
-  const isAdmin = await checkAdmin(req);
+export async function POST(request: NextRequest) {
+  const isAdmin = await checkAdmin(request);
   if (!isAdmin) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
@@ -70,9 +70,12 @@ export async function POST(req: NextRequest) {
   let body: EscalaBuilderInput;
 
   try {
-    body = await req.json();
+    body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Body JSON inválido.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Body JSON inválido.' },
+      { status: 400 }
+    );
   }
 
   const nome = body.nome?.trim();
@@ -124,7 +127,9 @@ export async function POST(req: NextRequest) {
 
     if (!Array.isArray(p.respostas) || p.respostas.length === 0) {
       return NextResponse.json(
-        { error: `Pergunta ${index + 1}: adicione pelo menos uma resposta.` },
+        {
+          error: `Pergunta ${index + 1}: adicione pelo menos uma resposta.`,
+        },
         { status: 400 }
       );
     }
@@ -171,7 +176,9 @@ export async function POST(req: NextRequest) {
             valorInicialIntermediario: parseDecimal(
               p.valorInicialIntermediario
             ),
-            valorFinalIntermediario: parseDecimal(p.valorFinalIntermediario),
+            valorFinalIntermediario: parseDecimal(
+              p.valorFinalIntermediario
+            ),
             valorInicialRisco: parseDecimal(p.valorInicialRisco),
             valorFinalRisco: parseDecimal(p.valorFinalRisco),
 

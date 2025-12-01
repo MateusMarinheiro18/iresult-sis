@@ -1,5 +1,5 @@
 // src/app/api/companies/[id]/employees/import/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 type EmployeeRow = {
@@ -28,18 +28,18 @@ function chunkArray<T>(array: T[], size: number): T[][] {
 // Função helper para parse de data
 function parseDateStringMaybe(dateStr: string | undefined): string | null {
   if (!dateStr) return null;
-  
+
   // Formato ISO YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return dateStr;
   }
-  
+
   // Formato brasileiro DD/MM/YYYY
   const brMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (brMatch) {
     return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
   }
-  
+
   // Tenta parse genérico
   try {
     const d = new Date(dateStr);
@@ -50,24 +50,32 @@ function parseDateStringMaybe(dateStr: string | undefined): string | null {
       return `${year}-${month}-${day}`;
     }
   } catch {}
-  
+
   return null;
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+type RouteParams = { id: string };
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   try {
-    const resolvedParams = await params;
+    const resolvedParams = await context.params;
     const companyId = Number(resolvedParams.id);
-    
+
     if (Number.isNaN(companyId) || companyId <= 0) {
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
 
-    const body = (await req.json()) as ImportBody;
+    const body = (await request.json()) as ImportBody;
     const rows = Array.isArray(body?.rows) ? body.rows : [];
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'Nenhuma linha enviada para importação.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Nenhuma linha enviada para importação.' },
+        { status: 400 }
+      );
     }
 
     // 1) Apaga todos os funcionários da empresa (hard delete)
@@ -82,15 +90,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (!nome || nome.length < 2) {
         continue;
       }
-      
+
       const email = r.email ? r.email.toString().trim() : null;
       const telefone = r.telefone ? r.telefone.toString().trim() : null;
-      const cidade_nascimento = r.cidade_nascimento ? r.cidade_nascimento.toString().trim() : null;
+      const cidade_nascimento = r.cidade_nascimento
+        ? r.cidade_nascimento.toString().trim()
+        : null;
       const gestor = r.gestor ? r.gestor.toString().trim() : null;
-      const ativo = r.ativo === undefined ? 1 : (r.ativo ? 1 : 0);
-      
+      const ativo = r.ativo === undefined ? 1 : r.ativo ? 1 : 0;
+
       // Parse da data
-      const d = parseDateStringMaybe(r.data_nascimento ? r.data_nascimento.toString() : undefined);
+      const d = parseDateStringMaybe(
+        r.data_nascimento ? r.data_nascimento.toString() : undefined
+      );
       const data_nascimento = d ? new Date(d + 'T12:00:00.000Z') : null;
 
       normalized.push({
@@ -106,7 +118,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     if (normalized.length === 0) {
-      return NextResponse.json({ error: 'Nenhuma linha válida para inserir (verifique "nome").' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Nenhuma linha válida para inserir (verifique "nome").' },
+        { status: 400 }
+      );
     }
 
     // 3) Inserir em batches
@@ -130,9 +145,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ summary }, { status: 200 });
   } catch (err) {
     console.error('ERROR import:', err);
-    return NextResponse.json({ 
-      error: 'Erro interno ao importar funcionários.',
-      details: err instanceof Error ? err.message : String(err)
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Erro interno ao importar funcionários.',
+        details: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 }
+    );
   }
 }

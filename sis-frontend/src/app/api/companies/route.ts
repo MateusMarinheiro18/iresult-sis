@@ -1,18 +1,21 @@
 // src/app/api/companies/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 function sanitizeNumberString(s?: string) {
   return s ? s.replace(/\D+/g, '') : null; // remove tudo que não é dígito
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
     // minimal server-side validation
     if (!body.razaoSocial || typeof body.razaoSocial !== 'string') {
-      return NextResponse.json({ message: 'razaoSocial is required' }, { status: 400 });
+      return NextResponse.json(
+        { message: 'razaoSocial is required' },
+        { status: 400 }
+      );
     }
 
     const razaoSocial = body.razaoSocial.trim();

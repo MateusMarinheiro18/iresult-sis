@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
  * Stub de autorização para ADMIN.
  * Depois você pode integrar com sessão/token.
  */
-async function checkAdmin(req: NextRequest) {
+async function checkAdmin(request: NextRequest) {
   // TODO: integrar com autenticação real
   return true;
 }
@@ -16,8 +16,8 @@ async function checkAdmin(req: NextRequest) {
  * - Lista todas as escalas ATIVAS, ordenadas por id desc.
  * - Usada pela tabela de /admin/escalas.
  */
-export async function GET(req: NextRequest) {
-  const isAdmin = await checkAdmin(req);
+export async function GET(request: NextRequest) {
+  const isAdmin = await checkAdmin(request);
   if (!isAdmin) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     console.error('GET /api/escalas erro:', err);
     return NextResponse.json(
       { error: 'Erro ao listar escalas.' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
@@ -48,19 +48,19 @@ export async function GET(req: NextRequest) {
  *     "ativo": 1                      // opcional (default 1)
  *   }
  */
-export async function POST(req: NextRequest) {
-  const isAdmin = await checkAdmin(req);
+export async function POST(request: NextRequest) {
+  const isAdmin = await checkAdmin(request);
   if (!isAdmin) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
 
   let body: any;
   try {
-    body = await req.json();
+    body = await request.json();
   } catch {
     return NextResponse.json(
       { error: 'Body JSON inválido.' },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   if (!rawNome || typeof rawNome !== 'string' || !rawNome.trim()) {
     return NextResponse.json(
       { error: 'Campo "nome" é obrigatório.' },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -82,8 +82,11 @@ export async function POST(req: NextRequest) {
     const parsed = new Date(rawDataVencimento);
     if (Number.isNaN(parsed.getTime())) {
       return NextResponse.json(
-        { error: 'Campo "dataVencimento" deve ser uma data válida (ISO ou yyyy-mm-dd).' },
-        { status: 400 },
+        {
+          error:
+            'Campo "dataVencimento" deve ser uma data válida (ISO ou yyyy-mm-dd).',
+        },
+        { status: 400 }
       );
     }
     dataVencimento = parsed;
@@ -109,7 +112,7 @@ export async function POST(req: NextRequest) {
     console.error('POST /api/escalas erro:', err);
     return NextResponse.json(
       { error: 'Erro ao criar escala.' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

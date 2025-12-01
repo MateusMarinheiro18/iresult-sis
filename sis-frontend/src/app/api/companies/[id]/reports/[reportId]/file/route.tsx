@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { presignGetUrl } from '@/lib/s3';
 
@@ -7,9 +7,12 @@ type RouteParams = {
   reportId: string;
 };
 
-export async function GET(req: Request, ctx: { params: Promise<RouteParams> }) {
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   try {
-    const params = await ctx.params;
+    const params = await context.params;
     const companyId = Number(params.id);
     const reportId = Number(params.reportId);
 

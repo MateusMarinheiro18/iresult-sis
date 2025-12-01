@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+// src/app/api/companies/[id]/reports/presign/route.ts (ou caminho equivalente)
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { makeFileKey, presignUploadUrl } from '@/lib/s3';
 
@@ -8,16 +9,19 @@ type RouteParams = {
   id: string;
 };
 
-export async function POST(req: Request, ctx: { params: Promise<RouteParams> }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   try {
-    const params = await ctx.params;
+    const params = await context.params;
     const companyId = Number(params.id);
 
     if (!Number.isFinite(companyId) || companyId <= 0) {
       return NextResponse.json({ message: 'Empresa inválida.' }, { status: 400 });
     }
 
-    const body = await req.json().catch(() => null);
+    const body = await request.json().catch(() => null);
     if (!body) {
       return NextResponse.json({ message: 'Body inválido.' }, { status: 400 });
     }
@@ -38,7 +42,9 @@ export async function POST(req: Request, ctx: { params: Promise<RouteParams> }) 
       );
     }
 
-    const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES ?? 50 * 1024 * 1024);
+    const MAX_UPLOAD_BYTES = Number(
+      process.env.MAX_UPLOAD_BYTES ?? 50 * 1024 * 1024
+    );
     if (fileSize > MAX_UPLOAD_BYTES) {
       const mb = (MAX_UPLOAD_BYTES / (1024 * 1024)).toFixed(0);
       return NextResponse.json(

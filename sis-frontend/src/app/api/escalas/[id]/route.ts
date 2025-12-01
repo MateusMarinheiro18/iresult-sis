@@ -1,10 +1,10 @@
 // src/app/api/escalas/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 type Params = { id: string };
 
-async function resolveEscalaId(params: Params | Promise<Params>) {
+async function resolveEscalaId(params: Promise<Params>) {
   const resolved = await params;
   const idStr = resolved?.id;
   const escalaId = idStr ? Number(idStr) : NaN;
@@ -12,8 +12,11 @@ async function resolveEscalaId(params: Params | Promise<Params>) {
   return escalaId;
 }
 
-// Se já tiver GET aqui, mantenha
-export async function GET(_req: Request, context: { params: Params | Promise<Params> }) {
+// GET /api/escalas/[id]
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<Params> }
+) {
   const escalaId = await resolveEscalaId(context.params);
   if (!escalaId) {
     return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
@@ -24,26 +27,34 @@ export async function GET(_req: Request, context: { params: Params | Promise<Par
   });
 
   if (!escala) {
-    return NextResponse.json({ error: 'Escala não encontrada' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Escala não encontrada' },
+      { status: 404 }
+    );
   }
 
   return NextResponse.json(escala);
 }
 
-export async function PUT(req: Request, context: { params: Params | Promise<Params> }) {
+// PUT /api/escalas/[id]
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<Params> }
+) {
   const escalaId = await resolveEscalaId(context.params);
   if (!escalaId) {
     return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   }
 
-  const body = await req.json();
+  const body = await request.json();
 
   // ajuste os campos conforme seu modelo, por ex:
   // nome, descricao, ativa, thresholds, etc.
   const data: any = {
     nome: body.nome,
     descricao: body.descricao ?? null,
-    ativa: typeof body.ativa === 'boolean' ? (body.ativa ? 1 : 0) : body.ativa,
+    ativa:
+      typeof body.ativa === 'boolean' ? (body.ativa ? 1 : 0) : body.ativa,
   };
 
   try {
@@ -62,7 +73,11 @@ export async function PUT(req: Request, context: { params: Params | Promise<Para
   }
 }
 
-export async function DELETE(_req: Request, context: { params: Params | Promise<Params> }) {
+// DELETE /api/escalas/[id]
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<Params> }
+) {
   const escalaId = await resolveEscalaId(context.params);
   if (!escalaId) {
     return NextResponse.json({ error: 'ID inválido' }, { status: 400 });

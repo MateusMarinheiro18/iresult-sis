@@ -1,5 +1,5 @@
 // src/app/api/companies/[id]/usersrh/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -14,7 +14,7 @@ import { sendUserAccessEmail } from '@/lib/email/sendUserAccess';
  */
 
 // checagem de autorização (stub — substitua pela sua lógica)
-async function checkAdminForCompany(req: Request, companyId: number) {
+async function checkAdminForCompany(req: NextRequest, companyId: number) {
   // TODO: integrar com sessão/token e verificar permissão para companyId
   return true;
 }
@@ -23,15 +23,21 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+type RouteParams = { id: string };
+
 /** GET — listagem paginada / filtrada */
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   try {
-    const companyId = Number(params.id);
+    const { id } = await context.params;
+    const companyId = Number(id);
     if (Number.isNaN(companyId) || companyId <= 0) {
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
 
-    const url = new URL(req.url);
+    const url = new URL(request.url);
     const q = url.searchParams.get('q') ?? undefined;
     const page = parseInt(url.searchParams.get('page') ?? '1', 10) || 1;
     const perPage = parseInt(url.searchParams.get('perPage') ?? '10', 10) || 10;
@@ -73,7 +79,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ data: users, meta: { total, page, perPage } });
   } catch (err) {
     console.error('GET /usersrh error', err);
-    return NextResponse.json({ error: 'Erro interno ao listar usuários RH.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro interno ao listar usuários RH.' },
+      { status: 500 }
+    );
   }
 }
 
@@ -103,18 +112,23 @@ function generateRandomPassword(length = 12) {
     .slice(0, length);
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   try {
-    const resolvedParams = await params;
-    const companyId = Number(resolvedParams.id);
+    const { id } = await context.params;
+    const companyId = Number(id);
     if (Number.isNaN(companyId) || companyId <= 0) {
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
 
-    const allowed = await checkAdminForCompany(req, companyId);
-    if (!allowed) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+    const allowed = await checkAdminForCompany(request, companyId);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
+    }
 
-    const body = (await req.json()) as CreateBody;
+    const body = (await request.json()) as CreateBody;
 
     const nome = body.nome?.toString().trim() ?? '';
     const email = body.email?.toString().trim() ?? '';
@@ -122,15 +136,21 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const data_nascimento = body.data_nascimento?.toString().trim() ?? null;
     const cidade = body.cidade?.toString().trim() ?? null;
     const gestor = body.gestor?.toString().trim() ?? null;
-    const ativo = body.ativo === undefined ? 1 : (body.ativo ? 1 : 0);
+    const ativo = body.ativo === undefined ? 1 : body.ativo ? 1 : 0;
     const created_by = body.created_by ?? null;
 
     // validações
     if (!nome || nome.length < 2) {
-      return NextResponse.json({ error: 'Nome é obrigatório (mínimo 2 caracteres).' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Nome é obrigatório (mínimo 2 caracteres).' },
+        { status: 400 }
+      );
     }
     if (!email) {
-      return NextResponse.json({ error: 'Email é obrigatório.' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Email é obrigatório.' },
+        { status: 400 }
+      );
     }
     if (!isValidEmail(email)) {
       return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
@@ -141,16 +161,25 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       where: { id_empresa: companyId, email: email },
     });
     if (exists) {
-      return NextResponse.json({ error: 'Email já cadastrado para esta empresa.' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Email já cadastrado para esta empresa.' },
+        { status: 409 }
+      );
     }
 
     if (data_nascimento) {
       const d = new Date(data_nascimento + 'T12:00:00.000Z');
       if (Number.isNaN(d.getTime())) {
-        return NextResponse.json({ error: 'Data de nascimento inválida.' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Data de nascimento inválida.' },
+          { status: 400 }
+        );
       }
       if (d.getTime() > Date.now()) {
-        return NextResponse.json({ error: 'Data de nascimento não pode ser no futuro.' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Data de nascimento não pode ser no futuro.' },
+          { status: 400 }
+        );
       }
     }
 
@@ -162,14 +191,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const salt = await bcrypt.genSalt(saltRounds);
     const senha_hash = await bcrypt.hash(plainPassword, salt);
 
-    // Cria usuário com senha_hash e flag must_change_password = true (indicando que precisa definir nova senha no cliente)
+    // Cria usuário com senha_hash
     const newUser = await prisma.empresaUsuario.create({
       data: {
         id_empresa: companyId,
         nome,
         email: email || null,
         telefone,
-        data_nascimento: data_nascimento ? new Date(data_nascimento + 'T12:00:00.000Z') : null,
+        data_nascimento: data_nascimento
+          ? new Date(data_nascimento + 'T12:00:00.000Z')
+          : null,
         cidade,
         gestor,
         ativo: ativo ?? 1,
@@ -191,23 +222,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       },
     });
 
-    // Dispara envio de e-mail em background (fire-and-forget).
-    // NÃO aguardamos (await) para não atrasar a resposta ao admin.
-    // Caso o envio falhe, vamos logar o erro — você pode opcionalmente persistir em uma tabela email_log.
+    // Dispara envio de e-mail em background (fire-and-forget)
     try {
       sendUserAccessEmail({
         to: newUser.email ?? '',
         name: newUser.nome ?? '',
         email: newUser.email ?? '',
-        plainPassword, // PASSADO APENAS EM MEMÓRIA para o util de envio
+        plainPassword, // só em memória, para envio
       }).catch((sendErr) => {
-        // erros no envio são tratados aqui (não bloqueiam a resposta)
         console.error('Erro enviando e-mail de acesso ao usuário RH:', sendErr);
-        // opcional: criar um registro em uma tabela email_log via prisma aqui
-        // await prisma.emailLog.create({ data: { to: newUser.email, type: 'user_access', success: false, error: String(sendErr), payload: {} } });
       });
     } catch (err) {
-      // caso algo improvável ocorra ao iniciar o envio
       console.error('Erro iniciando envio de e-mail (não fatal):', err);
     }
 
@@ -215,6 +240,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ data: newUser }, { status: 201 });
   } catch (err) {
     console.error('POST /usersrh error', err);
-    return NextResponse.json({ error: 'Erro interno ao criar usuário RH.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro interno ao criar usuário RH.' },
+      { status: 500 }
+    );
   }
 }

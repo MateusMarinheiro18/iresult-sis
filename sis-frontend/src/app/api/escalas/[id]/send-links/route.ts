@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+// src/app/api/escalas/[id]/send/route.ts (ou caminho equivalente)
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendBulkEmail } from '@/lib/email/sendEscala';
 
@@ -9,24 +10,22 @@ type Body = {
 };
 
 export async function POST(
-  req: Request,
-  context: { params: ParamsType } | { params: Promise<ParamsType> },
+  request: NextRequest,
+  context: { params: Promise<ParamsType> }
 ) {
-  const resolvedParams =
-    'params' in context ? await context.params : (context as any).params;
-  const idStr = resolvedParams?.id;
+  const { id: idStr } = await context.params;
   const escalaId = idStr ? Number(idStr) : NaN;
 
   if (!escalaId || Number.isNaN(escalaId) || escalaId <= 0) {
     return NextResponse.json(
       { error: 'ID de escala inválido.' },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
   let body: Body;
   try {
-    body = (await req.json()) as Body;
+    body = (await request.json()) as Body;
   } catch {
     return NextResponse.json({ error: 'JSON inválido.' }, { status: 400 });
   }
@@ -41,7 +40,7 @@ export async function POST(
     if (!escala || escala.ativo !== 1) {
       return NextResponse.json(
         { error: 'Escala não encontrada ou inativa.' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -63,7 +62,7 @@ export async function POST(
           error:
             'Nenhuma empresa ativa vinculada a esta escala para envio dos links.',
         },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -89,8 +88,8 @@ export async function POST(
         new Set(
           funcionarios
             .map((f) => f.email)
-            .filter((e): e is string => !!e && e.trim().length > 0),
-        ),
+            .filter((e): e is string => !!e && e.trim().length > 0)
+        )
       );
 
       if (!emails.length) {
@@ -144,7 +143,7 @@ Obrigado!`;
     console.error('Erro ao enviar links de escala por e-mail', err);
     return NextResponse.json(
       { error: 'Erro interno ao enviar os e-mails.' },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

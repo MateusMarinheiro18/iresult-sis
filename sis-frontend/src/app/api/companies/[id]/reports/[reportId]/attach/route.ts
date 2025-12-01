@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+// src/app/api/companies/[id]/reports/[reportId]/attach/route.ts
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 type RouteParams = {
@@ -6,9 +7,12 @@ type RouteParams = {
   reportId: string; // [reportId]
 };
 
-export async function POST(req: Request, ctx: { params: Promise<RouteParams> }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   try {
-    const params = await ctx.params;
+    const params = await context.params;
     const companyId = Number(params.id);
     const reportId = Number(params.reportId);
 
@@ -19,7 +23,7 @@ export async function POST(req: Request, ctx: { params: Promise<RouteParams> }) 
       return NextResponse.json({ message: 'Relatório inválido.' }, { status: 400 });
     }
 
-    const body = await req.json().catch(() => null);
+    const body = await request.json().catch(() => null);
     if (!body) {
       return NextResponse.json({ message: 'Body inválido.' }, { status: 400 });
     }
@@ -61,7 +65,11 @@ export async function POST(req: Request, ctx: { params: Promise<RouteParams> }) 
     const current = existing.versionSuffix ?? 0;
     let newVersion: number;
 
-    if (typeof versionSuffix === 'number' && Number.isFinite(versionSuffix) && versionSuffix > current) {
+    if (
+      typeof versionSuffix === 'number' &&
+      Number.isFinite(versionSuffix) &&
+      versionSuffix > current
+    ) {
       newVersion = versionSuffix;
     } else {
       newVersion = current > 0 ? current + 1 : 1;
@@ -95,7 +103,10 @@ export async function POST(req: Request, ctx: { params: Promise<RouteParams> }) 
   } catch (err: any) {
     console.error('[attach] erro:', err);
     return NextResponse.json(
-      { message: 'Erro ao associar arquivo ao relatório.', details: err?.message },
+      {
+        message: 'Erro ao associar arquivo ao relatório.',
+        details: err?.message,
+      },
       { status: 500 }
     );
   }

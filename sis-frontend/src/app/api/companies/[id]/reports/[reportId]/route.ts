@@ -1,9 +1,9 @@
 // src/app/api/companies/[id]/reports/[reportId]/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 /** stub de autorização */
-async function checkAdminForCompany(_req: Request, _companyId: number) {
+async function checkAdminForCompany(_req: NextRequest, _companyId: number) {
   return true;
 }
 
@@ -31,10 +31,12 @@ function resolveReportIdFromResolvedParams(resolvedParams: { [key: string]: any 
   return Number.isFinite(num) && num > 0 ? num : NaN;
 }
 
+type RouteParams = { id: string; reportId: string };
+
 /** GET — retorna o relatório */
 export async function GET(
-  _req: Request,
-  context: { params: Promise<{ [key: string]: any }> | { [key: string]: any } }
+  _request: NextRequest,
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const resolved = await context.params;
@@ -46,7 +48,15 @@ export async function GET(
 
     const rel = await prisma.empresaRelatorio.findFirst({
       where: { id: reportId, idEmpresa: companyId, deleted: null },
-      select: { id: true, titulo: true, texto: true, dataPublicacao: true, ativo: true, created: true, updated: true },
+      select: {
+        id: true,
+        titulo: true,
+        texto: true,
+        dataPublicacao: true,
+        ativo: true,
+        created: true,
+        updated: true,
+      },
     });
 
     if (!rel) return NextResponse.json({ message: 'Relatório não encontrado.' }, { status: 404 });
@@ -67,8 +77,8 @@ export async function GET(
 
 /** PATCH — atualiza título/texto */
 export async function PATCH(
-  req: Request,
-  context: { params: Promise<{ [key: string]: any }> | { [key: string]: any } }
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const resolved = await context.params;
@@ -78,27 +88,41 @@ export async function PATCH(
       return NextResponse.json({ message: 'companyId ou reportId inválido' }, { status: 400 });
     }
 
-    const allowed = await checkAdminForCompany(req, companyId);
+    const allowed = await checkAdminForCompany(request, companyId);
     if (!allowed) return NextResponse.json({ message: 'Não autorizado' }, { status: 403 });
 
-    const body = await req.json().catch(() => ({}));
+    const body = await request.json().catch(() => ({}));
     const tituloRaw = body?.titulo;
     const textoRaw = body?.texto;
 
     // verifica existência e vínculo
-    const existing = await prisma.empresaRelatorio.findUnique({ where: { id: reportId }, select: { idEmpresa: true } });
+    const existing = await prisma.empresaRelatorio.findUnique({
+      where: { id: reportId },
+      select: { idEmpresa: true },
+    });
     if (!existing || existing.idEmpresa !== companyId) {
-      return NextResponse.json({ message: 'Relatório não encontrado para essa empresa.' }, { status: 404 });
+      return NextResponse.json(
+        { message: 'Relatório não encontrado para essa empresa.' },
+        { status: 404 }
+      );
     }
 
     // validações
     if (tituloRaw != null) {
-      if (typeof tituloRaw !== 'string' || !tituloRaw.trim()) return NextResponse.json({ message: 'Título inválido.' }, { status: 400 });
-      if (tituloRaw.trim().length > 300) return NextResponse.json({ message: 'Título muito longo.' }, { status: 400 });
+      if (typeof tituloRaw !== 'string' || !tituloRaw.trim()) {
+        return NextResponse.json({ message: 'Título inválido.' }, { status: 400 });
+      }
+      if (tituloRaw.trim().length > 300) {
+        return NextResponse.json({ message: 'Título muito longo.' }, { status: 400 });
+      }
     }
     if (textoRaw != null) {
-      if (typeof textoRaw !== 'string') return NextResponse.json({ message: 'Texto inválido.' }, { status: 400 });
-      if (textoRaw.length > 100000) return NextResponse.json({ message: 'Texto muito grande.' }, { status: 400 });
+      if (typeof textoRaw !== 'string') {
+        return NextResponse.json({ message: 'Texto inválido.' }, { status: 400 });
+      }
+      if (textoRaw.length > 100000) {
+        return NextResponse.json({ message: 'Texto muito grande.' }, { status: 400 });
+      }
     }
 
     const now = new Date();
@@ -112,7 +136,12 @@ export async function PATCH(
       select: { id: true, titulo: true, texto: true, dataPublicacao: true, ativo: true },
     });
 
-    const safe = { ...updated, dataPublicacao: updated.dataPublicacao ? updated.dataPublicacao.toISOString() : null };
+    const safe = {
+      ...updated,
+      dataPublicacao: updated.dataPublicacao
+        ? updated.dataPublicacao.toISOString()
+        : null,
+    };
     return NextResponse.json(safe);
   } catch (err: any) {
     console.error('API PATCH report error:', err);
@@ -122,8 +151,8 @@ export async function PATCH(
 
 /** DELETE — soft delete (marca deleted e inativa) */
 export async function DELETE(
-  _req: Request,
-  context: { params: Promise<{ [key: string]: any }> | { [key: string]: any } }
+  _request: NextRequest,
+  context: { params: Promise<RouteParams> }
 ) {
   try {
     const resolved = await context.params;
@@ -134,7 +163,10 @@ export async function DELETE(
       return NextResponse.json({ message: 'companyId ou reportId inválido' }, { status: 400 });
     }
 
-    const existing = await prisma.empresaRelatorio.findUnique({ where: { id: reportId }, select: { idEmpresa: true } });
+    const existing = await prisma.empresaRelatorio.findUnique({
+      where: { id: reportId },
+      select: { idEmpresa: true },
+    });
     if (!existing || existing.idEmpresa !== companyId) {
       return NextResponse.json({ message: 'Relatório não encontrado.' }, { status: 404 });
     }

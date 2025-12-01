@@ -1,5 +1,5 @@
 // src/app/api/web/escalas/responder/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 type RespostaPayload = {
@@ -13,10 +13,10 @@ type Body = {
   respostas?: RespostaPayload[];
 };
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   let body: Body;
   try {
-    body = (await req.json()) as Body;
+    body = (await request.json()) as Body;
   } catch {
     return NextResponse.json({ error: 'JSON inválido.' }, { status: 400 });
   }
