@@ -12,7 +12,6 @@ export type EscalaRow = {
 
 type Props = {
   items: EscalaRow[];
-  onSendLink: (id: number) => void;
   onEdit: (id: number) => void;
 };
 
@@ -27,17 +26,16 @@ function formatDate(d?: string | Date | null) {
   return `${dia}/${mes}/${ano}`;
 }
 
-export default function EscalasTable({ items, onSendLink, onEdit }: Props) {
+export default function EscalasTable({ items, onEdit }: Props) {
   return (
     <div className="table-scroll">
       <table className="escalas-table" cellPadding={0} cellSpacing={0}>
         <thead>
           <tr>
             <th className="col-id">ID</th>
-            <th className="col-name">Nome</th>
-            <th className="col-date">Data de vencimento</th>
-            <th className="col-action">Enviar link</th>
-            <th className="col-action">Editar</th>
+            <th className="col-name">NOME</th>
+            <th className="col-date">DATA DE VENCIMENTO</th>
+            <th className="col-action">AÇÕES</th>
           </tr>
         </thead>
 
@@ -56,15 +54,6 @@ export default function EscalasTable({ items, onSendLink, onEdit }: Props) {
 
               <td className="cell action-cell">
                 <button
-                  className="pill-btn pill-primary"
-                  onClick={() => onSendLink(e.id)}
-                >
-                  Enviar link
-                </button>
-              </td>
-
-              <td className="cell action-cell">
-                <button
                   className="pill-btn pill-secondary"
                   onClick={() => onEdit(e.id)}
                 >
@@ -76,7 +65,7 @@ export default function EscalasTable({ items, onSendLink, onEdit }: Props) {
 
           {items.length === 0 && (
             <tr>
-              <td colSpan={5} className="no-results">
+              <td colSpan={4} className="no-results">
                 Nenhuma escala encontrada.
               </td>
             </tr>
@@ -102,8 +91,8 @@ export default function EscalasTable({ items, onSendLink, onEdit }: Props) {
         }
 
         thead th {
-          text-align: left;
-          padding: 16px 20px;
+          text-align: center;
+          padding: 16px 24px;
           font-size: 13px;
           font-weight: 700;
           color: #374151;
@@ -115,36 +104,41 @@ export default function EscalasTable({ items, onSendLink, onEdit }: Props) {
         }
 
         .col-id {
-          padding-left: 24px;
+          width: 80px;
         }
-        .col-action {
-          padding-right: 24px;
-          text-align: center;
+
+        .col-name {
+          min-width: 220px;
         }
+
         .col-date {
           min-width: 150px;
+        }
+
+        .col-action {
+          width: 140px;
         }
 
         tbody tr {
           border-bottom: 1px solid rgba(11, 37, 39, 0.04);
           transition: background 0.15s ease;
         }
+
         tbody tr:hover {
           background: rgba(11, 37, 39, 0.02);
         }
 
         .cell {
-          padding: 18px 20px;
+          padding: 18px 24px;
           vertical-align: middle;
           font-size: 14px;
           color: #333;
+          text-align: center; /* centraliza tudo */
         }
 
         .id-cell {
           font-weight: 800;
           color: #111827;
-          width: 80px;
-          padding-left: 24px;
         }
 
         .name-cell {
@@ -167,9 +161,7 @@ export default function EscalasTable({ items, onSendLink, onEdit }: Props) {
         }
 
         .action-cell {
-          width: 140px;
-          text-align: center;
-          padding-right: 24px;
+          white-space: nowrap;
         }
 
         .pill-btn {
@@ -185,17 +177,6 @@ export default function EscalasTable({ items, onSendLink, onEdit }: Props) {
           white-space: nowrap;
           text-decoration: none;
           transition: all 0.2s ease;
-        }
-
-        .pill-primary {
-          background: #0b2527;
-          color: white;
-          border-color: #0b2527;
-        }
-
-        .pill-primary:hover {
-          background: #134148;
-          border-color: #134148;
         }
 
         .pill-secondary {
