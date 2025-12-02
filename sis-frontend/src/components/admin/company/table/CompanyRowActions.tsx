@@ -1,3 +1,4 @@
+// src/components/admin/company/CompanyRowActions.tsx
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
@@ -16,9 +17,14 @@ function extractMessageFromBody(body: any): string | null {
 export default function CompanyRowActions({ companyId }: { companyId: number }) {
   const router = useRouter();
   const confirm = useConfirm();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // excluir
   const [openMenu, setOpenMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // envio escala
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sendMessage, setSendMessage] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!openMenu) return;
@@ -62,11 +68,9 @@ export default function CompanyRowActions({ companyId }: { companyId: number }) 
       }
 
       const successMsg = extractMessageFromBody(body) || 'Empresa deletada com sucesso!';
-      
       toast.success(successMsg, { id: loadingId });
 
       setTimeout(() => router.refresh(), 800);
-
     } catch (err: any) {
       console.error('Erro ao deletar empresa:', err);
       const errorMsg = err.message || 'Erro ao deletar empresa';
@@ -79,6 +83,71 @@ export default function CompanyRowActions({ companyId }: { companyId: number }) 
   function handleEdit() {
     setOpenMenu(false);
     router.push(`/admin/empresas/${companyId}/edit`);
+  }
+
+  function handleOpenSend() {
+    setOpenMenu(false);
+    setSendOpen(true);
+  }
+
+  async function handleConfirmSend() {
+    if (sending) return;
+
+    if (!sendMessage.trim()) {
+      toast.error('Digite a mensagem que será enviada no e-mail.');
+      return;
+    }
+
+    setSending(true);
+    const loadingId = toast.loading('Enviando escala…');
+
+    try {
+      const res = await fetch(`/api/companies/${companyId}/send-escala`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: sendMessage }),
+      });
+
+      const text = await res.text().catch(() => '');
+      let body: any = {};
+      try {
+        body = text ? JSON.parse(text) : {};
+      } catch {
+        body = text;
+      }
+
+      if (!res.ok) {
+        const msg = extractMessageFromBody(body) ?? 'Erro ao enviar escala.';
+        toast.error(msg, { id: loadingId });
+        setSending(false);
+        return;
+      }
+
+      const sent = (body as any).sent ?? 0;
+      const total = (body as any).total ?? sent;
+      const skippedNoEmail = (body as any).skippedNoEmail ?? 0;
+
+      const resumo =
+        total > 1
+          ? `Envio concluído. Destinatários: ${sent}/${total}. Sem e-mail: ${skippedNoEmail}.`
+          : 'Envio concluído.';
+
+      toast.success(resumo, { id: loadingId });
+
+      setSendOpen(false);
+      setSendMessage('');
+    } catch (err: any) {
+      console.error('Erro ao enviar escala:', err);
+      const msg = err?.message ?? 'Erro inesperado ao enviar escala.';
+      toast.error(msg, { id: loadingId });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function handleCancelSend() {
+    if (sending) return;
+    setSendOpen(false);
   }
 
   return (
@@ -99,13 +168,58 @@ export default function CompanyRowActions({ companyId }: { companyId: number }) 
 
       {openMenu && (
         <div className="menu" role="menu">
+          <button className="menu-item" onClick={handleOpenSend}>
+            Enviar escala
+          </button>
+
           <button className="menu-item" onClick={handleEdit}>
             Editar
           </button>
 
-          <button className="menu-item danger" onClick={handleDelete} disabled={loading}>
+          <button
+            className="menu-item danger"
+            onClick={handleDelete}
+            disabled={loading}
+          >
             {loading ? 'Processando...' : 'Excluir'}
           </button>
+        </div>
+      )}
+
+      {sendOpen && (
+        <div className="modal-backdrop">
+          <div className="modal">
+            <h3 className="modal-title">Enviar escala</h3>
+            <p className="modal-text">
+              Digite a mensagem que será enviada para os funcionários desta empresa junto com o link da escala.
+            </p>
+            <textarea
+              className="modal-textarea"
+              rows={5}
+              value={sendMessage}
+              onChange={(e) => setSendMessage(e.target.value)}
+              placeholder="Olá, tudo bem? Por favor, responda a pesquisa no link abaixo..."
+              disabled={sending}
+            />
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="modal-btn secondary"
+                onClick={handleCancelSend}
+                disabled={sending}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="modal-btn primary"
+                onClick={handleConfirmSend}
+                disabled={sending}
+              >
+                {sending ? 'Enviando…' : 'Enviar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -140,8 +254,8 @@ export default function CompanyRowActions({ companyId }: { companyId: number }) 
         .menu {
           position: absolute;
           right: 0;
-          bottom: calc(100% + 4px);
-          min-width: 140px;
+          top: calc(100% + 4px); /* abre para baixo */
+          min-width: 160px;
           background: #fff;
           border: 1px solid rgba(11, 37, 39, 0.08);
           box-shadow: 0 8px 24px rgba(11, 37, 39, 0.12);
@@ -155,7 +269,6 @@ export default function CompanyRowActions({ companyId }: { companyId: number }) 
         .menu-item {
           display: flex;
           align-items: center;
-          gap: 10px;
           padding: 10px 14px;
           text-align: left;
           border: none;
@@ -184,8 +297,90 @@ export default function CompanyRowActions({ companyId }: { companyId: number }) 
           background: #fef2f2;
         }
 
-        .menu-item svg {
-          flex-shrink: 0;
+        /* Modal */
+
+        .modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+        }
+
+        .modal {
+          width: 100%;
+          max-width: 480px;
+          background: #ffffff;
+          border-radius: 16px;
+          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
+          padding: 20px 22px 18px;
+        }
+
+        .modal-title {
+          margin: 0 0 6px;
+          font-size: 18px;
+          font-weight: 700;
+          color: #0b2527;
+        }
+
+        .modal-text {
+          margin: 0 0 12px;
+          font-size: 14px;
+          color: #4b5563;
+        }
+
+        .modal-textarea {
+          width: 100%;
+          resize: vertical;
+          min-height: 100px;
+          border-radius: 10px;
+          border: 1px solid #e5e7eb;
+          padding: 10px 12px;
+          font-size: 14px;
+          outline: none;
+          color: #111827;
+        }
+
+        .modal-textarea:focus {
+          border-color: #0b2527;
+          box-shadow: 0 0 0 3px rgba(11, 37, 39, 0.08);
+        }
+
+        .modal-actions {
+          margin-top: 14px;
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+        }
+
+        .modal-btn {
+          min-width: 120px;
+          height: 40px;
+          border-radius: 999px;
+          border: none;
+          font-weight: 700;
+          font-size: 14px;
+          cursor: pointer;
+        }
+
+        .modal-btn.primary {
+          background: #0b2527;
+          color: #ffffff;
+          box-shadow: 0 6px 20px rgba(11, 37, 39, 0.18);
+        }
+
+        .modal-btn.secondary {
+          background: #ffffff;
+          color: #0b2527;
+          border: 1px solid #0b2527;
+        }
+
+        .modal-btn:disabled {
+          opacity: 0.6;
+          cursor: default;
+          box-shadow: none;
         }
       `}</style>
     </div>

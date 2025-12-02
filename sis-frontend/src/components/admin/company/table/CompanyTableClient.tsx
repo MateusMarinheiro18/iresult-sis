@@ -285,7 +285,6 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
         /* scroll wrapper: permite rolagem horizontal em small screens */
         .table-scroll {
           width: 100%;
-          overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           border-radius: 12px;
           background: #fff;

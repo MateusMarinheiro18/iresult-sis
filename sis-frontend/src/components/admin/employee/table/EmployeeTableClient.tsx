@@ -351,7 +351,6 @@ export default function EmployeesTableClient({ companyId, initialData }: { compa
 
         .table-scroll {
           width: 100%;
-          overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           border-radius: 12px;
           background: #fff;

@@ -1,3 +1,4 @@
+// src/lib/email/sendEscala.ts
 import nodemailer from 'nodemailer';
 
 type SendBulkArgs = {
@@ -44,4 +45,62 @@ export async function sendBulkEmail({ subject, text, html, to }: SendBulkArgs) {
     text,
     html,
   });
+}
+
+/* ======= ESPECÍFICO PARA ENVIO DE ESCALA (link único por funcionário) ======= */
+
+export type EscalaRecipient = {
+  email: string;
+  nome?: string | null;
+  empresa?: string | null;
+  link: string;
+};
+
+type SendEscalaArgs = {
+  subject: string;
+  message: string;
+  recipients: EscalaRecipient[];
+};
+
+export async function sendEscalaEmails({
+  subject,
+  message,
+  recipients,
+}: SendEscalaArgs) {
+  const t = getTransporter();
+
+  const list = recipients.filter((r) => r.email);
+
+  if (!list.length) return;
+
+  for (const r of list) {
+    const safeName = r.nome ? `, ${r.nome}` : '';
+    const plain = `Olá${safeName}!
+
+${message}
+
+Responda à escala neste link:
+${r.link}
+
+Obrigado.`;
+
+    const html = `
+      <p>Olá${safeName}!</p>
+      <p>${message.replace(/\n/g, '<br />')}</p>
+      <p>
+        <a href="${r.link}" target="_blank" rel="noopener noreferrer">
+          Responder escala
+        </a>
+      </p>
+      <p>Obrigado.</p>
+    `;
+
+    await t.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: r.email,
+      subject,
+      text: plain,
+      html,
+    });
+  }
 }
