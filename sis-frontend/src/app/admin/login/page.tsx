@@ -73,7 +73,7 @@ export default function ClientLoginPage() {
         <div className="flex flex-col items-start justify-center max-w-[420px] text-left">
             <header className="mb-8">
             <Typography variant="h4" className="text-[#0B2527] mb-2" sx={{ fontWeight: 700 }}>
-                Bem-vindo!
+                Bem-vindo, administrador!
             </Typography>
             <Typography className="text-slate-700">
                 Acesse o portal para acompanhar suas pesquisas e indicadores.
