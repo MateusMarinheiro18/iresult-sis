@@ -1,40 +1,47 @@
-import React from 'react'
-import { notFound } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
-import EditPageClient from './EditPageClient'
+// src/app/admin/empresas/[id]/edit/page.tsx (ou equivalente)
+import React from 'react';
+import { notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import EditPageClient from './EditPageClient';
 
 type Props = {
-  params: Promise<{ id: string }> | { id: string }
-}
+  params: Promise<{ id: string }> | { id: string };
+};
 
 async function getCompanyById(id: number) {
-  return prisma.empresa.findUnique({ where: { id } })
+  return prisma.empresa.findUnique({ where: { id } });
 }
 
 export default async function Page({ params }: Props) {
-  const resolvedParams = await params
-  const idStr = resolvedParams?.id
+  const resolvedParams = await params;
+  const idStr = resolvedParams?.id;
 
   if (!idStr) {
-    notFound()
+    notFound();
   }
 
-  const id = Number(idStr)
+  const id = Number(idStr);
   if (Number.isNaN(id)) {
-    notFound()
+    notFound();
   }
 
-  let company
+  let company;
   try {
-    company = await getCompanyById(id)
+    company = await getCompanyById(id);
   } catch (err) {
-    console.error('Erro ao buscar empresa via prisma', err)
-    company = null
+    console.error('Erro ao buscar empresa via prisma', err);
+    company = null;
   }
 
   if (!company) {
-    notFound()
+    notFound();
   }
+
+  // busca escala vinculada (0 ou 1 registro)
+  const escalaVinculo = await prisma.escalaHasEmpresa.findFirst({
+    where: { idEmpresa: company.id },
+    select: { idEscala: true },
+  });
 
   // Serializar dados para o cliente
   const serializedCompany = {
@@ -47,7 +54,8 @@ export default async function Page({ params }: Props) {
     ativo: company.ativo ?? null,
     created: company.created ? company.created.toISOString() : null,
     updated: company.updated ? company.updated.toISOString() : null,
-  }
+    escalaId: escalaVinculo?.idEscala ?? null,
+  };
 
-  return <EditPageClient company={serializedCompany} />
+  return <EditPageClient company={serializedCompany} />;
 }

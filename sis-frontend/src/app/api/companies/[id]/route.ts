@@ -46,7 +46,6 @@ export async function PUT(
 
     const body = await request.json();
 
-    // Validações básicas
     if (
       !body?.razaoSocial ||
       typeof body.razaoSocial !== 'string' ||
@@ -66,7 +65,7 @@ export async function PUT(
       return NextResponse.json({ message: 'Email inválido' }, { status: 400 });
     }
 
-    // tratar 'ativo' que no schema é Int?
+    // trata 'ativo' que no schema é Int?
     let ativoToSet: number | undefined = undefined;
     if (body.hasOwnProperty('ativo')) {
       const a = body.ativo;
@@ -80,7 +79,24 @@ export async function PUT(
       }
     }
 
-    // Apenas campos permitidos serão atualizados
+    // trata escalaId (opcional)
+    let escalaIdToSet: number | null | undefined = undefined;
+    if (Object.prototype.hasOwnProperty.call(body, 'escalaId')) {
+      const raw = body.escalaId;
+      if (raw === null || raw === '' || raw === undefined) {
+        escalaIdToSet = null; // remover vínculo
+      } else {
+        const n = Number(raw);
+        if (Number.isNaN(n) || n <= 0) {
+          return NextResponse.json(
+            { message: 'Escala inválida' },
+            { status: 400 }
+          );
+        }
+        escalaIdToSet = n;
+      }
+    }
+
     const dataToUpdate: any = {
       razaoSocial: body.razaoSocial,
       cnpj: body.cnpj ?? null,
@@ -97,7 +113,6 @@ export async function PUT(
         : Number(body.updatedBy);
     }
 
-    // Remover undefined
     Object.keys(dataToUpdate).forEach((k) => {
       if (dataToUpdate[k] === undefined) delete dataToUpdate[k];
     });
@@ -106,6 +121,24 @@ export async function PUT(
       where: { id },
       data: dataToUpdate,
     });
+
+    // atualiza vínculo EscalaHasEmpresa se escalaIdToSet foi enviado
+    if (escalaIdToSet !== undefined) {
+      // remove vínculos antigos
+      await prisma.escalaHasEmpresa.deleteMany({
+        where: { idEmpresa: id },
+      });
+
+      // se não for null, cria novo vínculo
+      if (escalaIdToSet !== null) {
+        await prisma.escalaHasEmpresa.create({
+          data: {
+            idEmpresa: id,
+            idEscala: escalaIdToSet,
+          },
+        });
+      }
+    }
 
     return NextResponse.json(updated, { status: 200 });
   } catch (error: any) {
@@ -133,7 +166,6 @@ export async function DELETE(
       return NextResponse.json({ message: 'ID inválido' }, { status: 400 });
     }
 
-    // soft-delete: set deleted timestamp
     const deleted = await prisma.empresa.update({
       where: { id },
       data: { deleted: new Date() },

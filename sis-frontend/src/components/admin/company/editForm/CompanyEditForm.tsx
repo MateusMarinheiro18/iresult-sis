@@ -1,10 +1,14 @@
-// src/components/admin/company/CompanyEditForm.tsx
+// src/components/admin/company/editForm/CompanyEditForm.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
+type EscalaOption = {
+  id: number;
+  nome: string;
+};
 
 type Payload = {
   razaoSocial: string;
@@ -12,6 +16,7 @@ type Payload = {
   email?: string | null;
   telefone?: string | null;
   cep?: string | null;
+  escalaId?: number | null;
 };
 
 function sanitizeDigits(s?: string) {
@@ -35,7 +40,6 @@ function extractMessageFromBody(body: any): string | null {
 
 function formatCnpj(value?: string) {
   const d = (value ?? '').replace(/\D/g, '').slice(0, 14);
-  // apply progressively
   if (!d) return '';
   if (d.length <= 2) return d;
   if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
@@ -51,42 +55,28 @@ function formatCep(value?: string) {
   return `${d.slice(0, 5)}-${d.slice(5)}`;
 }
 
-/**
- * Format phone for Brazil with optional country code.
- * Examples:
- *  - "5511999999999" => "+55 (11) 99999-9999"
- *  - "11999999999"   => "+55 (11) 99999-9999" (assumes +55 if missing)
- *  - "1123456789"    => "(11) 2345-6789"
- * Works progressively while typing.
- */
 function formatPhoneBR(value?: string) {
   let d = (value ?? '').replace(/\D/g, '');
   if (!d) return '';
 
-  // if more than 11 digits, assume leading country code(s)
   let country = '';
   if (d.length > 11) {
     country = d.slice(0, d.length - 11);
     d = d.slice(d.length - 11);
   }
 
-  // Now d has up to 11 digits (DD + 9 or 8)
   if (d.length <= 2) {
-    // just area code (partial)
     return `${country ? `+${country} ` : ''}${d}`;
   }
 
   if (d.length <= 6) {
-    // (AA) 9... or (AA) xxxx
     return `${country ? `+${country} ` : ''}(${d.slice(0, 2)}) ${d.slice(2)}`;
   }
 
   if (d.length <= 10) {
-    // landline-ish: (AA) xxxx-xxxx
     return `${country ? `+${country} ` : ''}(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   }
 
-  // 11 digits: (AA) 9xxxx-xxxx
   return `${country ? `+${country} ` : ''}(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
@@ -102,6 +92,7 @@ export default function CompanyEditForm({
     email?: string | null;
     telefone?: string | null;
     cep?: string | null;
+    escalaId?: number | null;
   };
 }) {
   const router = useRouter();
@@ -113,15 +104,67 @@ export default function CompanyEditForm({
   const [cep, setCep] = useState<string>(initial?.cep ? formatCep(initial.cep) : '');
   const [saving, setSaving] = useState(false);
 
-  // If `initial` changes (rare) ensure fields are (re)formatted
+  // Escala vinculada
+  const [escalas, setEscalas] = useState<EscalaOption[]>([]);
+  const [escalaId, setEscalaId] = useState<string>(
+    initial?.escalaId ? String(initial.escalaId) : ''
+  );
+
+  // Se `initial` mudar (raro), reatribui valores
   useEffect(() => {
     setRazaoSocial(initial?.razaoSocial ?? '');
     setCnpj(initial?.cnpj ? formatCnpj(initial.cnpj) : '');
     setEmail(initial?.email ?? '');
     setTelefone(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
     setCep(initial?.cep ? formatCep(initial.cep) : '');
+    setEscalaId(initial?.escalaId ? String(initial.escalaId) : '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
+
+  // Carrega lista de escalas
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEscalas() {
+      try {
+        const res = await fetch('/api/escalas', { method: 'GET' });
+        if (!res.ok) {
+          console.error('Falha ao carregar escalas', res.status);
+          return;
+        }
+        const text = await res.text();
+        let data: any = [];
+        try {
+          data = text ? JSON.parse(text) : [];
+        } catch {
+          data = [];
+        }
+
+        const listRaw = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any).items)
+          ? (data as any).items
+          : [];
+
+        const mapped: EscalaOption[] = listRaw.map((e: any) => ({
+          id: e.id,
+          nome: e.nome ?? e.name ?? e.titulo ?? `Escala #${e.id}`,
+        }));
+
+        if (!cancelled) {
+          setEscalas(mapped);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar escalas', err);
+      }
+    }
+
+    loadEscalas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -139,6 +182,7 @@ export default function CompanyEditForm({
       email: email.trim() || null,
       telefone: sanitizeDigits(telefone) ?? null,
       cep: sanitizeDigits(cep) ?? null,
+      escalaId: escalaId ? Number(escalaId) : null,
     };
 
     try {
@@ -148,7 +192,6 @@ export default function CompanyEditForm({
         body: JSON.stringify(payload),
       });
 
-      // tenta ler como json, mas pode ser string — por isso o catch
       const body = await res.text().then((t) => {
         try {
           return t ? JSON.parse(t) : {};
@@ -164,11 +207,9 @@ export default function CompanyEditForm({
         return;
       }
 
-      // sucesso: normaliza mensagem se existir, senão usa padrão
       const successMsg = extractMessageFromBody(body) ?? 'Empresa atualizada com sucesso.';
       toast.success(successMsg);
 
-      // dá um pequeno delay para o usuário enxergar o toast antes de redirecionar
       setTimeout(() => {
         router.push('/admin/empresas');
       }, 700);
@@ -239,6 +280,22 @@ export default function CompanyEditForm({
             placeholder="00000-000"
           />
         </div>
+
+        <div className="field">
+          <label className="label">Escala da empresa</label>
+          <select
+            className="input"
+            value={escalaId}
+            onChange={(e) => setEscalaId(e.target.value)}
+          >
+            <option value="">Nenhuma escala</option>
+            {escalas.map((escala) => (
+              <option key={escala.id} value={escala.id}>
+                {escala.nome}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="buttons">
@@ -285,12 +342,12 @@ export default function CompanyEditForm({
           font-size: 14px;
           outline: none;
           transition: box-shadow 0.12s ease, border-color 0.12s ease;
-          color: #111827; /* cor do texto digitado */
+          color: #111827;
         }
 
         .input::placeholder {
-          color: #9ca3af; /* cor do placeholder (cinza claro) */
-          opacity: 1; /* garante compatibilidade cross-browser */
+          color: #9ca3af;
+          opacity: 1;
         }
 
         .input:focus {

@@ -1,10 +1,14 @@
-// src/components/admin/company/CompanyForm.tsx
+// src/components/admin/company/addForm/CompanyForm.tsx (ou caminho equivalente)
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
+type EscalaOption = {
+  id: number;
+  nome: string;
+};
 
 type Payload = {
   razaoSocial: string;
@@ -12,6 +16,7 @@ type Payload = {
   email?: string;
   telefone?: string;
   cep?: string;
+  escalaId?: number | null;
 };
 
 function sanitizeDigits(s?: string) {
@@ -78,23 +83,76 @@ function formatPhoneBR(value?: string) {
 /* ---------- Component ---------- */
 
 export default function CompanyForm({ initial }: { initial?: any }) {
+  const router = useRouter();
+
   const [razaoSocial, setRazaoSocial] = useState(initial?.razaoSocial ?? '');
   const [cnpj, setCnpj] = useState<string>(initial?.cnpj ? formatCnpj(initial.cnpj) : '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [telefone, setTelefone] = useState<string>(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
   const [cep, setCep] = useState<string>(initial?.cep ? formatCep(initial.cep) : '');
   const [saving, setSaving] = useState(false);
-  const router = useRouter();
 
-  // Se `initial` for fornecido depois (edge cases), formata os valores
+  // Escala vinculada
+  const [escalas, setEscalas] = useState<EscalaOption[]>([]);
+  const [escalaId, setEscalaId] = useState<string>(
+    initial?.escalaId ? String(initial.escalaId) : ''
+  );
+
+  // Se `initial` mudar (edge cases), reatribui valores
   useEffect(() => {
     setRazaoSocial(initial?.razaoSocial ?? '');
     setCnpj(initial?.cnpj ? formatCnpj(initial.cnpj) : '');
     setEmail(initial?.email ?? '');
     setTelefone(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
     setCep(initial?.cep ? formatCep(initial.cep) : '');
+    setEscalaId(initial?.escalaId ? String(initial.escalaId) : '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
+
+  // Carrega lista de escalas para o select
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEscalas() {
+      try {
+        const res = await fetch('/api/escalas', { method: 'GET' });
+        if (!res.ok) {
+          console.error('Falha ao carregar escalas', res.status);
+          return;
+        }
+        const text = await res.text();
+        let data: any = [];
+        try {
+          data = text ? JSON.parse(text) : [];
+        } catch {
+          data = [];
+        }
+
+        const listRaw = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any).items)
+          ? (data as any).items
+          : [];
+
+        const mapped: EscalaOption[] = listRaw.map((e: any) => ({
+          id: e.id,
+          nome: e.nome ?? e.name ?? e.titulo ?? `Escala #${e.id}`,
+        }));
+
+        if (!cancelled) {
+          setEscalas(mapped);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar escalas', err);
+      }
+    }
+
+    loadEscalas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,6 +170,7 @@ export default function CompanyForm({ initial }: { initial?: any }) {
       email: email.trim() || undefined,
       telefone: sanitizeDigits(telefone),
       cep: sanitizeDigits(cep),
+      escalaId: escalaId ? Number(escalaId) : null,
     };
 
     try {
@@ -202,6 +261,22 @@ export default function CompanyForm({ initial }: { initial?: any }) {
             onChange={(e) => setCep(formatCep(e.target.value))}
             placeholder="00000-000"
           />
+        </div>
+
+        <div className="field">
+          <label className="label">Escala da empresa</label>
+          <select
+            className="input"
+            value={escalaId}
+            onChange={(e) => setEscalaId(e.target.value)}
+          >
+            <option value="">Nenhuma escala</option>
+            {escalas.map((escala) => (
+              <option key={escala.id} value={escala.id}>
+                {escala.nome}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
