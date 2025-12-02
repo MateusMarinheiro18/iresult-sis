@@ -4,6 +4,7 @@
 import React, { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { useConfirm } from '@/components/ui/ConfirmProvider';
 
 export type RespostaFormState = {
   tempId: string;
@@ -66,6 +67,7 @@ function createEmptyPergunta(): PerguntaFormState {
 
 export default function EscalaBuilderForm({ mode, initialData }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
 
   const [state, setState] = useState<EscalaFormState>(() => {
@@ -78,6 +80,18 @@ export default function EscalaBuilderForm({ mode, initialData }: Props) {
     };
   });
 
+  // Estado de colapso/expansão por pergunta (key = tempId)
+  const [collapsedById, setCollapsedById] = useState<Record<string, boolean>>(
+    {}
+  );
+
+  function togglePerguntaCollapsed(tempId: string) {
+    setCollapsedById((prev) => ({
+      ...prev,
+      [tempId]: !prev[tempId],
+    }));
+  }
+
   function updateCampoEscala<K extends keyof EscalaFormState>(
     field: K,
     value: EscalaFormState[K]
@@ -85,23 +99,24 @@ export default function EscalaBuilderForm({ mode, initialData }: Props) {
     setState((prev) => ({ ...prev, [field]: value }));
   }
 
-  function updatePergunta(
-    tempId: string,
-    updater: (p: PerguntaFormState) => PerguntaFormState
-  ) {
-    setState((prev) => ({
-      ...prev,
-      perguntas: prev.perguntas.map((p) =>
-        p.tempId === tempId ? updater(p) : p
-      ),
-    }));
-  }
-
-  function removePergunta(tempId: string) {
+  function removePerguntaInternal(tempId: string) {
     setState((prev) => ({
       ...prev,
       perguntas: prev.perguntas.filter((p) => p.tempId !== tempId),
     }));
+  }
+
+  async function handleRemovePergunta(tempId: string) {
+    const ok = await confirm({
+      title: 'Remover pergunta',
+      description:
+        'Tem certeza que deseja remover esta pergunta e todas as respostas associadas?',
+      confirmLabel: 'Remover',
+      cancelLabel: 'Cancelar',
+      danger: true,
+    });
+    if (!ok) return;
+    removePerguntaInternal(tempId);
   }
 
   function addPergunta() {
@@ -118,10 +133,34 @@ export default function EscalaBuilderForm({ mode, initialData }: Props) {
     }));
   }
 
-  function removeResposta(pergTempId: string, respTempId: string) {
+  function removeRespostaInternal(pergTempId: string, respTempId: string) {
     updatePergunta(pergTempId, (p) => ({
       ...p,
       respostas: p.respostas.filter((r) => r.tempId !== respTempId),
+    }));
+  }
+
+  async function handleRemoveResposta(pergTempId: string, respTempId: string) {
+    const ok = await confirm({
+      title: 'Remover resposta',
+      description: 'Tem certeza que deseja remover esta resposta?',
+      confirmLabel: 'Remover',
+      cancelLabel: 'Cancelar',
+      danger: true,
+    });
+    if (!ok) return;
+    removeRespostaInternal(pergTempId, respTempId);
+  }
+
+  function updatePergunta(
+    tempId: string,
+    updater: (p: PerguntaFormState) => PerguntaFormState
+  ) {
+    setState((prev) => ({
+      ...prev,
+      perguntas: prev.perguntas.map((p) =>
+        p.tempId === tempId ? updater(p) : p
+      ),
     }));
   }
 
@@ -281,185 +320,330 @@ export default function EscalaBuilderForm({ mode, initialData }: Props) {
           </button>
         </div>
 
-        {state.perguntas.map((p, index) => (
-          <div key={p.tempId} className="pergunta-card">
-            <div className="pergunta-header">
-              <h3 className="pergunta-title">Pergunta {index + 1}</h3>
-              {state.perguntas.length > 1 && (
+        {state.perguntas.map((p, index) => {
+          const isCollapsed = collapsedById[p.tempId] ?? false;
+          const preview =
+            p.pergunta.trim() ||
+            'Clique para expandir e editar o texto da pergunta.';
+
+          return (
+            <div
+              key={p.tempId}
+              className={`pergunta-card ${isCollapsed ? 'collapsed' : ''}`}
+            >
+              <div className="pergunta-header">
                 <button
                   type="button"
-                  className="pergunta-remove"
-                  onClick={() => removePergunta(p.tempId)}
+                  className="toggle-btn"
+                  onClick={() => togglePerguntaCollapsed(p.tempId)}
+                  aria-expanded={!isCollapsed}
+                  aria-label={
+                    isCollapsed
+                      ? `Expandir pergunta ${index + 1}`
+                      : `Recolher pergunta ${index + 1}`
+                  }
                 >
-                  Remover
+                  <span
+                    className={`chevron ${isCollapsed ? 'collapsed' : ''}`}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M8 10l4 4 4-4"
+                        stroke="#374151"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
                 </button>
+
+                <div className="pergunta-header-main">
+                  <h3 className="pergunta-title">Pergunta {index + 1}</h3>
+                  <p className="pergunta-preview">{preview}</p>
+                </div>
+
+                {state.perguntas.length > 1 && (
+                  <button
+                    type="button"
+                    className="pergunta-remove"
+                    onClick={() => handleRemovePergunta(p.tempId)}
+                    aria-label="Remover pergunta"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M9 3h6l-.5 2H9.5L9 3Z"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M5 5h14"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M10 9v6"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M14 9v6"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M8 5h8v11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V5Z"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Só renderiza o corpo da pergunta quando NÃO estiver colapsada */}
+              {!isCollapsed && (
+                <>
+                  <div className="field">
+                    <label className="label">
+                      Texto da pergunta <span className="required">*</span>
+                    </label>
+                    <textarea
+                      className="textarea"
+                      value={p.pergunta}
+                      onChange={(e) =>
+                        updatePergunta(p.tempId, (prev) => ({
+                          ...prev,
+                          pergunta: e.target.value,
+                        }))
+                      }
+                      placeholder="Ex.: Como você avalia o ambiente de trabalho?"
+                    />
+                  </div>
+
+                  {/* Faixas – agora na ordem: RISCO, INTERMEDIÁRIO, FAVORÁVEL */}
+                  <div className="faixas-grid">
+                    {/* Risco */}
+                    <div className="faixa-col">
+                      <h4 className="faixa-title">
+                        <span className="faixa-dot faixa-dot-risco" />
+                        Risco
+                      </h4>
+                      <div className="faixa-row">
+                        <div className="field compact">
+                          <label className="label-mini">De</label>
+                          <input
+                            className="input"
+                            value={p.valorInicialRisco}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorInicialRisco: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 0"
+                          />
+                        </div>
+                        <div className="field compact">
+                          <label className="label-mini">Até</label>
+                          <input
+                            className="input"
+                            value={p.valorFinalRisco}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorFinalRisco: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 3.9"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Intermediário */}
+                    <div className="faixa-col">
+                      <h4 className="faixa-title">
+                        <span className="faixa-dot faixa-dot-intermediario" />
+                        Intermediário
+                      </h4>
+                      <div className="faixa-row">
+                        <div className="field compact">
+                          <label className="label-mini">De</label>
+                          <input
+                            className="input"
+                            value={p.valorInicialIntermediario}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorInicialIntermediario: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 4"
+                          />
+                        </div>
+                        <div className="field compact">
+                          <label className="label-mini">Até</label>
+                          <input
+                            className="input"
+                            value={p.valorFinalIntermediario}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorFinalIntermediario: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 6.9"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Favorável */}
+                    <div className="faixa-col">
+                      <h4 className="faixa-title">
+                        <span className="faixa-dot faixa-dot-favoravel" />
+                        Favorável
+                      </h4>
+                      <div className="faixa-row">
+                        <div className="field compact">
+                          <label className="label-mini">De</label>
+                          <input
+                            className="input"
+                            value={p.valorInicialFavoravel}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorInicialFavoravel: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 7"
+                          />
+                        </div>
+                        <div className="field compact">
+                          <label className="label-mini">Até</label>
+                          <input
+                            className="input"
+                            value={p.valorFinalFavoravel}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorFinalFavoravel: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 10"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Respostas possíveis */}
+                  <div className="respostas-block">
+                    <div className="respostas-header">
+                      <h4 className="respostas-title">Respostas possíveis</h4>
+                      <button
+                        type="button"
+                        className="btn-tertiary"
+                        onClick={() => addResposta(p.tempId)}
+                      >
+                        + Adicionar resposta
+                      </button>
+                    </div>
+
+                    {p.respostas.map((r, rIndex) => (
+                      <div key={r.tempId} className="resposta-row">
+                        <div className="field resposta-field">
+                          <label className="label-mini">
+                            Resposta {rIndex + 1}
+                          </label>
+                          <input
+                            className="input"
+                            value={r.resposta}
+                            onChange={(e) =>
+                              updateResposta(p.tempId, r.tempId, e.target.value)
+                            }
+                            placeholder="Ex.: Discordo totalmente"
+                          />
+                        </div>
+                        {p.respostas.length > 1 && (
+                          <button
+                            type="button"
+                            className="resposta-remove"
+                            onClick={() =>
+                              handleRemoveResposta(p.tempId, r.tempId)
+                            }
+                            aria-label="Remover resposta"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M9 3h6l-.5 2H9.5L9 3Z"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M5 5h14"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M10 9v6"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M14 9v6"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M8 5h8v11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V5Z"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
-
-            <div className="field">
-              <label className="label">
-                Texto da pergunta <span className="required">*</span>
-              </label>
-              <textarea
-                className="textarea"
-                value={p.pergunta}
-                onChange={(e) =>
-                  updatePergunta(p.tempId, (prev) => ({
-                    ...prev,
-                    pergunta: e.target.value,
-                  }))
-                }
-                placeholder="Ex.: Como você avalia o ambiente de trabalho?"
-              />
-            </div>
-
-            {/* Faixas */}
-            <div className="faixas-grid">
-              <div className="faixa-col">
-                <h4 className="faixa-title">Favorável</h4>
-                <div className="faixa-row">
-                  <div className="field compact">
-                    <label className="label-mini">De</label>
-                    <input
-                      className="input"
-                      value={p.valorInicialFavoravel}
-                      onChange={(e) =>
-                        updatePergunta(p.tempId, (prev) => ({
-                          ...prev,
-                          valorInicialFavoravel: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 7"
-                    />
-                  </div>
-                  <div className="field compact">
-                    <label className="label-mini">Até</label>
-                    <input
-                      className="input"
-                      value={p.valorFinalFavoravel}
-                      onChange={(e) =>
-                        updatePergunta(p.tempId, (prev) => ({
-                          ...prev,
-                          valorFinalFavoravel: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 10"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="faixa-col">
-                <h4 className="faixa-title">Intermediário</h4>
-                <div className="faixa-row">
-                  <div className="field compact">
-                    <label className="label-mini">De</label>
-                    <input
-                      className="input"
-                      value={p.valorInicialIntermediario}
-                      onChange={(e) =>
-                        updatePergunta(p.tempId, (prev) => ({
-                          ...prev,
-                          valorInicialIntermediario: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 4"
-                    />
-                  </div>
-                  <div className="field compact">
-                    <label className="label-mini">Até</label>
-                    <input
-                      className="input"
-                      value={p.valorFinalIntermediario}
-                      onChange={(e) =>
-                        updatePergunta(p.tempId, (prev) => ({
-                          ...prev,
-                          valorFinalIntermediario: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 6.9"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="faixa-col">
-                <h4 className="faixa-title">Risco</h4>
-                <div className="faixa-row">
-                  <div className="field compact">
-                    <label className="label-mini">De</label>
-                    <input
-                      className="input"
-                      value={p.valorInicialRisco}
-                      onChange={(e) =>
-                        updatePergunta(p.tempId, (prev) => ({
-                          ...prev,
-                          valorInicialRisco: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 0"
-                    />
-                  </div>
-                  <div className="field compact">
-                    <label className="label-mini">Até</label>
-                    <input
-                      className="input"
-                      value={p.valorFinalRisco}
-                      onChange={(e) =>
-                        updatePergunta(p.tempId, (prev) => ({
-                          ...prev,
-                          valorFinalRisco: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 3.9"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Respostas possíveis */}
-            <div className="respostas-block">
-              <div className="respostas-header">
-                <h4 className="respostas-title">Respostas possíveis</h4>
-                <button
-                  type="button"
-                  className="btn-tertiary"
-                  onClick={() => addResposta(p.tempId)}
-                >
-                  + Adicionar resposta
-                </button>
-              </div>
-
-              {p.respostas.map((r, rIndex) => (
-                <div key={r.tempId} className="resposta-row">
-                  <div className="field resposta-field">
-                    <label className="label-mini">
-                      Resposta {rIndex + 1}
-                    </label>
-                    <input
-                      className="input"
-                      value={r.resposta}
-                      onChange={(e) =>
-                        updateResposta(p.tempId, r.tempId, e.target.value)
-                      }
-                      placeholder="Ex.: Discordo totalmente"
-                    />
-                  </div>
-                  {p.respostas.length > 1 && (
-                    <button
-                      type="button"
-                      className="resposta-remove"
-                      onClick={() => removeResposta(p.tempId, r.tempId)}
-                    >
-                      Remover
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       <div className="footer-actions">
@@ -623,14 +807,27 @@ export default function EscalaBuilderForm({ mode, initialData }: Props) {
           padding: 14px 14px 10px;
           margin-top: 12px;
           background: #f9fafb;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .pergunta-card.collapsed {
+          padding-bottom: 8px;
+          background: #fdfdfd;
         }
 
         .pergunta-header {
-          display: flex;
-          justify-content: space-between;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
           align-items: center;
-          margin-bottom: 10px;
           gap: 8px;
+          margin-bottom: 6px;
+        }
+
+        .pergunta-header-main {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
         }
 
         .pergunta-title {
@@ -640,14 +837,67 @@ export default function EscalaBuilderForm({ mode, initialData }: Props) {
           margin: 0;
         }
 
+        .pergunta-preview {
+          margin: 0;
+          font-size: 12px;
+          color: #6b7280;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .toggle-btn {
+          border: none;
+          background: transparent;
+          padding: 4px;
+          border-radius: 999px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s ease;
+        }
+
+        .toggle-btn:hover {
+          background: rgba(15, 59, 62, 0.06);
+        }
+
+        .chevron {
+          display: inline-block;
+          transition: transform 0.2s ease;
+        }
+
+        .chevron.collapsed {
+          transform: rotate(-90deg);
+        }
+
         .pergunta-remove,
         .resposta-remove {
           border: none;
           background: transparent;
-          color: #b91c1c;
+          color: #dc2626;
           font-size: 13px;
-          font-weight: 600;
           cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          padding: 0;
+          transition: background 0.15s ease, transform 0.1s ease;
+        }
+
+        .pergunta-remove:hover,
+        .resposta-remove:hover {
+          background: rgba(220, 38, 38, 0.08);
+          transform: translateY(-0.5px);
+        }
+
+        .pergunta-remove:focus-visible,
+        .resposta-remove:focus-visible {
+          outline: 2px solid #dc2626;
+          outline-offset: 2px;
         }
 
         .faixas-grid {
@@ -669,6 +919,28 @@ export default function EscalaBuilderForm({ mode, initialData }: Props) {
           font-weight: 700;
           color: #111827;
           margin: 0 0 6px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .faixa-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 999px;
+          display: inline-block;
+        }
+
+        .faixa-dot-risco {
+          background: #dc2626;
+        }
+
+        .faixa-dot-intermediario {
+          background: #facc15;
+        }
+
+        .faixa-dot-favoravel {
+          background: #16a34a;
         }
 
         .faixa-row {
@@ -767,6 +1039,9 @@ export default function EscalaBuilderForm({ mode, initialData }: Props) {
           }
           .faixas-grid {
             grid-template-columns: minmax(0, 1fr);
+          }
+          .pergunta-header {
+            grid-template-columns: auto minmax(0, 1fr) auto;
           }
           .footer-actions {
             flex-direction: column-reverse;

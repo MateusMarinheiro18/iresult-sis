@@ -4,13 +4,14 @@
 import React, { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { useConfirm } from '@/components/ui/ConfirmProvider';
 import type {
   EscalaFormState,
   PerguntaFormState,
   RespostaFormState,
 } from './EscalaBuilderForm';
 
-// Se quiser, pode extrair essas helpers para um arquivo comum e reusar
+// Helpers locais (mesma ideia do builder)
 function createTempId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -41,8 +42,12 @@ type Props = {
   initialData: EscalaFormState; // precisa vir no mesmo formato do builder (com tempId, etc.)
 };
 
-export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) {
+export default function EscalaBuilderEditForm({
+  escalaId,
+  initialData,
+}: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
 
   const [state, setState] = useState<EscalaFormState>(() => {
@@ -55,50 +60,34 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
     };
   });
 
+  // Estado de colapso/expansão por pergunta (key = tempId)
+  const [collapsedById, setCollapsedById] = useState<Record<string, boolean>>(
+    {}
+  );
+
+  function togglePerguntaCollapsed(tempId: string) {
+    setCollapsedById((prev) => ({
+      ...prev,
+      [tempId]: !prev[tempId],
+    }));
+  }
+
   function updateCampoEscala<K extends keyof EscalaFormState>(
     field: K,
     value: EscalaFormState[K]
   ) {
-    setState(prev => ({ ...prev, [field]: value }));
+    setState((prev) => ({ ...prev, [field]: value }));
   }
 
   function updatePergunta(
     tempId: string,
     updater: (p: PerguntaFormState) => PerguntaFormState
   ) {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      perguntas: prev.perguntas.map(p =>
+      perguntas: prev.perguntas.map((p) =>
         p.tempId === tempId ? updater(p) : p
       ),
-    }));
-  }
-
-  function removePergunta(tempId: string) {
-    setState(prev => ({
-      ...prev,
-      perguntas: prev.perguntas.filter(p => p.tempId !== tempId),
-    }));
-  }
-
-  function addPergunta() {
-    setState(prev => ({
-      ...prev,
-      perguntas: [...prev.perguntas, createEmptyPergunta()],
-    }));
-  }
-
-  function addResposta(pergTempId: string) {
-    updatePergunta(pergTempId, p => ({
-      ...p,
-      respostas: [...p.respostas, createEmptyResposta()],
-    }));
-  }
-
-  function removeResposta(pergTempId: string, respTempId: string) {
-    updatePergunta(pergTempId, p => ({
-      ...p,
-      respostas: p.respostas.filter(r => r.tempId !== respTempId),
     }));
   }
 
@@ -107,12 +96,65 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
     respTempId: string,
     value: string
   ) {
-    updatePergunta(pergTempId, p => ({
+    updatePergunta(pergTempId, (p) => ({
       ...p,
-      respostas: p.respostas.map(r =>
+      respostas: p.respostas.map((r) =>
         r.tempId === respTempId ? { ...r, resposta: value } : r
       ),
     }));
+  }
+
+  function addPergunta() {
+    setState((prev) => ({
+      ...prev,
+      perguntas: [...prev.perguntas, createEmptyPergunta()],
+    }));
+  }
+
+  function addResposta(pergTempId: string) {
+    updatePergunta(pergTempId, (p) => ({
+      ...p,
+      respostas: [...p.respostas, createEmptyResposta()],
+    }));
+  }
+
+  function removePerguntaInternal(tempId: string) {
+    setState((prev) => ({
+      ...prev,
+      perguntas: prev.perguntas.filter((p) => p.tempId !== tempId),
+    }));
+  }
+
+  async function handleRemovePergunta(tempId: string) {
+    const ok = await confirm({
+      title: 'Remover pergunta',
+      description:
+        'Tem certeza que deseja remover esta pergunta e todas as respostas associadas?',
+      confirmLabel: 'Remover',
+      cancelLabel: 'Cancelar',
+      danger: true,
+    });
+    if (!ok) return;
+    removePerguntaInternal(tempId);
+  }
+
+  function removeRespostaInternal(pergTempId: string, respTempId: string) {
+    updatePergunta(pergTempId, (p) => ({
+      ...p,
+      respostas: p.respostas.filter((r) => r.tempId !== respTempId),
+    }));
+  }
+
+  async function handleRemoveResposta(pergTempId: string, respTempId: string) {
+    const ok = await confirm({
+      title: 'Remover resposta',
+      description: 'Tem certeza que deseja remover esta resposta?',
+      confirmLabel: 'Remover',
+      cancelLabel: 'Cancelar',
+      danger: true,
+    });
+    if (!ok) return;
+    removeRespostaInternal(pergTempId, respTempId);
   }
 
   function handleSubmit(e: FormEvent) {
@@ -150,12 +192,12 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
       }
     }
 
-    // Agora incluímos os IDs para o backend conseguir atualizar
+    // Payload com IDs para o backend conseguir atualizar
     const payload = {
       nome,
       dataVencimento: state.dataVencimento || null,
       ativo: state.ativo ? 1 : 0,
-      perguntas: state.perguntas.map(p => ({
+      perguntas: state.perguntas.map((p) => ({
         id: p.id ?? null,
         pergunta: p.pergunta.trim(),
         valorInicialFavoravel: p.valorInicialFavoravel || null,
@@ -164,7 +206,7 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
         valorFinalIntermediario: p.valorFinalIntermediario || null,
         valorInicialRisco: p.valorInicialRisco || null,
         valorFinalRisco: p.valorFinalRisco || null,
-        respostas: p.respostas.map(r => ({
+        respostas: p.respostas.map((r) => ({
           id: r.id ?? null,
           resposta: r.resposta.trim(),
         })),
@@ -173,11 +215,11 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
 
     setSaving(true);
     fetch(`/api/escalas/builder/${escalaId}`, {
-      method: 'PUT', // 👈 aqui é edição
+      method: 'PUT', // edição
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-      .then(async res => {
+      .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(data?.error || 'Erro ao atualizar escala.');
@@ -210,7 +252,7 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
               type="text"
               className="input"
               value={state.nome}
-              onChange={e => updateCampoEscala('nome', e.target.value)}
+              onChange={(e) => updateCampoEscala('nome', e.target.value)}
               placeholder="Ex.: Escala de Clima Organizacional 2025"
             />
           </div>
@@ -221,7 +263,7 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
               type="date"
               className="input"
               value={state.dataVencimento}
-              onChange={e =>
+              onChange={(e) =>
                 updateCampoEscala('dataVencimento', e.target.value)
               }
             />
@@ -233,7 +275,7 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
               <input
                 type="checkbox"
                 checked={state.ativo}
-                onChange={e => updateCampoEscala('ativo', e.target.checked)}
+                onChange={(e) => updateCampoEscala('ativo', e.target.checked)}
               />
               <span className="slider" />
             </label>
@@ -257,187 +299,330 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
           </button>
         </div>
 
-        {state.perguntas.map((p, index) => (
-          <div key={p.tempId} className="pergunta-card">
-            <div className="pergunta-header">
-              <h3 className="pergunta-title">Pergunta {index + 1}</h3>
-              {state.perguntas.length > 1 && (
+        {state.perguntas.map((p, index) => {
+          const isCollapsed = collapsedById[p.tempId] ?? false;
+          const preview =
+            p.pergunta.trim() ||
+            'Clique para expandir e editar o texto da pergunta.';
+
+          return (
+            <div
+              key={p.tempId}
+              className={`pergunta-card ${isCollapsed ? 'collapsed' : ''}`}
+            >
+              <div className="pergunta-header">
                 <button
                   type="button"
-                  className="pergunta-remove"
-                  onClick={() => removePergunta(p.tempId)}
+                  className="toggle-btn"
+                  onClick={() => togglePerguntaCollapsed(p.tempId)}
+                  aria-expanded={!isCollapsed}
+                  aria-label={
+                    isCollapsed
+                      ? `Expandir pergunta ${index + 1}`
+                      : `Recolher pergunta ${index + 1}`
+                  }
                 >
-                  Remover
+                  <span
+                    className={`chevron ${isCollapsed ? 'collapsed' : ''}`}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M8 10l4 4 4-4"
+                        stroke="#374151"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
                 </button>
+
+                <div className="pergunta-header-main">
+                  <h3 className="pergunta-title">Pergunta {index + 1}</h3>
+                  <p className="pergunta-preview">{preview}</p>
+                </div>
+
+                {state.perguntas.length > 1 && (
+                  <button
+                    type="button"
+                    className="pergunta-remove"
+                    onClick={() => handleRemovePergunta(p.tempId)}
+                    aria-label="Remover pergunta"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M9 3h6l-.5 2H9.5L9 3Z"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M5 5h14"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M10 9v6"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M14 9v6"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M8 5h8v11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V5Z"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Só renderiza o corpo da pergunta quando NÃO estiver colapsada */}
+              {!isCollapsed && (
+                <>
+                  <div className="field">
+                    <label className="label">
+                      Texto da pergunta <span className="required">*</span>
+                    </label>
+                    <textarea
+                      className="textarea"
+                      value={p.pergunta}
+                      onChange={(e) =>
+                        updatePergunta(p.tempId, (prev) => ({
+                          ...prev,
+                          pergunta: e.target.value,
+                        }))
+                      }
+                      placeholder="Ex.: Como você avalia o ambiente de trabalho?"
+                    />
+                  </div>
+
+                  {/* Faixas – ordem: RISCO, INTERMEDIÁRIO, FAVORÁVEL */}
+                  <div className="faixas-grid">
+                    {/* Risco */}
+                    <div className="faixa-col">
+                      <h4 className="faixa-title">
+                        <span className="faixa-dot faixa-dot-risco" />
+                        Risco
+                      </h4>
+                      <div className="faixa-row">
+                        <div className="field compact">
+                          <label className="label-mini">De</label>
+                          <input
+                            className="input"
+                            value={p.valorInicialRisco}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorInicialRisco: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 0"
+                          />
+                        </div>
+                        <div className="field compact">
+                          <label className="label-mini">Até</label>
+                          <input
+                            className="input"
+                            value={p.valorFinalRisco}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorFinalRisco: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 3.9"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Intermediário */}
+                    <div className="faixa-col">
+                      <h4 className="faixa-title">
+                        <span className="faixa-dot faixa-dot-intermediario" />
+                        Intermediário
+                      </h4>
+                      <div className="faixa-row">
+                        <div className="field compact">
+                          <label className="label-mini">De</label>
+                          <input
+                            className="input"
+                            value={p.valorInicialIntermediario}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorInicialIntermediario: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 4"
+                          />
+                        </div>
+                        <div className="field compact">
+                          <label className="label-mini">Até</label>
+                          <input
+                            className="input"
+                            value={p.valorFinalIntermediario}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorFinalIntermediario: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 6.9"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Favorável */}
+                    <div className="faixa-col">
+                      <h4 className="faixa-title">
+                        <span className="faixa-dot faixa-dot-favoravel" />
+                        Favorável
+                      </h4>
+                      <div className="faixa-row">
+                        <div className="field compact">
+                          <label className="label-mini">De</label>
+                          <input
+                            className="input"
+                            value={p.valorInicialFavoravel}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorInicialFavoravel: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 7"
+                          />
+                        </div>
+                        <div className="field compact">
+                          <label className="label-mini">Até</label>
+                          <input
+                            className="input"
+                            value={p.valorFinalFavoravel}
+                            onChange={(e) =>
+                              updatePergunta(p.tempId, (prev) => ({
+                                ...prev,
+                                valorFinalFavoravel: e.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: 10"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Respostas possíveis */}
+                  <div className="respostas-block">
+                    <div className="respostas-header">
+                      <h4 className="respostas-title">Respostas possíveis</h4>
+                      <button
+                        type="button"
+                        className="btn-tertiary"
+                        onClick={() => addResposta(p.tempId)}
+                      >
+                        + Adicionar resposta
+                      </button>
+                    </div>
+
+                    {p.respostas.map((r, rIndex) => (
+                      <div key={r.tempId} className="resposta-row">
+                        <div className="field resposta-field">
+                          <label className="label-mini">
+                            Resposta {rIndex + 1}
+                          </label>
+                          <input
+                            className="input"
+                            value={r.resposta}
+                            onChange={(e) =>
+                              updateResposta(p.tempId, r.tempId, e.target.value)
+                            }
+                            placeholder="Ex.: Discordo totalmente"
+                          />
+                        </div>
+                        {p.respostas.length > 1 && (
+                          <button
+                            type="button"
+                            className="resposta-remove"
+                            onClick={() =>
+                              handleRemoveResposta(p.tempId, r.tempId)
+                            }
+                            aria-label="Remover resposta"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M9 3h6l-.5 2H9.5L9 3Z"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M5 5h14"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M10 9v6"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M14 9v6"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M8 5h8v11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V5Z"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
-
-            <div className="field">
-              <label className="label">
-                Texto da pergunta <span className="required">*</span>
-              </label>
-              <textarea
-                className="textarea"
-                value={p.pergunta}
-                onChange={e =>
-                  updatePergunta(p.tempId, prev => ({
-                    ...prev,
-                    pergunta: e.target.value,
-                  }))
-                }
-                placeholder="Ex.: Como você avalia o ambiente de trabalho?"
-              />
-            </div>
-
-            {/* Faixas */}
-            <div className="faixas-grid">
-              <div className="faixa-col">
-                <h4 className="faixa-title">Favorável</h4>
-                <div className="faixa-row">
-                  <div className="field compact">
-                    <label className="label-mini">De</label>
-                    <input
-                      className="input"
-                      value={p.valorInicialFavoravel}
-                      onChange={e =>
-                        updatePergunta(p.tempId, prev => ({
-                          ...prev,
-                          valorInicialFavoravel: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 7"
-                    />
-                  </div>
-                  <div className="field compact">
-                    <label className="label-mini">Até</label>
-                    <input
-                      className="input"
-                      value={p.valorFinalFavoravel}
-                      onChange={e =>
-                        updatePergunta(p.tempId, prev => ({
-                          ...prev,
-                          valorFinalFavoravel: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 10"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="faixa-col">
-                <h4 className="faixa-title">Intermediário</h4>
-                <div className="faixa-row">
-                  <div className="field compact">
-                    <label className="label-mini">De</label>
-                    <input
-                      className="input"
-                      value={p.valorInicialIntermediario}
-                      onChange={e =>
-                        updatePergunta(p.tempId, prev => ({
-                          ...prev,
-                          valorInicialIntermediario: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 4"
-                    />
-                  </div>
-                  <div className="field compact">
-                    <label className="label-mini">Até</label>
-                    <input
-                      className="input"
-                      value={p.valorFinalIntermediario}
-                      onChange={e =>
-                        updatePergunta(p.tempId, prev => ({
-                          ...prev,
-                          valorFinalIntermediario: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 6.9"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="faixa-col">
-                <h4 className="faixa-title">Risco</h4>
-                <div className="faixa-row">
-                  <div className="field compact">
-                    <label className="label-mini">De</label>
-                    <input
-                      className="input"
-                      value={p.valorInicialRisco}
-                      onChange={e =>
-                        updatePergunta(p.tempId, prev => ({
-                          ...prev,
-                          valorInicialRisco: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 0"
-                    />
-                  </div>
-                  <div className="field compact">
-                    <label className="label-mini">Até</label>
-                    <input
-                      className="input"
-                      value={p.valorFinalRisco}
-                      onChange={e =>
-                        updatePergunta(p.tempId, prev => ({
-                          ...prev,
-                          valorFinalRisco: e.target.value,
-                        }))
-                      }
-                      placeholder="Ex.: 3.9"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Respostas possíveis */}
-            <div className="respostas-block">
-              <div className="respostas-header">
-                <h4 className="respostas-title">Respostas possíveis</h4>
-                <button
-                  type="button"
-                  className="btn-tertiary"
-                  onClick={() => addResposta(p.tempId)}
-                >
-                  + Adicionar resposta
-                </button>
-              </div>
-
-              {p.respostas.map((r, rIndex) => (
-                <div key={r.tempId} className="resposta-row">
-                  <div className="field resposta-field">
-                    <label className="label-mini">
-                      Resposta {rIndex + 1}
-                    </label>
-                    <input
-                      className="input"
-                      value={r.resposta}
-                      onChange={e =>
-                        updateResposta(p.tempId, r.tempId, e.target.value)
-                      }
-                      placeholder="Ex.: Discordo totalmente"
-                    />
-                  </div>
-                  {p.respostas.length > 1 && (
-                    <button
-                      type="button"
-                      className="resposta-remove"
-                      onClick={() =>
-                        removeResposta(p.tempId, r.tempId)
-                      }
-                    >
-                      Remover
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       <div className="footer-actions">
@@ -454,33 +639,33 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
         </button>
       </div>
 
-      {/* 👇 copie o mesmo bloco de <style jsx> do EscalaBuilderForm,
-          ou importe via CSS global se já estiver extraído */}
-
       <style jsx>{`
-        /* exatamente o mesmo CSS do EscalaBuilderForm.tsx */
         .escala-form {
           display: flex;
           flex-direction: column;
           gap: 20px;
         }
+
         .card {
           background: #ffffff;
           border-radius: 12px;
           box-shadow: 0 6px 18px rgba(11, 37, 39, 0.06);
           padding: 20px 20px 18px;
         }
+
         .card-title {
           font-size: 18px;
           font-weight: 700;
           color: #111827;
           margin: 0 0 4px;
         }
+
         .card-subtitle {
           font-size: 13px;
           color: #6b7280;
           margin: 0 0 14px;
         }
+
         .card-header-row {
           display: flex;
           justify-content: space-between;
@@ -488,34 +673,41 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
           gap: 12px;
           margin-bottom: 12px;
         }
+
         .field-grid {
           display: grid;
           grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
           gap: 16px;
           align-items: flex-end;
         }
+
         .field {
           display: flex;
           flex-direction: column;
           gap: 6px;
         }
+
         .field.compact {
           gap: 4px;
         }
+
         .label {
           font-size: 13px;
           font-weight: 600;
           color: #374151;
         }
+
         .label-mini {
           font-size: 11px;
           font-weight: 600;
           color: #6b7280;
         }
+
         .required {
           color: #b91c1c;
           margin-left: 2px;
         }
+
         .input,
         .textarea {
           width: 100%;
@@ -527,29 +719,35 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
           outline: none;
           transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
+
         .textarea {
           min-height: 60px;
           resize: vertical;
         }
+
         .input:focus,
         .textarea:focus {
           border-color: #0b2527;
           box-shadow: 0 0 0 1px rgba(11, 37, 39, 0.1);
         }
+
         .switch-field {
           align-items: flex-start;
         }
+
         .switch {
           position: relative;
           display: inline-block;
           width: 42px;
           height: 24px;
         }
+
         .switch input {
           opacity: 0;
           width: 0;
           height: 0;
         }
+
         .slider {
           position: absolute;
           cursor: pointer;
@@ -561,6 +759,7 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
           transition: 0.2s;
           border-radius: 999px;
         }
+
         .slider::before {
           position: absolute;
           content: '';
@@ -572,69 +771,169 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
           transition: 0.2s;
           border-radius: 50%;
         }
+
         .switch input:checked + .slider {
           background-color: #0b2527;
         }
+
         .switch input:checked + .slider::before {
           transform: translateX(18px);
         }
+
         .pergunta-card {
           border-radius: 10px;
           border: 1px solid #e5e7eb;
           padding: 14px 14px 10px;
           margin-top: 12px;
           background: #f9fafb;
+          transition: background 0.15s ease, border-color 0.15s ease;
         }
+
+        .pergunta-card.collapsed {
+          padding-bottom: 8px;
+          background: #fdfdfd;
+        }
+
         .pergunta-header {
-          display: flex;
-          justify-content: space-between;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
           align-items: center;
-          margin-bottom: 10px;
           gap: 8px;
+          margin-bottom: 6px;
         }
+
+        .pergunta-header-main {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+
         .pergunta-title {
           font-size: 15px;
           font-weight: 700;
           color: #111827;
           margin: 0;
         }
+
+        .pergunta-preview {
+          margin: 0;
+          font-size: 12px;
+          color: #6b7280;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .toggle-btn {
+          border: none;
+          background: transparent;
+          padding: 4px;
+          border-radius: 999px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s ease;
+        }
+
+        .toggle-btn:hover {
+          background: rgba(15, 59, 62, 0.06);
+        }
+
+        .chevron {
+          display: inline-block;
+          transition: transform 0.2s ease;
+        }
+
+        .chevron.collapsed {
+          transform: rotate(-90deg);
+        }
+
         .pergunta-remove,
         .resposta-remove {
           border: none;
           background: transparent;
-          color: #b91c1c;
+          color: #dc2626;
           font-size: 13px;
-          font-weight: 600;
           cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          padding: 0;
+          transition: background 0.15s ease, transform 0.1s ease;
         }
+
+        .pergunta-remove:hover,
+        .resposta-remove:hover {
+          background: rgba(220, 38, 38, 0.08);
+          transform: translateY(-0.5px);
+        }
+
+        .pergunta-remove:focus-visible,
+        .resposta-remove:focus-visible {
+          outline: 2px solid #dc2626;
+          outline-offset: 2px;
+        }
+
         .faixas-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 12px;
           margin: 12px 0 4px;
         }
+
         .faixa-col {
           background: #ffffff;
           border-radius: 8px;
           border: 1px solid #e5e7eb;
           padding: 10px 10px 8px;
         }
+
         .faixa-title {
           font-size: 13px;
           font-weight: 700;
           color: #111827;
           margin: 0 0 6px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
+
+        .faixa-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 999px;
+          display: inline-block;
+        }
+
+        .faixa-dot-risco {
+          background: #dc2626;
+        }
+
+        .faixa-dot-intermediario {
+          background: #facc15;
+        }
+
+        .faixa-dot-favoravel {
+          background: #16a34a;
+        }
+
         .faixa-row {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 8px;
         }
+
         .respostas-block {
           margin-top: 12px;
           border-top: 1px dashed #e5e7eb;
           padding-top: 10px;
         }
+
         .respostas-header {
           display: flex;
           justify-content: space-between;
@@ -642,21 +941,25 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
           gap: 8px;
           margin-bottom: 8px;
         }
+
         .respostas-title {
           font-size: 13px;
           font-weight: 700;
           color: #111827;
           margin: 0;
         }
+
         .resposta-row {
           display: flex;
           align-items: flex-end;
           gap: 8px;
           margin-bottom: 8px;
         }
+
         .resposta-field {
           flex: 1;
         }
+
         .btn-primary,
         .btn-secondary,
         .btn-tertiary {
@@ -669,44 +972,55 @@ export default function EscalaBuilderEditForm({ escalaId, initialData }: Props) 
           transition: all 0.15s ease;
           white-space: nowrap;
         }
+
         .btn-primary {
           background: #0b2527;
           color: #ffffff;
           border-color: #0b2527;
         }
+
         .btn-primary:hover {
           background: #134148;
           border-color: #134148;
         }
+
         .btn-secondary {
           background: #ffffff;
           color: #0b2527;
           border-color: #0b2527;
         }
+
         .btn-secondary:hover {
           background: #f3f4ff;
         }
+
         .btn-tertiary {
           background: transparent;
           color: #0b2527;
           border-color: #d1d5db;
           padding-inline: 12px;
         }
+
         .btn-tertiary:hover {
           background: #f9fafb;
         }
+
         .footer-actions {
           display: flex;
           justify-content: flex-end;
           gap: 10px;
           margin-top: 4px;
         }
+
         @media (max-width: 960px) {
           .field-grid {
             grid-template-columns: minmax(0, 1fr);
           }
           .faixas-grid {
             grid-template-columns: minmax(0, 1fr);
+          }
+          .pergunta-header {
+            grid-template-columns: auto minmax(0, 1fr) auto;
           }
           .footer-actions {
             flex-direction: column-reverse;
