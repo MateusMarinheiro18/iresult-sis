@@ -43,6 +43,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // trata grupos (opcional) - array de strings
+    let grupos: string[] = [];
+    if (Array.isArray(body.grupos)) {
+      grupos = Array.from(
+        new Set(
+          body.grupos
+            .map((g: any) => String(g ?? '').trim())
+            .filter((g: string) => g.length > 0)
+        )
+      );
+    }
+
     const created = await prisma.empresa.create({
       data: {
         razaoSocial,
@@ -66,6 +78,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // cria grupos internos, se enviados
+    if (grupos.length > 0) {
+      await prisma.empresaGrupo.createMany({
+        data: grupos.map((nome) => ({
+          idEmpresa: created.id,
+          nome,
+          ativo: 1,
+          created: new Date(),
+          createdBy,
+        })),
+        skipDuplicates: true, // respeita o unique (idEmpresa, nome)
+      });
+    }
+
+    // poderia já retornar com os grupos, mas por enquanto mantém como antes
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     console.error('POST /api/companies error', error);

@@ -17,6 +17,7 @@ type Payload = {
   telefone?: string | null;
   cep?: string | null;
   escalaId?: number | null;
+  grupos?: string[]; // nomes dos grupos internos
 };
 
 function sanitizeDigits(s?: string) {
@@ -80,6 +81,33 @@ function formatPhoneBR(value?: string) {
   return `${country ? `+${country} ` : ''}(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 
+/* ---------- Helpers de grupos ---------- */
+
+function extractInitialGroups(initial: any): string[] {
+  if (!initial) return [];
+
+  // Se o server já passou um array "grupos"
+  if (Array.isArray(initial.grupos)) {
+    if (initial.grupos.length > 0 && typeof initial.grupos[0] === 'string') {
+      return (initial.grupos as string[]).filter((g) => !!g.trim());
+    }
+    if (initial.grupos.length > 0 && typeof initial.grupos[0] === 'object') {
+      return (initial.grupos as any[])
+        .map((g) => g?.nome ?? '')
+        .filter((g: string) => !!g.trim());
+    }
+  }
+
+  // Se veio direto do Prisma: empresa.gruposFuncionarios: EmpresaGrupo[]
+  if (Array.isArray(initial.gruposFuncionarios)) {
+    return (initial.gruposFuncionarios as any[])
+      .map((g) => g?.nome ?? '')
+      .filter((g: string) => !!g.trim());
+  }
+
+  return [];
+}
+
 /* ---------- Component ---------- */
 
 export default function CompanyEditForm({
@@ -93,6 +121,8 @@ export default function CompanyEditForm({
     telefone?: string | null;
     cep?: string | null;
     escalaId?: number | null;
+    grupos?: any;
+    gruposFuncionarios?: any;
   };
 }) {
   const router = useRouter();
@@ -100,7 +130,9 @@ export default function CompanyEditForm({
   const [razaoSocial, setRazaoSocial] = useState(initial?.razaoSocial ?? '');
   const [cnpj, setCnpj] = useState<string>(initial?.cnpj ? formatCnpj(initial.cnpj) : '');
   const [email, setEmail] = useState(initial?.email ?? '');
-  const [telefone, setTelefone] = useState<string>(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
+  const [telefone, setTelefone] = useState<string>(
+    initial?.telefone ? formatPhoneBR(initial.telefone) : ''
+  );
   const [cep, setCep] = useState<string>(initial?.cep ? formatCep(initial.cep) : '');
   const [saving, setSaving] = useState(false);
 
@@ -110,6 +142,10 @@ export default function CompanyEditForm({
     initial?.escalaId ? String(initial.escalaId) : ''
   );
 
+  // Grupos internos da empresa
+  const [groups, setGroups] = useState<string[]>(() => extractInitialGroups(initial));
+  const [newGroupName, setNewGroupName] = useState('');
+
   // Se `initial` mudar (raro), reatribui valores
   useEffect(() => {
     setRazaoSocial(initial?.razaoSocial ?? '');
@@ -118,6 +154,8 @@ export default function CompanyEditForm({
     setTelefone(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
     setCep(initial?.cep ? formatCep(initial.cep) : '');
     setEscalaId(initial?.escalaId ? String(initial.escalaId) : '');
+    setGroups(extractInitialGroups(initial));
+    setNewGroupName('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
 
@@ -166,6 +204,28 @@ export default function CompanyEditForm({
     };
   }, []);
 
+  // Handlers de grupos
+
+  function handleAddGroup(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const trimmed = newGroupName.trim();
+    if (!trimmed) {
+      toast.error('Informe um nome para o grupo.');
+      return;
+    }
+    const exists = groups.some((g) => g.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      toast.error('Esse grupo já foi adicionado.');
+      return;
+    }
+    setGroups((prev) => [...prev, trimmed]);
+    setNewGroupName('');
+  }
+
+  function handleRemoveGroup(name: string) {
+    setGroups((prev) => prev.filter((g) => g !== name));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -183,6 +243,8 @@ export default function CompanyEditForm({
       telefone: sanitizeDigits(telefone) ?? null,
       cep: sanitizeDigits(cep) ?? null,
       escalaId: escalaId ? Number(escalaId) : null,
+      // enviamos sempre grupos; se for [], o backend vai entender como "zerar grupos"
+      grupos: groups,
     };
 
     try {
@@ -298,12 +360,75 @@ export default function CompanyEditForm({
         </div>
       </div>
 
+      {/* Seção de grupos internos da empresa */}
+      <div className="groups-section">
+        <div className="groups-header">
+          <h2 className="groups-title">Grupos internos de funcionários</h2>
+          <p className="groups-subtitle">
+            Atualize grupos como <strong>RH</strong>, <strong>Tech</strong>,{' '}
+            <strong>Operações</strong>, etc. Você poderá vinculá-los aos funcionários.
+          </p>
+        </div>
+
+        <div className="groups-form">
+          <div className="field">
+            <label className="label">Novo grupo</label>
+            <div className="groups-input-row">
+              <input
+                className="input"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="Ex.: RH, Tech, Operações..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddGroup();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => handleAddGroup()}
+                disabled={saving}
+              >
+                ADICIONAR
+              </button>
+            </div>
+          </div>
+
+          {groups.length > 0 && (
+            <div className="groups-list">
+              {groups.map((g) => (
+                <div key={g} className="group-pill">
+                  <span className="group-name">{g}</span>
+                  <button
+                    type="button"
+                    className="group-remove"
+                    onClick={() => handleRemoveGroup(g)}
+                    aria-label={`Remover grupo ${g}`}
+                    disabled={saving}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="buttons">
         <button type="submit" className="btn primary" disabled={saving}>
           {saving ? 'Salvando...' : 'SALVAR'}
         </button>
 
-        <button type="button" className="btn secondary" onClick={handleCancel} disabled={saving}>
+        <button
+          type="button"
+          className="btn secondary"
+          onClick={handleCancel}
+          disabled={saving}
+        >
           CANCELAR
         </button>
       </div>
@@ -355,6 +480,81 @@ export default function CompanyEditForm({
           box-shadow: 0 0 0 3px rgba(11, 37, 39, 0.06);
         }
 
+        /* Seção de grupos */
+
+        .groups-section {
+          margin-top: 28px;
+          padding: 16px 18px;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          background: #f9fafb;
+        }
+
+        .groups-header {
+          margin-bottom: 14px;
+        }
+
+        .groups-title {
+          margin: 0;
+          font-size: 15px;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .groups-subtitle {
+          margin: 4px 0 0 0;
+          font-size: 12px;
+          color: #6b7280;
+        }
+
+        .groups-form {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .groups-input-row {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+
+        .groups-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 4px;
+        }
+
+        .group-pill {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 10px;
+          border-radius: 999px;
+          background: #e5f3f4;
+          border: 1px solid #c7e3e4;
+          font-size: 12px;
+          gap: 6px;
+        }
+
+        .group-name {
+          color: #0b2527;
+        }
+
+        .group-remove {
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          font-size: 14px;
+          line-height: 1;
+          color: #6b7280;
+          padding: 0;
+        }
+
+        .group-remove:hover {
+          color: #ef4444;
+        }
+
         .buttons {
           margin-top: 26px;
           display: flex;
@@ -385,9 +585,30 @@ export default function CompanyEditForm({
           border: 1px solid #0b2527;
         }
 
+        .btn.small {
+          min-width: 120px;
+          height: 38px;
+          padding: 0 16px;
+          font-size: 12px;
+          border-radius: 999px;
+          background: #0b2527;
+          color: #fff;
+          box-shadow: 0 4px 12px rgba(11, 37, 39, 0.12);
+          white-space: nowrap;
+        }
+
         @media (max-width: 960px) {
           .grid {
             grid-template-columns: 1fr;
+          }
+
+          .groups-section {
+            margin-top: 22px;
+          }
+
+          .groups-input-row {
+            flex-direction: column;
+            align-items: stretch;
           }
 
           .buttons {

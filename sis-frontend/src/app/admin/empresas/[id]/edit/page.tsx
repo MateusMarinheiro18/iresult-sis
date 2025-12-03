@@ -1,4 +1,4 @@
-// src/app/admin/empresas/[id]/edit/page.tsx (ou equivalente)
+// src/app/admin/empresas/[id]/edit/page.tsx
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -9,7 +9,16 @@ type Props = {
 };
 
 async function getCompanyById(id: number) {
-  return prisma.empresa.findUnique({ where: { id } });
+  return prisma.empresa.findUnique({
+    where: { id },
+    include: {
+      // novos relacionamentos que precisamos no form de edição
+      gruposFuncionarios: {
+        where: { ativo: 1 },
+      },
+      escalasEmpresas: true,      // EscalaHasEmpresa[]
+    },
+  });
 }
 
 export default async function Page({ params }: Props) {
@@ -37,11 +46,9 @@ export default async function Page({ params }: Props) {
     notFound();
   }
 
-  // busca escala vinculada (0 ou 1 registro)
-  const escalaVinculo = await prisma.escalaHasEmpresa.findFirst({
-    where: { idEmpresa: company.id },
-    select: { idEscala: true },
-  });
+  // escala vinculada (0 ou 1) vinda da relação EscalaHasEmpresa
+  const escalaVinculo = company.escalasEmpresas?.[0] ?? null;
+  const escalaId = escalaVinculo ? escalaVinculo.idEscala : null;
 
   // Serializar dados para o cliente
   const serializedCompany = {
@@ -54,7 +61,14 @@ export default async function Page({ params }: Props) {
     ativo: company.ativo ?? null,
     created: company.created ? company.created.toISOString() : null,
     updated: company.updated ? company.updated.toISOString() : null,
-    escalaId: escalaVinculo?.idEscala ?? null,
+    escalaId,
+
+    // importantíssimo: mandar os grupos pro client
+    // CompanyEditForm usa `initial.gruposFuncionarios` -> .nome
+    gruposFuncionarios: (company.gruposFuncionarios ?? []).map((g) => ({
+      id: g.id,
+      nome: g.nome,
+    })),
   };
 
   return <EditPageClient company={serializedCompany} />;

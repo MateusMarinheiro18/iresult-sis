@@ -1,4 +1,4 @@
-// src/components/admin/company/addForm/CompanyForm.tsx (ou caminho equivalente)
+// src/components/admin/company/addForm/CompanyForm.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -17,6 +17,7 @@ type Payload = {
   telefone?: string;
   cep?: string;
   escalaId?: number | null;
+  grupos?: string[]; // nomes dos grupos internos
 };
 
 function sanitizeDigits(s?: string) {
@@ -88,7 +89,9 @@ export default function CompanyForm({ initial }: { initial?: any }) {
   const [razaoSocial, setRazaoSocial] = useState(initial?.razaoSocial ?? '');
   const [cnpj, setCnpj] = useState<string>(initial?.cnpj ? formatCnpj(initial.cnpj) : '');
   const [email, setEmail] = useState(initial?.email ?? '');
-  const [telefone, setTelefone] = useState<string>(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
+  const [telefone, setTelefone] = useState<string>(
+    initial?.telefone ? formatPhoneBR(initial.telefone) : ''
+  );
   const [cep, setCep] = useState<string>(initial?.cep ? formatCep(initial.cep) : '');
   const [saving, setSaving] = useState(false);
 
@@ -98,6 +101,20 @@ export default function CompanyForm({ initial }: { initial?: any }) {
     initial?.escalaId ? String(initial.escalaId) : ''
   );
 
+  // Grupos internos da empresa
+  const [groups, setGroups] = useState<string[]>(() => {
+    if (Array.isArray(initial?.grupos)) {
+      if (initial.grupos.length > 0 && typeof initial.grupos[0] === 'string') {
+        return initial.grupos as string[];
+      }
+      if (initial.grupos.length > 0 && typeof initial.grupos[0] === 'object') {
+        return (initial.grupos as any[]).map((g) => g.nome ?? '').filter(Boolean);
+      }
+    }
+    return [];
+  });
+  const [newGroupName, setNewGroupName] = useState('');
+
   // Se `initial` mudar (edge cases), reatribui valores
   useEffect(() => {
     setRazaoSocial(initial?.razaoSocial ?? '');
@@ -106,6 +123,22 @@ export default function CompanyForm({ initial }: { initial?: any }) {
     setTelefone(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
     setCep(initial?.cep ? formatCep(initial.cep) : '');
     setEscalaId(initial?.escalaId ? String(initial.escalaId) : '');
+
+    if (Array.isArray(initial?.grupos)) {
+      if (initial.grupos.length > 0 && typeof initial.grupos[0] === 'string') {
+        setGroups(initial.grupos as string[]);
+      } else if (initial.grupos.length > 0 && typeof initial.grupos[0] === 'object') {
+        setGroups(
+          (initial.grupos as any[])
+            .map((g) => g.nome ?? '')
+            .filter((n: string) => !!n.trim())
+        );
+      } else {
+        setGroups([]);
+      }
+    } else {
+      setGroups([]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
 
@@ -154,6 +187,28 @@ export default function CompanyForm({ initial }: { initial?: any }) {
     };
   }, []);
 
+  // Handlers de grupos
+
+  function handleAddGroup(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const trimmed = newGroupName.trim();
+    if (!trimmed) {
+      toast.error('Informe um nome para o grupo.');
+      return;
+    }
+    const exists = groups.some((g) => g.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      toast.error('Esse grupo já foi adicionado.');
+      return;
+    }
+    setGroups((prev) => [...prev, trimmed]);
+    setNewGroupName('');
+  }
+
+  function handleRemoveGroup(name: string) {
+    setGroups((prev) => prev.filter((g) => g !== name));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -171,6 +226,7 @@ export default function CompanyForm({ initial }: { initial?: any }) {
       telefone: sanitizeDigits(telefone),
       cep: sanitizeDigits(cep),
       escalaId: escalaId ? Number(escalaId) : null,
+      grupos: groups.length > 0 ? groups : undefined,
     };
 
     try {
@@ -280,6 +336,62 @@ export default function CompanyForm({ initial }: { initial?: any }) {
         </div>
       </div>
 
+      {/* Seção de grupos internos da empresa */}
+      <div className="groups-section">
+        <div className="groups-header">
+          <h2 className="groups-title">Grupos internos de funcionários</h2>
+          <p className="groups-subtitle">
+            Cadastre grupos como <strong>RH</strong>, <strong>Tech</strong>,{' '}
+            <strong>Operações</strong>, etc. Você poderá vinculá-los aos funcionários depois.
+          </p>
+        </div>
+
+        <div className="groups-form">
+          <div className="field">
+            <label className="label">Novo grupo</label>
+            <div className="groups-input-row">
+              <input
+                className="input"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="Ex.: RH, Tech, Operações..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddGroup();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => handleAddGroup()}
+              >
+                ADICIONAR
+              </button>
+            </div>
+          </div>
+
+          {groups.length > 0 && (
+            <div className="groups-list">
+              {groups.map((g) => (
+                <div key={g} className="group-pill">
+                  <span className="group-name">{g}</span>
+                  <button
+                    type="button"
+                    className="group-remove"
+                    onClick={() => handleRemoveGroup(g)}
+                    aria-label={`Remover grupo ${g}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="buttons">
         <button type="submit" className="btn primary" disabled={saving}>
           {saving ? 'Salvando...' : 'SALVAR'}
@@ -333,11 +445,42 @@ export default function CompanyForm({ initial }: { initial?: any }) {
           box-shadow: 0 0 0 3px rgba(11, 37, 39, 0.06);
         }
 
-        .buttons {
-          margin-top: 26px;
+        /* Seção de grupos */
+
+        .groups-section {
+          margin-top: 28px;
+          padding: 16px 18px;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          background: #f9fafb;
+        }
+
+        .groups-header {
+          margin-bottom: 14px;
+        }
+
+        .groups-title {
+          margin: 0;
+          font-size: 15px;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .groups-subtitle {
+          margin: 4px 0 0 0;
+          font-size: 12px;
+          color: #6b7280;
+        }
+
+        .groups-form {
           display: flex;
-          gap: 16px;
-          justify-content: center;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .groups-input-row {
+          display: flex;
+          gap: 10px;
           align-items: center;
         }
 
@@ -357,18 +500,83 @@ export default function CompanyForm({ initial }: { initial?: any }) {
           box-shadow: 0 6px 20px rgba(11, 37, 39, 0.12);
         }
 
+        .btn.small {
+          min-width: 120px;
+          height: 38px;
+          padding: 0 16px;
+          font-size: 12px;
+          border-radius: 999px;
+          background: #0b2527;
+          color: #fff;
+          box-shadow: 0 4px 12px rgba(11, 37, 39, 0.12);
+          white-space: nowrap;
+        }
+
+        .groups-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 4px;
+        }
+
+        .group-pill {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 10px;
+          border-radius: 999px;
+          background: #e5f3f4;
+          border: 1px solid #c7e3e4;
+          font-size: 12px;
+          gap: 6px;
+        }
+
+        .group-name {
+          color: #0b2527;
+        }
+
+        .group-remove {
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          font-size: 14px;
+          line-height: 1;
+          color: #6b7280;
+          padding: 0;
+        }
+
+        .group-remove:hover {
+          color: #ef4444;
+        }
+
+        .buttons {
+          margin-top: 26px;
+          display: flex;
+          gap: 16px;
+          justify-content: center;
+          align-items: center;
+        }
+
         @media (max-width: 960px) {
           .grid {
             grid-template-columns: 1fr;
           }
 
-          .buttons {
+          .groups-section {
+            margin-top: 22px;
+          }
+
+          .groups-input-row {
             flex-direction: column;
+            align-items: stretch;
           }
 
           .btn {
             width: 100%;
             min-width: 0;
+          }
+
+          .buttons {
+            flex-direction: column;
           }
 
           .btn + .btn {
