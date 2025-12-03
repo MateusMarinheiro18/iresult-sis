@@ -2,31 +2,44 @@
 import React from 'react';
 import { EmployeeRow } from './validators';
 
+type GroupOption = {
+  id: number;
+  nome: string;
+};
+
 type Props = {
   rows: EmployeeRow[];
   errorsByRow: Record<number, string[]>;
   previewLimit?: number;
   onEditCell: (idx: number, key: string, value: string) => void;
   onRemoveRow: (idx: number) => void;
+  groups: GroupOption[];
 };
 
-export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, onEditCell, onRemoveRow }: Props) {
+export default function PreviewTable({
+  rows,
+  errorsByRow,
+  previewLimit = 200,
+  onEditCell,
+  onRemoveRow,
+  groups,
+}: Props) {
   // Função para formatar data ISO para formato brasileiro DD/MM/YYYY
   function formatDateForDisplay(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
-    
+
     // Se está em formato ISO (YYYY-MM-DD), converte para DD/MM/YYYY
     const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (isoMatch) {
       return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
     }
-    
+
     // Se já está em formato brasileiro DD/MM/YYYY, retorna como está
     const brMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (brMatch) {
       return dateStr;
     }
-    
+
     // Tenta fazer parse da data
     try {
       const d = new Date(dateStr);
@@ -37,7 +50,7 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
         return `${day}/${month}/${year}`;
       }
     } catch {}
-    
+
     return dateStr;
   }
 
@@ -50,17 +63,17 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
       onEditCell(idx, 'data_nascimento', isoDate);
       return;
     }
-    
+
     // Se está em formato ISO ou outro, passa direto
     onEditCell(idx, 'data_nascimento', value);
   }
 
-  // sanitize digits helper (mantido conforme padrão do projeto)
+  // sanitize digits helper
   function sanitizeDigits(s?: string | null) {
     return s ? s.replace(/\D/g, '') : '';
   }
 
-  // Formata telefone BR incremental (exibe máscara), exibe +country quando detectado
+  // Formata telefone BR incremental (exibe máscara)
   function formatPhoneForDisplay(value?: string | null) {
     const raw = (value ?? '').replace(/\D/g, '');
     if (!raw) return '';
@@ -109,6 +122,13 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
     return parts.join(' ').trim();
   }
 
+  function getGroupSelectValue(row: EmployeeRow): string {
+    const raw = (row.grupo ?? '').toString().trim();
+    if (!raw) return '';
+    const match = groups.find((g) => g.nome.toLowerCase() === raw.toLowerCase());
+    return match ? match.nome : '';
+  }
+
   return (
     <div className="table-wrap">
       <table>
@@ -120,6 +140,7 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
             <th>Telefone</th>
             <th>Data Nasc.</th>
             <th>Cidade Nasc.</th>
+            <th>Grupo</th>
             <th>Gestor</th>
             <th></th>
           </tr>
@@ -127,6 +148,14 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
         <tbody>
           {rows.slice(0, previewLimit).map((r, idx) => {
             const telefoneDisplay = formatPhoneForDisplay(r.telefone ?? '');
+            const originalGroupName = (r.grupo ?? '').toString().trim();
+            const selectValue = groups.length > 0 ? getGroupSelectValue(r) : '';
+            const groupHasMatch =
+              !!originalGroupName &&
+              !!groups.find(
+                (g) => g.nome.toLowerCase() === originalGroupName.toLowerCase()
+              );
+
             return (
               <tr key={idx} className={errorsByRow[idx] ? 'row-error' : ''}>
                 <td>{r.origem_linha ?? idx + 1}</td>
@@ -146,20 +175,17 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
                   <input
                     value={telefoneDisplay}
                     onChange={(e) => {
-                      // formata para exibição e envia apenas dígitos para o row
                       const rawDigits = sanitizeDigits(e.target.value);
                       const formatted = formatPhoneForDisplay(rawDigits);
-                      // atualiza visual (controlled by parent rows prop — we still call onEditCell with digits)
+                      // envia só dígitos para o row
                       onEditCell(idx, 'telefone', rawDigits);
-                      // Note: the visual value comes from rows[...] after parent updates state.
-                      // If you want immediate visual feedback before parent updates, you'd need local state per-row.
-                      // Here we rely on parent to re-render with the updated value.
+                      // o valor exibido vem do estado pai (rows)
                     }}
                   />
                 </td>
                 <td>
-                  <input 
-                    value={formatDateForDisplay(r.data_nascimento)} 
+                  <input
+                    value={formatDateForDisplay(r.data_nascimento ?? '')}
                     onChange={(e) => handleDateEdit(idx, e.target.value)}
                     placeholder="DD/MM/AAAA"
                   />
@@ -167,8 +193,39 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
                 <td>
                   <input
                     value={r.cidade_nascimento ?? ''}
-                    onChange={(e) => onEditCell(idx, 'cidade_nascimento', e.target.value)}
+                    onChange={(e) =>
+                      onEditCell(idx, 'cidade_nascimento', e.target.value)
+                    }
                   />
+                </td>
+                <td>
+                  {groups.length > 0 ? (
+                    <div className="group-cell">
+                      <select
+                        className="group-select"
+                        value={selectValue}
+                        onChange={(e) => onEditCell(idx, 'grupo', e.target.value)}
+                      >
+                        <option value="">Selecione um grupo</option>
+                        {groups.map((g) => (
+                          <option key={g.id} value={g.nome}>
+                            {g.nome}
+                          </option>
+                        ))}
+                      </select>
+                      {!groupHasMatch && originalGroupName && (
+                        <div className="group-hint">
+                          Valor no arquivo: <span>{originalGroupName}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <input
+                      value={r.grupo ?? ''}
+                      onChange={(e) => onEditCell(idx, 'grupo', e.target.value)}
+                      placeholder="Grupo"
+                    />
+                  )}
                 </td>
                 <td>
                   <input
@@ -177,7 +234,13 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
                   />
                 </td>
                 <td>
-                  <button type="button" className="btn small danger" onClick={() => onRemoveRow(idx)}>Remover</button>
+                  <button
+                    type="button"
+                    className="btn small danger"
+                    onClick={() => onRemoveRow(idx)}
+                  >
+                    Remover
+                  </button>
                 </td>
               </tr>
             );
@@ -186,45 +249,45 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
       </table>
 
       <style jsx>{`
-        .table-wrap { 
-          overflow-x: auto; 
-          border-radius: 8px; 
-          border: 1px solid #eee; 
+        .table-wrap {
+          overflow-x: auto;            /* scroll lateral quando não couber */
+          border-radius: 8px;
+          border: 1px solid #eee;
           background: white;
         }
-        table { 
-          width: 100%; 
-          border-collapse: collapse; 
-          min-width: 900px; 
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 1050px;           /* garante espaço + scroll */
         }
         thead {
-          background: #0B2527;
+          background: #0b2527;
           color: white;
         }
-        th { 
-          padding: 12px 10px; 
+        th {
+          padding: 12px 10px;
           text-align: left;
           font-weight: 600;
           font-size: 14px;
         }
-        td { 
-          padding: 8px 10px; 
-          border-bottom: 1px solid #f3f4f6; 
+        td {
+          padding: 8px 10px;
+          border-bottom: 1px solid #f3f4f6;
           text-align: left;
           color: #374151;
         }
-        input { 
-          width: 100%; 
-          padding: 6px 8px; 
-          border-radius: 6px; 
+        input {
+          width: 100%;
+          padding: 6px 8px;
+          border-radius: 6px;
           border: 1px solid #e6e6e6;
           font-size: 13px;
         }
         input:focus {
           outline: none;
-          border-color: #0B2527;
+          border-color: #0b2527;
         }
-        tr.row-error td { 
+        tr.row-error td {
           background: #fee2e2;
           border-left: 3px solid #ef4444;
         }
@@ -232,12 +295,12 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
           background: #fff;
           border-color: #ef4444;
         }
-        .btn { 
-          padding: 6px 12px; 
-          border-radius: 6px; 
-          border: none; 
-          background: #ef4444; 
-          color: white; 
+        .btn {
+          padding: 6px 12px;
+          border-radius: 6px;
+          border: none;
+          background: #ef4444;
+          color: white;
           cursor: pointer;
           font-size: 13px;
           font-weight: 500;
@@ -246,15 +309,40 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
         .btn:hover {
           background: #dc2626;
         }
-        .btn.small { 
-          padding: 6px 10px; 
-          font-size: 12px; 
+        .btn.small {
+          padding: 6px 10px;
+          font-size: 12px;
         }
         tbody tr:hover td {
           background: #f9fafb;
         }
         tbody tr.row-error:hover td {
           background: #fecaca;
+        }
+        .group-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .group-select {
+          width: 100%;
+          padding: 6px 8px;
+          border-radius: 6px;
+          border: 1px solid #e6e6e6;
+          font-size: 13px;
+          background: #fff;
+        }
+        .group-select:focus {
+          outline: none;
+          border-color: #0b2527;
+        }
+        .group-hint {
+          font-size: 11px;
+          color: #6b7280;
+        }
+        .group-hint span {
+          font-weight: 500;
+          color: #374151;
         }
       `}</style>
     </div>

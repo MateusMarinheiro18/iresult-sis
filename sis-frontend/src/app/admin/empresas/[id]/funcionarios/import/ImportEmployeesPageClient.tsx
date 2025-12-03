@@ -4,13 +4,24 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import ImportEmployeesClient from '@/components/admin/employee/import/ImportEmployeesClient';
 
+type CompanyGroup = {
+  id: number;
+  nome: string;
+};
+
 type Props = {
   companyId?: number;
   companyName?: string | null;
   error?: string;
+  companyGroups?: CompanyGroup[]; // pode continuar existindo, só não usamos
 };
 
-export default function ImportEmployeesPageClient({ companyId, companyName, error }: Props) {
+export default function ImportEmployeesPageClient({
+  companyId,
+  companyName,
+  error,
+  companyGroups = [],
+}: Props) {
   const router = useRouter();
 
   if (error || !companyId) {
@@ -32,7 +43,11 @@ export default function ImportEmployeesPageClient({ companyId, companyName, erro
                 stroke="currentColor"
                 strokeWidth="2"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
               <span>Voltar</span>
             </button>
@@ -47,10 +62,21 @@ export default function ImportEmployeesPageClient({ companyId, companyName, erro
                 {error || 'Não foi possível identificar a empresa (companyId).'}
               </p>
               <div style={{ color: '#6b7280', fontSize: 14 }}>
-                <p><strong>Possíveis causas:</strong></p>
+                <p>
+                  <strong>Possíveis causas:</strong>
+                </p>
                 <ul style={{ marginTop: 8, paddingLeft: 20 }}>
-                  <li>Você abriu a URL sem o id: confirme que a rota é <code>/admin/empresas/123/funcionarios/import</code>.</li>
-                  <li>O arquivo da página deve estar em <code>src/app/admin/empresas/[id]/funcionarios/import/page.tsx</code>.</li>
+                  <li>
+                    Você abriu a URL sem o id: confirme que a rota é{' '}
+                    <code>/admin/empresas/123/funcionarios/import</code>.
+                  </li>
+                  <li>
+                    O arquivo da página deve estar em{' '}
+                    <code>
+                      src/app/admin/empresas/[id]/funcionarios/import/page.tsx
+                    </code>
+                    .
+                  </li>
                 </ul>
               </div>
             </div>
@@ -90,7 +116,7 @@ export default function ImportEmployeesPageClient({ companyId, companyName, erro
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            color: #0B2527;
+            color: #0b2527;
             border: none;
             border-radius: 8px;
             font-size: 14px;
@@ -106,7 +132,7 @@ export default function ImportEmployeesPageClient({ companyId, companyName, erro
           }
 
           .back-btn svg {
-            stroke: #0B2527;
+            stroke: #0b2527;
           }
 
           .card {
@@ -162,11 +188,14 @@ export default function ImportEmployeesPageClient({ companyId, companyName, erro
         {/* Header com título e botão voltar */}
         <div className="header-row">
           <h1 className="title">
-            IMPORTAR FUNCIONÁRIOS{companyName ? ` — ${companyName}` : ''}
+            IMPORTAR FUNCIONÁRIOS
+            {companyName ? ` — ${companyName}` : ''}
           </h1>
           <button
             className="back-btn"
-            onClick={() => router.push(`/admin/empresas/${companyId}/funcionarios`)}
+            onClick={() =>
+              router.push(`/admin/empresas/${companyId}/funcionarios`)
+            }
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -177,7 +206,11 @@ export default function ImportEmployeesPageClient({ companyId, companyName, erro
               stroke="currentColor"
               strokeWidth="2"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             <span>Voltar</span>
           </button>
@@ -190,9 +223,10 @@ export default function ImportEmployeesPageClient({ companyId, companyName, erro
 
           <div className="card-body">
             <p className="description">
-              Faça upload de um arquivo CSV ou Excel (.xls/.xlsx). Você poderá pré-visualizar e remover linhas antes de salvar.
+              Faça upload de um arquivo CSV ou Excel (.xls/.xlsx). Você poderá
+              pré-visualizar e remover linhas antes de salvar.
             </p>
-            
+
             {/* Componente de importação */}
             <ImportEmployeesClient companyId={companyId} />
           </div>
@@ -233,7 +267,7 @@ export default function ImportEmployeesPageClient({ companyId, companyName, erro
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          color: #0B2527;
+          color: #0b2527;
           border: none;
           border-radius: 8px;
           font-size: 14px;
@@ -249,7 +283,7 @@ export default function ImportEmployeesPageClient({ companyId, companyName, erro
         }
 
         .back-btn svg {
-          stroke: #0B2527;
+          stroke: #0b2527;
         }
 
         /* === CARD DO FORMULÁRIO === */
