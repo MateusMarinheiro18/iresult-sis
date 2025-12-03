@@ -1,20 +1,24 @@
+// ---- tab_escala.prisma ----
 // prisma/models/escala.prisma
 model Escala {
-  id           Int                    @id @default(autoincrement()) @map("id_escala")
-  nome         String                 @map("nome")
-  dataVencimento DateTime?            @map("data_vencimento")
-  ativo        Int?                   @map("ativo")
-  created      DateTime?              @map("created")
-  createdBy    Int?                   @map("created_by")
-  deleted      DateTime?              @map("deleted")
-  deletedBy    Int?                   @map("deleted_by")
-  updated      DateTime?              @map("updated")
-  updatedBy    Int?                   @map("updated_by")
+  id             Int       @id @default(autoincrement()) @map("id_escala")
+  nome           String    @map("nome")
+  dataVencimento DateTime? @map("data_vencimento")
+  ativo          Int?      @map("ativo")
+  created        DateTime? @map("created")
+  createdBy      Int?      @map("created_by")
+  deleted        DateTime? @map("deleted")
+  deletedBy      Int?      @map("deleted_by")
+  updated        DateTime? @map("updated")
+  updatedBy      Int?      @map("updated_by")
 
   // relations
-  empresas     EscalaHasEmpresa[]     @relation("EscalaEmpresas")
-  perguntas    EscalaPergunta[]       @relation("EscalaPerguntas")
-  respostas    RespostaFuncionario[]  @relation("EscalaRespostas")
+  empresas  EscalaHasEmpresa[]    @relation("EscalaEmpresas")
+  perguntas EscalaPergunta[]      @relation("EscalaPerguntas")
+  respostas RespostaFuncionario[] @relation("EscalaRespostas")
+
+  // NOVO: módulos internos da escala
+  modulos EscalaModulo[] @relation("EscalaModulos")
 
   @@map("tab_escala")
 }

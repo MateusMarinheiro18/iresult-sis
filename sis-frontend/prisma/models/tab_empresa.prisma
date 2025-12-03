@@ -14,14 +14,16 @@ model Empresa {
   updated     DateTime? @map("updated")
   updatedBy   Int?      @map("updated_by")
 
-  usuarios        EmpresaUsuario[]      @relation("EmpresaUsuarios")
-  funcionarios    EmpresaFuncionario[]  @relation("EmpresaFuncionarios")
-  relatorios      EmpresaRelatorio[]    @relation("EmpresaRelatorios")
-  empresasTrilhas EmpresaHasTrilha[]    @relation("EmpresaTrilhas")
-  escalasEmpresas EscalaHasEmpresa[]    @relation("EscalaHasEmpresas")
+  usuarios        EmpresaUsuario[]     @relation("EmpresaUsuarios")
+  funcionarios    EmpresaFuncionario[] @relation("EmpresaFuncionarios")
+  relatorios      EmpresaRelatorio[]   @relation("EmpresaRelatorios")
+  empresasTrilhas EmpresaHasTrilha[]   @relation("EmpresaTrilhas")
+  escalasEmpresas EscalaHasEmpresa[]   @relation("EscalaHasEmpresas")
 
-  // NOVO: todas as respostas de escalas associadas a esta empresa
   respostasFuncionarios RespostaFuncionario[] @relation("EmpresaRespostasFuncionario")
+
+  // NOVO: grupos internos de funcionários da empresa
+  gruposFuncionarios EmpresaGrupo[] @relation("EmpresaGrupos")
 
   @@map("tab_empresa")
 }

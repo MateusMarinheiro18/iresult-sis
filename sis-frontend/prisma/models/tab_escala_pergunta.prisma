@@ -1,28 +1,35 @@
+// ---- tab_escala_pergunta.prisma ----
 // prisma/models/escala_pergunta.prisma
 model EscalaPergunta {
-  id                            Int       @id @default(autoincrement()) @map("id_pergunta")
-  pergunta                      String    @map("pergunta")
-  idEscala                      Int       @map("id_escala")
+  id       Int       @id @default(autoincrement()) @map("id_pergunta")
+  pergunta String    @map("pergunta")
+  idEscala Int       @map("id_escala")
 
-  valorInicialFavoravel         Decimal?  @map("valor_inicial_favoravel") @db.Decimal(10,2)
-  valorFinalFavoravel           Decimal?  @map("valor_final_favoravel")   @db.Decimal(10,2)
-  valorInicialIntermediario     Decimal?  @map("valor_inicial_intermediario") @db.Decimal(10,2)
-  valorFinalIntermediario       Decimal?  @map("valor_final_intermediario")   @db.Decimal(10,2)
-  valorInicialRisco             Decimal?  @map("valor_inicial_risco") @db.Decimal(10,2)
-  valorFinalRisco               Decimal?  @map("valor_final_risco")   @db.Decimal(10,2)
+  // NOVO: ordem da pergunta dentro da escala/módulo
+  ordem Int? @map("ordem")
 
-  ativo                         Int?      @map("ativo")
-  created                       DateTime? @map("created")
-  createdBy                     Int?      @map("created_by")
-  deleted                       DateTime? @map("deleted")
-  deletedBy                     Int?      @map("deleted_by")
-  updated                       DateTime? @map("updated")
-  updatedBy                     Int?      @map("updated_by")
+  // NOVO: módulo ao qual a pergunta pertence
+  idModulo Int?          @map("id_modulo")
+  // NOVO: categoria interna (dentro do módulo)
+  idCategoria Int?       @map("id_categoria")
+
+  ativo     Int?      @map("ativo")
+  created   DateTime? @map("created")
+  createdBy Int?      @map("created_by")
+  deleted   DateTime? @map("deleted")
+  deletedBy Int?      @map("deleted_by")
+  updated   DateTime? @map("updated")
+  updatedBy Int?      @map("updated_by")
 
   // relations
-  escala                        Escala    @relation("EscalaPerguntas", fields: [idEscala], references: [id], onDelete: Cascade)
-  respostasPossiveis            EscalaPerguntaResposta[] @relation("PerguntaRespostas")
-  respostasFuncionarios         RespostaFuncionario[]    @relation("PerguntaRespostasFuncionario")
+  escala Escala @relation("EscalaPerguntas", fields: [idEscala], references: [id], onDelete: Cascade)
+
+  // relação com módulo e categoria
+  modulo    EscalaModulo?     @relation("ModuloPerguntas", fields: [idModulo], references: [id])
+  categoria EscalaCategoria?  @relation("CategoriaPerguntas", fields: [idCategoria], references: [id])
+
+  respostasPossiveis    EscalaPerguntaResposta[] @relation("PerguntaRespostas")
+  respostasFuncionarios RespostaFuncionario[]    @relation("PerguntaRespostasFuncionario")
 
   @@map("tab_escala_pergunta")
 }
