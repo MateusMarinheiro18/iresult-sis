@@ -18,6 +18,7 @@ type PatchBody = {
   cidade_nascimento?: string | null;
   gestor?: string | null;
   ativo?: number | boolean | null;
+  idGrupo?: number | string | null; // NOVO: grupo interno da empresa
 };
 
 function isValidEmail(email: string) {
@@ -142,6 +143,45 @@ export async function PATCH(
 
     if (body.ativo !== undefined) {
       updates.ativo = body.ativo ? 1 : 0;
+    }
+
+    // NOVO: tratar idGrupo (atualizar grupo do funcionário)
+    if (Object.prototype.hasOwnProperty.call(body, 'idGrupo')) {
+      const raw = body.idGrupo;
+
+      let idGrupoToSet: number | null = null;
+
+      if (raw === null || raw === '' || raw === undefined) {
+        // limpar grupo
+        idGrupoToSet = null;
+      } else {
+        const n = Number(raw);
+        if (Number.isNaN(n) || n <= 0) {
+          return NextResponse.json(
+            { error: 'Grupo inválido.' },
+            { status: 400 }
+          );
+        }
+        idGrupoToSet = n;
+
+        // valida se o grupo pertence à empresa e está ativo (ou pelo menos não deletado)
+        const grupo = await prisma.empresaGrupo.findFirst({
+          where: {
+            id: idGrupoToSet,
+            idEmpresa: companyId,
+            deleted: null,
+          },
+        });
+
+        if (!grupo) {
+          return NextResponse.json(
+            { error: 'Grupo inválido para esta empresa.' },
+            { status: 400 }
+          );
+        }
+      }
+
+      updates.id_grupo = idGrupoToSet;
     }
 
     if (Object.keys(updates).length === 0) {

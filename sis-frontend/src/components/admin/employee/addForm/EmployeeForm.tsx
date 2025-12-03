@@ -10,13 +10,25 @@ type Payload = {
   cidade_nascimento?: string | null;
   gestor?: string | null;
   ativo?: number;
+  idGrupo?: number | null; // novo: grupo interno da empresa
+};
+
+type GroupOption = {
+  id: number;
+  nome: string;
 };
 
 function sanitizeDigits(s?: string) {
   return s ? s.replace(/\D/g, '') : undefined;
 }
 
-export default function EmployeeForm({ companyId, initial }: { companyId?: number; initial?: any }) {
+export default function EmployeeForm({
+  companyId,
+  initial,
+}: {
+  companyId?: number;
+  initial?: any;
+}) {
   // helper to format date to yyyy-mm-dd
   function formatDateForInput(d: string | Date) {
     const date = d instanceof Date ? d : new Date(d);
@@ -86,8 +98,12 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
 
   const [nome, setNome] = useState(initial?.nome ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
-  const [telefone, setTelefone] = useState<string>(initial?.telefone ? formatPhone(initial.telefone) : '');
-  const [dataNascimento, setDataNascimento] = useState(initial?.data_nascimento ? formatDateForInput(initial.data_nascimento) : '');
+  const [telefone, setTelefone] = useState<string>(
+    initial?.telefone ? formatPhone(initial.telefone) : ''
+  );
+  const [dataNascimento, setDataNascimento] = useState(
+    initial?.data_nascimento ? formatDateForInput(initial.data_nascimento) : ''
+  );
   const [cidade, setCidade] = useState(initial?.cidade_nascimento ?? '');
   const [gestor, setGestor] = useState(initial?.gestor ?? '');
   const [ativo, setAtivo] = useState(initial?.ativo === 0 ? false : true);
@@ -95,19 +111,88 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
+  // NOVO: grupos da empresa
+  const [groups, setGroups] = useState<GroupOption[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+
   // Reformat phone if `initial` changes (edge-cases where server props arrive later)
   useEffect(() => {
     setTelefone(initial?.telefone ? formatPhone(initial.telefone) : '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
 
+  // NOVO: carrega grupos da empresa
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGroups() {
+      if (!companyId || Number.isNaN(Number(companyId)) || Number(companyId) <= 0) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/companies/${companyId}`, {
+          method: 'GET',
+        });
+
+        if (!res.ok) {
+          console.error('Falha ao carregar grupos da empresa', res.status);
+          return;
+        }
+
+        const text = await res.text();
+        let data: any = {};
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          data = {};
+        }
+
+        const rawGroups: any[] = Array.isArray(data.gruposFuncionarios)
+          ? data.gruposFuncionarios
+          : Array.isArray(data.grupos)
+          ? data.grupos
+          : [];
+
+        const mapped: GroupOption[] = rawGroups
+          .filter((g: any) => g && typeof g.nome === 'string')
+          // só grupos ativos (ativo === 1 ou null/undefined)
+          .filter((g: any) => g.ativo === undefined || g.ativo === null || g.ativo === 1)
+          .map((g: any) => ({
+            id: g.id,
+            nome: g.nome as string,
+          }));
+
+        if (!cancelled) {
+          setGroups(mapped);
+          setSelectedGroupId(''); // sempre começa vazio; usuário escolhe
+        }
+      } catch (err) {
+        console.error('Erro ao carregar grupos da empresa', err);
+      }
+    }
+
+    loadGroups();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId]);
+
   function validate(): string | null {
-    if (!nome || nome.trim().length < 2) return 'Nome é obrigatório (mínimo 2 caracteres).';
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email inválido.';
+    if (!nome || nome.trim().length < 2)
+      return 'Nome é obrigatório (mínimo 2 caracteres).';
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return 'Email inválido.';
     if (dataNascimento) {
       const d = new Date(dataNascimento);
       if (Number.isNaN(d.getTime())) return 'Data de nascimento inválida.';
-      if (d.getTime() > Date.now()) return 'Data de nascimento não pode ser no futuro.';
+      if (d.getTime() > Date.now())
+        return 'Data de nascimento não pode ser no futuro.';
+    }
+    // NOVO: se existem grupos cadastrados, obriga escolher um
+    if (groups.length > 0 && !selectedGroupId) {
+      return 'Selecione um grupo para este funcionário.';
     }
     return null;
   }
@@ -122,7 +207,9 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
     }
 
     if (!companyId || Number.isNaN(Number(companyId)) || Number(companyId) <= 0) {
-      setError('companyId inválido — impossível enviar. Verifique se você abriu a página com a rota correta ou se o parent passou companyId corretamente.');
+      setError(
+        'companyId inválido — impossível enviar. Verifique se você abriu a página com a rota correta ou se o parent passou companyId corretamente.'
+      );
       return;
     }
 
@@ -136,10 +223,16 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
       cidade_nascimento: cidade.trim() || undefined,
       gestor: gestor.trim() || undefined,
       ativo: ativo ? 1 : 0,
+      // NOVO: id do grupo selecionado
+      idGrupo: selectedGroupId ? Number(selectedGroupId) : null,
     };
 
     try {
-      console.log('Enviando payload para API:', `/api/companies/${companyId}/employees`, payload);
+      console.log(
+        'Enviando payload para API:',
+        `/api/companies/${companyId}/employees`,
+        payload
+      );
 
       const res = await fetch(`/api/companies/${companyId}/employees`, {
         method: 'POST',
@@ -149,11 +242,22 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
 
       const text = await res.text().catch(() => '');
       let body: any = {};
-      try { body = text ? JSON.parse(text) : {}; } catch (e) { body = { text }; }
+      try {
+        body = text ? JSON.parse(text) : {};
+      } catch (e) {
+        body = { text };
+      }
 
       if (!res.ok) {
-        console.error('API POST /employees retornou erro', { status: res.status, body });
-        setError(body?.error ?? body?.message ?? `Erro ao salvar (status ${res.status})`);
+        console.error('API POST /employees retornou erro', {
+          status: res.status,
+          body,
+        });
+        setError(
+          body?.error ??
+            body?.message ??
+            `Erro ao salvar (status ${res.status})`
+        );
         setSaving(false);
         return;
       }
@@ -241,6 +345,28 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
           />
         </div>
 
+        {/* NOVO: campo de grupo interno */}
+        <div className="field">
+          <label className="label">Grupo da empresa *</label>
+          <select
+            className="input"
+            value={selectedGroupId}
+            onChange={(e) => setSelectedGroupId(e.target.value)}
+            aria-label="Grupo da empresa"
+          >
+            <option value="">
+              {groups.length === 0
+                ? 'Nenhum grupo cadastrado para esta empresa'
+                : 'Selecione um grupo'}
+            </option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="field" style={{ alignSelf: 'center' }}>
           <label className="label">Ativo</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -251,32 +377,57 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
               onChange={(e) => setAtivo(e.target.checked)}
               aria-label="Ativo"
             />
-            <label htmlFor="ativo-checkbox" style={{ fontSize: 13, color: '#374151' }}>{ativo ? 'Sim' : 'Não'}</label>
+            <label
+              htmlFor="ativo-checkbox"
+              style={{ fontSize: 13, color: '#374151' }}
+            >
+              {ativo ? 'Sim' : 'Não'}
+            </label>
           </div>
         </div>
       </div>
 
-      {error && <div className="form-error" role="alert">{error}</div>}
+      {error && (
+        <div className="form-error" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="buttons">
         <button type="submit" className="btn primary" disabled={saving}>
           {saving ? 'Salvando...' : 'SALVAR'}
         </button>
-        <button type="button" className="btn secondary" disabled={saving} onClick={() => history.back()}>
+        <button
+          type="button"
+          className="btn secondary"
+          disabled={saving}
+          onClick={() => history.back()}
+        >
           Cancelar
         </button>
       </div>
 
       <style jsx>{`
-        .form-root { display: block; }
+        .form-root {
+          display: block;
+        }
         .grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
           gap: 18px;
           align-items: start;
         }
-        .field { display:flex; flex-direction:column; }
-        .label { font-size:12px; font-weight:700; color:#233; margin-bottom:8px; letter-spacing:0.2px; }
+        .field {
+          display: flex;
+          flex-direction: column;
+        }
+        .label {
+          font-size: 12px;
+          font-weight: 700;
+          color: #233;
+          margin-bottom: 8px;
+          letter-spacing: 0.2px;
+        }
         .input {
           height: 42px;
           padding: 8px 12px;
@@ -288,19 +439,63 @@ export default function EmployeeForm({ companyId, initial }: { companyId?: numbe
           transition: box-shadow 0.12s ease, border-color 0.12s ease;
           color: #111827;
         }
-        .input::placeholder { color: #9ca3af; opacity:1; }
-        .input:focus { border-color: #0b2527; box-shadow: 0 0 0 3px rgba(11,37,39,0.06); }
-        .form-error { margin-top: 12px; color: #b91c1c; font-weight:600; }
-        .buttons { margin-top: 26px; display:flex; gap:16px; justify-content:center; align-items:center; }
-        .btn { min-width: 180px; height:44px; border-radius:999px; font-weight:700; letter-spacing:0.6px; cursor:pointer; border:none; }
-        .btn.primary { background: #0b2527; color: white; box-shadow: 0 6px 20px rgba(11,37,39,0.12); }
-        .btn.primary:disabled { opacity:0.6; cursor:not-allowed; }
-        .btn.secondary { background: white; color: #0b2527; border: 1px solid #0b2527; }
+        .input::placeholder {
+          color: #9ca3af;
+          opacity: 1;
+        }
+        .input:focus {
+          border-color: #0b2527;
+          box-shadow: 0 0 0 3px rgba(11, 37, 39, 0.06);
+        }
+        .form-error {
+          margin-top: 12px;
+          color: #b91c1c;
+          font-weight: 600;
+        }
+        .buttons {
+          margin-top: 26px;
+          display: flex;
+          gap: 16px;
+          justify-content: center;
+          align-items: center;
+        }
+        .btn {
+          min-width: 180px;
+          height: 44px;
+          border-radius: 999px;
+          font-weight: 700;
+          letter-spacing: 0.6px;
+          cursor: pointer;
+          border: none;
+        }
+        .btn.primary {
+          background: #0b2527;
+          color: white;
+          box-shadow: 0 6px 20px rgba(11, 37, 39, 0.12);
+        }
+        .btn.primary:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .btn.secondary {
+          background: white;
+          color: #0b2527;
+          border: 1px solid #0b2527;
+        }
         @media (max-width: 960px) {
-          .grid { grid-template-columns: 1fr; }
-          .buttons { flex-direction: column; }
-          .btn { width: 100%; min-width: 0; }
-          .btn + .btn { margin-top: 8px; }
+          .grid {
+            grid-template-columns: 1fr;
+          }
+          .buttons {
+            flex-direction: column;
+          }
+          .btn {
+            width: 100%;
+            min-width: 0;
+          }
+          .btn + .btn {
+            margin-top: 8px;
+          }
         }
       `}</style>
     </form>

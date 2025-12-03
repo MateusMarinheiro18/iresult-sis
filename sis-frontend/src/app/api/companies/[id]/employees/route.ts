@@ -49,6 +49,8 @@ export async function GET(
       orderBy: { nome: 'asc' },
       skip: (page - 1) * perPage,
       take: perPage,
+      // se depois você quiser o nome do grupo junto:
+      // include: { grupo: true },
     });
 
     return NextResponse.json({ data: employees, meta: { total, page, perPage } });
@@ -69,6 +71,7 @@ type CreateBody = {
   cidade_nascimento?: string | null;
   gestor?: string | null;
   ativo?: number | boolean | null;
+  idGrupo?: number | string | null; // NOVO: grupo interno da empresa
 };
 
 function isValidEmail(email: string) {
@@ -102,6 +105,20 @@ export async function POST(
     const cidade_nascimento = body.cidade_nascimento?.toString().trim() ?? null;
     const gestor = body.gestor?.toString().trim() ?? null;
     const ativo = body.ativo === undefined ? 1 : body.ativo ? 1 : 0;
+
+    // NOVO: trata idGrupo vindo do form
+    const idGrupoRaw = body.idGrupo;
+    let idGrupo: number | null = null;
+    if (idGrupoRaw !== undefined && idGrupoRaw !== null && idGrupoRaw !== '') {
+      const n = Number(idGrupoRaw);
+      if (Number.isNaN(n) || n <= 0) {
+        return NextResponse.json(
+          { error: 'Grupo inválido.' },
+          { status: 400 }
+        );
+      }
+      idGrupo = n;
+    }
 
     // validações
     if (!nome || nome.length < 2) {
@@ -140,9 +157,28 @@ export async function POST(
       }
     }
 
+    // NOVO: valida se o grupo pertence à empresa (quando informado)
+    if (idGrupo !== null) {
+      const grupo = await prisma.empresaGrupo.findFirst({
+        where: {
+          id: idGrupo,
+          idEmpresa: companyId,
+          deleted: null,
+        },
+      });
+
+      if (!grupo) {
+        return NextResponse.json(
+          { error: 'Grupo inválido para esta empresa.' },
+          { status: 400 }
+        );
+      }
+    }
+
     const newEmployee = await prisma.empresaFuncionario.create({
       data: {
         id_empresa: companyId,
+        id_grupo: idGrupo, // NOVO: vínculo com o grupo interno
         nome,
         email,
         telefone,
