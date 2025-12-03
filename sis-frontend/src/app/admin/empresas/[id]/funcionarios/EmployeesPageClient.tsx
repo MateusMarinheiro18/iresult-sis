@@ -1,3 +1,4 @@
+// src/app/admin/empresas/[id]/funcionarios/EmployeesPageClient.tsx
 'use client';
 
 import React from 'react';
@@ -76,7 +77,7 @@ export default function EmployeesPageClient({
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          color: #0B2527;
+          color: #0b2527;
           border: none;
           border-radius: 8px;
           font-size: 14px;
@@ -88,7 +89,7 @@ export default function EmployeesPageClient({
         }
 
         .back-btn svg {
-          stroke: #0B2527;
+          stroke: #0b2527;
         }
 
         .card {

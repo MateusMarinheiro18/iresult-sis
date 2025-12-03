@@ -41,17 +41,7 @@ export default async function EmployeesPage(props: Props) {
         deleted: null, // apenas funcionários não deletados
       },
       orderBy: { nome: 'asc' },
-      select: {
-        id_funcionario: true,
-        nome: true,
-        email: true,
-        telefone: true,
-        data_nascimento: true,
-        cidade_nascimento: true,
-        gestor: true,
-        created: true,
-        updated: true,
-      },
+      // sem select para trazer também id_grupo e outros campos
     });
   } catch (err) {
     console.error('Erro ao buscar funcionários:', err);
