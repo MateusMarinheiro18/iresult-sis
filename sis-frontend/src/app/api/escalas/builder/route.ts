@@ -1,222 +1,200 @@
-// src/app/api/escalas/builder/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 
-async function checkAdmin(request: NextRequest) {
-  // TODO: integrar com autenticação real
-  return true;
-}
+const prisma = new PrismaClient();
 
-type RespostaInput = {
-  resposta?: string | null;
+type RespostaPayload = {
+  resposta: string;
+  valor: number;
 };
 
-type PerguntaInput = {
-  pergunta?: string | null;
-
-  valorInicialFavoravel?: string | number | null;
-  valorFinalFavoravel?: string | number | null;
-  valorInicialIntermediario?: string | number | null;
-  valorFinalIntermediario?: string | number | null;
-  valorInicialRisco?: string | number | null;
-  valorFinalRisco?: string | number | null;
-
-  respostas?: RespostaInput[];
+type PerguntaPayload = {
+  tempId: string;
+  pergunta: string;
+  ordem: number;
+  moduloTempId: string;
+  categoriaTempId: string;
+  respostas: RespostaPayload[];
 };
 
-type EscalaBuilderInput = {
-  nome?: string | null;
-  dataVencimento?: string | null;
-  ativo?: number | boolean | null;
-  perguntas?: PerguntaInput[];
+type CategoriaPayload = {
+  tempId: string;
+  nome: string;
+  moduloTempId: string;
 };
 
-function parseDate(value?: string | null): Date | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
+type ModuloPayload = {
+  tempId: string;
+  nome: string;
+  valorInicialFavoravel: string | null;
+  valorFinalFavoravel: string | null;
+  valorInicialIntermediario: string | null;
+  valorFinalIntermediario: string | null;
+  valorInicialRisco: string | null;
+  valorFinalRisco: string | null;
+};
 
-  const d = new Date(trimmed);
-  if (Number.isNaN(d.getTime())) {
-    throw new Error('DATA_INVALIDA');
-  }
-  return d;
-}
+type EscalaPayload = {
+  nome: string;
+  dataVencimento: string | null;
+  ativo: number;
+  modulos: ModuloPayload[];
+  categorias: CategoriaPayload[];
+  perguntas: PerguntaPayload[];
+};
 
-// Para campos Decimal do Prisma, podemos mandar string.
-function parseDecimal(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-
-  if (typeof value === 'number') {
-    return value.toString();
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    // troca vírgula por ponto
-    return trimmed.replace(',', '.');
-  }
-
-  return null;
-}
-
-export async function POST(request: NextRequest) {
-  const isAdmin = await checkAdmin(request);
-  if (!isAdmin) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-  }
-
-  let body: EscalaBuilderInput;
-
+export async function POST(req: NextRequest) {
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: 'Body JSON inválido.' },
-      { status: 400 }
-    );
-  }
+    const body: EscalaPayload = await req.json();
 
-  const nome = body.nome?.trim();
-  if (!nome) {
-    return NextResponse.json(
-      { error: 'Campo "nome" é obrigatório.' },
-      { status: 400 }
-    );
-  }
-
-  const ativo =
-    typeof body.ativo === 'boolean'
-      ? body.ativo
-        ? 1
-        : 0
-      : typeof body.ativo === 'number'
-      ? body.ativo
-      : 1;
-
-  if (!Array.isArray(body.perguntas) || body.perguntas.length === 0) {
-    return NextResponse.json(
-      { error: 'Adicione pelo menos uma pergunta.' },
-      { status: 400 }
-    );
-  }
-
-  let dataVencimento: Date | null = null;
-  try {
-    dataVencimento = parseDate(body.dataVencimento ?? null);
-  } catch (err: any) {
-    if (err?.message === 'DATA_INVALIDA') {
+    // Validações básicas
+    if (!body.nome?.trim()) {
       return NextResponse.json(
-        { error: 'Campo "dataVencimento" deve ser uma data válida.' },
-        { status: 400 }
-      );
-    }
-    throw err;
-  }
-
-  // Valida estrutura básica das perguntas e respostas
-  for (const [index, p] of body.perguntas.entries()) {
-    const perguntaTexto = p.pergunta?.trim();
-    if (!perguntaTexto) {
-      return NextResponse.json(
-        { error: `Pergunta ${index + 1}: texto é obrigatório.` },
+        { error: 'Nome da escala é obrigatório.' },
         { status: 400 }
       );
     }
 
-    if (!Array.isArray(p.respostas) || p.respostas.length === 0) {
+    if (!body.modulos?.length) {
       return NextResponse.json(
-        {
-          error: `Pergunta ${index + 1}: adicione pelo menos uma resposta.`,
-        },
+        { error: 'A escala deve ter pelo menos um módulo.' },
         { status: 400 }
       );
     }
 
-    for (const [rIndex, r] of p.respostas.entries()) {
-      const respostaTexto = r.resposta?.trim();
-      if (!respostaTexto) {
-        return NextResponse.json(
-          {
-            error: `Pergunta ${index + 1}, resposta ${
-              rIndex + 1
-            }: texto é obrigatório.`,
-          },
-          { status: 400 }
-        );
-      }
+    if (!body.perguntas?.length) {
+      return NextResponse.json(
+        { error: 'A escala deve ter pelo menos uma pergunta.' },
+        { status: 400 }
+      );
     }
-  }
 
-  const now = new Date();
-
-  try {
-    const escala = await prisma.$transaction(async (tx) => {
-      const createdEscala = await tx.escala.create({
+    // Criar escala e toda estrutura em transação
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Criar escala
+      const escala = await tx.escala.create({
         data: {
-          nome,
-          dataVencimento,
-          ativo,
-          created: now,
-          createdBy: null,
+          nome: body.nome.trim(),
+          dataVencimento: body.dataVencimento
+            ? new Date(body.dataVencimento)
+            : null,
+          ativo: body.ativo ?? 1,
+          created: new Date(),
+          createdBy: 1, // TODO: pegar do auth
         },
       });
 
-      for (const p of body.perguntas!) {
-        const perguntaTexto = p.pergunta!.trim();
+      // 2. Criar módulos e mapear tempId -> id real
+      const moduloMap = new Map<string, number>();
+      for (const mod of body.modulos) {
+        const modulo = await tx.escalaModulo.create({
+          data: {
+            nome: mod.nome.trim(),
+            idEscala: escala.id,
+            valorInicialFavoravel: mod.valorInicialFavoravel
+              ? parseFloat(mod.valorInicialFavoravel)
+              : null,
+            valorFinalFavoravel: mod.valorFinalFavoravel
+              ? parseFloat(mod.valorFinalFavoravel)
+              : null,
+            valorInicialIntermediario: mod.valorInicialIntermediario
+              ? parseFloat(mod.valorInicialIntermediario)
+              : null,
+            valorFinalIntermediario: mod.valorFinalIntermediario
+              ? parseFloat(mod.valorFinalIntermediario)
+              : null,
+            valorInicialRisco: mod.valorInicialRisco
+              ? parseFloat(mod.valorInicialRisco)
+              : null,
+            valorFinalRisco: mod.valorFinalRisco
+              ? parseFloat(mod.valorFinalRisco)
+              : null,
+            ativo: 1,
+            created: new Date(),
+            createdBy: 1,
+          },
+        });
+        moduloMap.set(mod.tempId, modulo.id);
+      }
+
+      // 3. Criar categorias e mapear tempId -> id real
+      const categoriaMap = new Map<string, number>();
+      for (const cat of body.categorias) {
+        const idModulo = moduloMap.get(cat.moduloTempId);
+        if (!idModulo) {
+          throw new Error(
+            `Módulo não encontrado para categoria ${cat.nome}`
+          );
+        }
+
+        const categoria = await tx.escalaCategoria.create({
+          data: {
+            nome: cat.nome.trim(),
+            idModulo,
+            ativo: 1,
+            created: new Date(),
+            createdBy: 1,
+          },
+        });
+        categoriaMap.set(cat.tempId, categoria.id);
+      }
+
+      // 4. Criar perguntas e respostas
+      for (const perg of body.perguntas) {
+        const idModulo = moduloMap.get(perg.moduloTempId);
+        const idCategoria = categoriaMap.get(perg.categoriaTempId);
+
+        if (!idModulo) {
+          throw new Error(
+            `Módulo não encontrado para pergunta: ${perg.pergunta}`
+          );
+        }
+
+        if (!idCategoria) {
+          throw new Error(
+            `Categoria não encontrada para pergunta: ${perg.pergunta}`
+          );
+        }
 
         const pergunta = await tx.escalaPergunta.create({
           data: {
-            pergunta: perguntaTexto,
-            idEscala: createdEscala.id,
-
-            valorInicialFavoravel: parseDecimal(p.valorInicialFavoravel),
-            valorFinalFavoravel: parseDecimal(p.valorFinalFavoravel),
-            valorInicialIntermediario: parseDecimal(
-              p.valorInicialIntermediario
-            ),
-            valorFinalIntermediario: parseDecimal(
-              p.valorFinalIntermediario
-            ),
-            valorInicialRisco: parseDecimal(p.valorInicialRisco),
-            valorFinalRisco: parseDecimal(p.valorFinalRisco),
-
+            pergunta: perg.pergunta.trim(),
+            idEscala: escala.id,
+            idModulo,
+            idCategoria,
+            ordem: perg.ordem,
             ativo: 1,
-            created: now,
-            createdBy: null,
+            created: new Date(),
+            createdBy: 1,
           },
         });
 
-        for (const r of p.respostas!) {
-          const respostaTexto = r.resposta!.trim();
-
+        // 5. Criar respostas possíveis
+        for (const resp of perg.respostas) {
           await tx.escalaPerguntaResposta.create({
             data: {
-              resposta: respostaTexto,
+              resposta: resp.resposta.trim(),
               idPergunta: pergunta.id,
+              valor: resp.valor,
               ativo: 1,
-              created: now,
-              createdBy: null,
+              created: new Date(),
+              createdBy: 1,
             },
           });
         }
       }
 
-      return createdEscala;
+      return escala;
     });
 
     return NextResponse.json(
-      {
-        id: escala.id,
-        nome: escala.nome,
-      },
+      { success: true, escalaId: result.id },
       { status: 201 }
     );
-  } catch (err) {
-    console.error('POST /api/escalas/builder erro:', err);
+  } catch (error: any) {
+    console.error('[POST /api/escalas/builder] Error:', error);
     return NextResponse.json(
-      { error: 'Erro ao criar escala completa.' },
+      { error: error?.message || 'Erro ao criar escala.' },
       { status: 500 }
     );
   }

@@ -1,6 +1,4 @@
-// src/components/admin/employee/table/EmployeeTableClient.tsx
 'use client';
-
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -17,35 +15,18 @@ type Employee = {
   created?: string | Date | null;
   deleted?: string | Date | null;
   updated?: string | Date | null;
-  // pode ter outros campos (como id_grupo) vindos do Prisma
-  [k: string]: any;
-};
-
-type GroupOption = {
-  id: number;
-  nome: string;
 };
 
 const ITEMS_PER_PAGE = 5;
 
-export default function EmployeesTableClient({
-  companyId,
-  initialData,
-}: {
-  companyId: number;
-  initialData: Employee[];
-}) {
+export default function EmployeesTableClient({ companyId, initialData }: { companyId: number; initialData: Employee[] }) {
   const [query, setQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
-  // Dropdown "Novo Funcionário"
+  // Dropdown state
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-
-  // Grupos + filtro de grupo
-  const [groups, setGroups] = useState<GroupOption[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   // fecha o menu quando clicar fora
   useEffect(() => {
@@ -57,80 +38,19 @@ export default function EmployeesTableClient({
     return () => document.removeEventListener('mousedown', onOutside);
   }, [menuOpen]);
 
-  // Carrega grupos da empresa (mesmo esquema do import)
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadGroups() {
-      try {
-        const res = await fetch(`/api/companies/${companyId}`, { method: 'GET' });
-        if (!res.ok) {
-          console.error('Falha ao carregar grupos da empresa', res.status);
-          return;
-        }
-
-        const text = await res.text();
-        let data: any = {};
-        try {
-          data = text ? JSON.parse(text) : {};
-        } catch {
-          data = {};
-        }
-
-        const rawGroups: any[] = Array.isArray(data.gruposFuncionarios)
-          ? data.gruposFuncionarios
-          : Array.isArray(data.grupos)
-          ? data.grupos
-          : [];
-
-        const mapped: GroupOption[] = rawGroups
-          .filter((g: any) => g && typeof g.nome === 'string')
-          .filter((g: any) => g.ativo === undefined || g.ativo === null || g.ativo === 1)
-          .map((g: any) => ({
-            id: g.id,
-            nome: g.nome as string,
-          }));
-
-        if (!cancelled) {
-          setGroups(mapped);
-        }
-      } catch (err) {
-        console.error('Erro ao carregar grupos da empresa', err);
-      }
-    }
-
-    loadGroups();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [companyId]);
-
-  // filtro por nome/email + grupo (case-insensitive)
+  // filtro por nome ou email (case-insensitive)
   const filtered = useMemo(() => {
     const q = String(query || '').trim().toLowerCase();
-    const groupId = selectedGroupId ? Number(selectedGroupId) : null;
+    if (!q) return initialData;
+    return initialData.filter((e) =>
+      ((e.nome ?? '').toLowerCase().includes(q) || (e.email ?? '').toLowerCase().includes(q))
+    );
+  }, [initialData, query]);
 
-    return initialData.filter((e) => {
-      const nome = (e.nome ?? '').toString().toLowerCase();
-      const email = (e.email ?? '').toString().toLowerCase();
-
-      const matchesQuery = !q || nome.includes(q) || email.includes(q);
-
-      let matchesGroup = true;
-      if (groupId && !Number.isNaN(groupId)) {
-        const employeeGroupId = (e as any).id_grupo ?? null;
-        matchesGroup = employeeGroupId === groupId;
-      }
-
-      return matchesQuery && matchesGroup;
-    });
-  }, [initialData, query, selectedGroupId]);
-
-  // reset página ao mudar busca ou grupo
+  // reset página ao mudar busca
   useEffect(() => {
     setCurrentPage(1);
-  }, [query, selectedGroupId]);
+  }, [query]);
 
   // paginação
   const totalItems = filtered.length;
@@ -150,29 +70,22 @@ export default function EmployeesTableClient({
   };
   const visiblePages = getVisiblePages();
 
-  // Formata data no formato brasileiro
+  // Função para formatar data no formato brasileiro
   function formatDateBR(date: string | Date | null | undefined): string {
     if (!date) return '—';
-
+    
     try {
       const d = typeof date === 'string' ? new Date(date) : date;
-
+      
+      // Usa UTC para evitar problemas de timezone
       const day = String(d.getUTCDate()).padStart(2, '0');
       const month = String(d.getUTCMonth() + 1).padStart(2, '0');
       const year = d.getUTCFullYear();
-
+      
       return `${day}/${month}/${year}`;
     } catch {
       return '—';
     }
-  }
-
-  // Pega nome do grupo a partir do id_grupo
-  function getEmployeeGroupName(e: Employee): string {
-    const groupId = (e as any).id_grupo ?? null;
-    if (!groupId) return '—';
-    const g = groups.find((gr) => gr.id === groupId);
-    return g?.nome ?? '—';
   }
 
   // handlers do dropdown
@@ -190,29 +103,9 @@ export default function EmployeesTableClient({
       <div className="controls-row">
         <div className="search-box" role="search" aria-label="Buscar funcionário por nome ou email">
           <div className="search-icon" aria-hidden>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M21 21l-4.35-4.35"
-                stroke="#6B7280"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle
-                cx="11"
-                cy="11"
-                r="6"
-                stroke="#6B7280"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 21l-4.35-4.35" stroke="#6B7280" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="11" cy="11" r="6" stroke="#6B7280" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
 
@@ -226,23 +119,7 @@ export default function EmployeesTableClient({
         </div>
 
         <div className="right-actions" ref={menuRef}>
-          {/* Filtro por grupo */}
-          {groups.length > 0 && (
-            <select
-              className="group-filter"
-              value={selectedGroupId}
-              onChange={(e) => setSelectedGroupId(e.target.value)}
-            >
-              <option value="">Todos os grupos</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.nome}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* Dropdown "Novo Funcionário" (Importar / Criar) */}
+          {/* Dropdown main button */}
           <div className="dropdown-root">
             <button
               className="btn-new"
@@ -253,69 +130,26 @@ export default function EmployeesTableClient({
               title="Novo funcionário"
             >
               Novo Funcionário
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 20 20"
-                fill="none"
-                style={{ marginLeft: 8 }}
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M6 8l4 4 4-4"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" style={{ marginLeft: 8 }} xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
 
             {menuOpen && (
               <div className="menu" role="menu" aria-label="Opções novo funcionário">
                 <button className="menu-item" role="menuitem" onClick={goToImport}>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    style={{ marginRight: 10 }}
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M14 2v6h6"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+                  {/* ícone documento */}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 10 }} xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   Importar
                 </button>
 
                 <button className="menu-item" role="menuitem" onClick={goToCreate}>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    style={{ marginRight: 10 }}
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M12 5v14M5 12h14"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+                  {/* ícone plus */}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 10 }} xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   Criar
                 </button>
@@ -331,7 +165,6 @@ export default function EmployeesTableClient({
             <tr>
               <th className="col-id">ID</th>
               <th className="col-name">Nome</th>
-              <th className="col-grupo">Grupo</th>
               <th className="col-created">Data Nasc.</th>
               <th className="col-gestor">Gestor</th>
               <th className="col-cidade">Cidade Nasc.</th>
@@ -346,19 +179,12 @@ export default function EmployeesTableClient({
                 <td className="cell id-cell">#{e.id_funcionario}</td>
 
                 <td className="cell name-cell">
-                  <Link
-                    href={`/admin/empresas/${companyId}/funcionarios/${e.id_funcionario}`}
-                    className="name-link"
-                  >
+                  <Link href={`/admin/empresas/${companyId}/funcionarios/${e.id_funcionario}`} className="name-link">
                     {e.nome ?? '—'}
                   </Link>
                 </td>
 
-                <td className="cell grupo-cell">{getEmployeeGroupName(e)}</td>
-
-                <td className="cell created-cell">
-                  {formatDateBR(e.created ?? e.updated ?? e.data_nascimento)}
-                </td>
+                <td className="cell created-cell">{formatDateBR(e.created ?? e.updated ?? e.data_nascimento)}</td>
 
                 <td className="cell gestor-cell">{e.gestor ?? '—'}</td>
 
@@ -366,12 +192,8 @@ export default function EmployeesTableClient({
 
                 <td className="cell email-cell">
                   {e.email ? (
-                    <a href={`mailto:${e.email}`} className="email-link">
-                      {e.email}
-                    </a>
-                  ) : (
-                    '—'
-                  )}
+                    <a href={`mailto:${e.email}`} className="email-link">{e.email}</a>
+                  ) : '—'}
                 </td>
 
                 <td className="cell action-cell">
@@ -382,9 +204,7 @@ export default function EmployeesTableClient({
 
             {currentItems.length === 0 && (
               <tr>
-                <td colSpan={8} className="no-results">
-                  Nenhum funcionário encontrado.
-                </td>
+                <td colSpan={7} className="no-results">Nenhum funcionário encontrado.</td>
               </tr>
             )}
           </tbody>
@@ -395,8 +215,7 @@ export default function EmployeesTableClient({
       {totalItems > 0 && (
         <div className="pagination-wrapper">
           <div className="pagination-info">
-            Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems}{' '}
-            {totalItems === 1 ? 'funcionário' : 'funcionários'}
+            Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems} {totalItems === 1 ? 'funcionário' : 'funcionários'}
           </div>
 
           <div className="pagination-controls">
@@ -406,20 +225,8 @@ export default function EmployeesTableClient({
               disabled={currentPage === 1}
               aria-label="Página anterior"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M15 18l-6-6 6-6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
 
@@ -443,20 +250,8 @@ export default function EmployeesTableClient({
               disabled={currentPage === totalPages}
               aria-label="Próxima página"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M9 18l6-6-6-6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
           </div>
@@ -464,10 +259,7 @@ export default function EmployeesTableClient({
       )}
 
       <style jsx>{`
-        .wrapper {
-          display: block;
-          gap: 12px;
-        }
+        .wrapper { display: block; gap: 12px; }
 
         .controls-row {
           display: flex;
@@ -483,20 +275,15 @@ export default function EmployeesTableClient({
           background: #fff;
           padding: 8px 12px;
           border-radius: 999px;
-          box-shadow: 0 2px 8px rgba(11, 37, 39, 0.04);
-          border: 1px solid rgba(11, 37, 39, 0.04);
+          box-shadow: 0 2px 8px rgba(11,37,39,0.04);
+          border: 1px solid rgba(11,37,39,0.04);
           min-width: 220px;
           max-width: 520px;
           width: 100%;
           box-sizing: border-box;
         }
 
-        .search-icon {
-          display: inline-flex;
-          margin-right: 10px;
-          align-items: center;
-          justify-content: center;
-        }
+        .search-icon { display: inline-flex; margin-right: 10px; align-items: center; justify-content: center; }
         .search-input {
           border: none;
           outline: none;
@@ -505,40 +292,11 @@ export default function EmployeesTableClient({
           color: #111827;
           background: transparent;
         }
-        .search-input::placeholder {
-          color: #9ca3af;
-        }
+        .search-input::placeholder { color: #9ca3af; }
 
-        .right-actions {
-          display: flex;
-          gap: 8px;
-          position: relative;
-          align-items: center;
-        }
-
-        .group-filter {
-          height: 36px;
-          min-width: 170px;
-          padding: 6px 12px;
-          border-radius: 999px;
-          border: 1px solid #d1d5db;
-          background: #fff;
-          font-size: 13px;
-          color: #374151;
-          outline: none;
-        }
-
-        .group-filter:focus {
-          border-color: #0b2527;
-          box-shadow: 0 0 0 3px rgba(11, 37, 39, 0.06);
-        }
-
+        .right-actions { display: flex; gap: 8px; position: relative; }
         /* dropdown root */
-        .dropdown-root {
-          position: relative;
-          display: inline-flex;
-          align-items: center;
-        }
+        .dropdown-root { position: relative; display: inline-flex; align-items: center; }
 
         .btn-new {
           background: transparent;
@@ -554,10 +312,7 @@ export default function EmployeesTableClient({
           align-items: center;
           gap: 6px;
         }
-        .btn-new:hover {
-          background: #0b2527;
-          color: white;
-        }
+        .btn-new:hover { background: #0b2527; color: white; }
 
         .menu {
           position: absolute;
@@ -565,8 +320,8 @@ export default function EmployeesTableClient({
           top: calc(100% + 8px);
           min-width: 180px;
           background: #fff;
-          border: 1px solid rgba(11, 37, 39, 0.08);
-          box-shadow: 0 12px 30px rgba(11, 37, 39, 0.12);
+          border: 1px solid rgba(11,37,39,0.08);
+          box-shadow: 0 12px 30px rgba(11,37,39,0.12);
           border-radius: 10px;
           overflow: hidden;
           z-index: 40;
@@ -589,17 +344,18 @@ export default function EmployeesTableClient({
           width: 100%;
           border-radius: 8px;
         }
-        .menu-item:hover {
-          background: rgb(11, 37, 39);
+        .menu-item:hover { 
+          background:rgb(11, 37, 39);
           color: white;
         }
 
         .table-scroll {
           width: 100%;
+          overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           border-radius: 12px;
           background: #fff;
-          box-shadow: 0 6px 18px rgba(11, 37, 39, 0.06);
+          box-shadow: 0 6px 18px rgba(11,37,39,0.06);
           margin-bottom: 20px;
         }
 
@@ -617,90 +373,35 @@ export default function EmployeesTableClient({
           color: #374151;
           text-transform: uppercase;
           letter-spacing: 0.3px;
-          border-bottom: 1px solid rgba(11, 37, 39, 0.08);
+          border-bottom: 1px solid rgba(11,37,39,0.08);
           white-space: nowrap;
           background: #fafafa;
         }
 
-        .col-id {
-          padding-left: 24px;
-          width: 80px;
-        }
-        .col-action {
-          padding-right: 24px;
-          text-align: center;
-          width: 90px;
-        }
-        .col-grupo {
-          min-width: 140px;
-        }
+        .col-id { padding-left: 24px; width: 80px; }
+        .col-action { padding-right: 24px; text-align: center; width: 90px; }
 
         tbody tr {
-          border-bottom: 1px solid rgba(11, 37, 39, 0.04);
+          border-bottom: 1px solid rgba(11,37,39,0.04);
           transition: background 0.15s ease;
         }
-        tbody tr:hover {
-          background: rgba(11, 37, 39, 0.02);
-        }
+        tbody tr:hover { background: rgba(11,37,39,0.02); }
 
-        .cell {
-          padding: 18px 20px;
-          vertical-align: middle;
-          font-size: 14px;
-          color: #333;
-        }
-        .id-cell {
-          font-weight: 800;
-          color: #111827;
-          padding-left: 24px;
-        }
-        .name-cell {
-          max-width: 300px;
-        }
-        .grupo-cell {
-          color: #374151;
-        }
-        .name-link {
-          color: #1f2a65;
-          font-weight: 700;
-          text-decoration: none;
-        }
-        .name-link:hover {
-          text-decoration: underline;
-        }
-        .created-cell {
-          color: #6b7280;
-          font-size: 13px;
-        }
-        .gestor-cell {
-          color: #374151;
-        }
-        .cidade-cell {
-          color: #374151;
-        }
-        .email-cell {
-          color: #111827;
-          font-size: 13px;
-        }
-        .email-link {
-          color: #0b66a6;
-          text-decoration: none;
-        }
-        .email-link:hover {
-          text-decoration: underline;
-        }
+        .cell { padding: 18px 20px; vertical-align: middle; font-size: 14px; color: #333; }
+        .id-cell { font-weight: 800; color: #111827; padding-left: 24px; }
+        .name-cell { max-width: 300px; }
+        .name-link { color: #1f2a65; font-weight: 700; text-decoration: none; }
+        .name-link:hover { text-decoration: underline; }
+        .created-cell { color: #6b7280; font-size: 13px; }
+        .gestor-cell { color: #374151; }
+        .cidade-cell { color: #374151; }
+        .email-cell { color: #111827; font-size: 13px; }
+        .email-link { color: #0b66a6; text-decoration: none; }
+        .email-link:hover { text-decoration: underline; }
 
-        .action-cell {
-          text-align: center;
-          padding-right: 24px;
-          position: relative;
-        }
+        .action-cell { text-align: center; padding-right: 24px; position: relative; }
 
-        .no-results {
-          text-align: center;
-          padding: 28px;
-          color: #6b7280;
-        }
+        .no-results { text-align: center; padding: 28px; color: #6b7280; }
 
         .pagination-wrapper {
           display: flex;
@@ -709,96 +410,35 @@ export default function EmployeesTableClient({
           margin-top: 20px;
           padding: 0 4px;
         }
-        .pagination-info {
-          font-size: 14px;
-          color: #6b7280;
-          font-weight: 500;
-        }
-        .pagination-controls {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
+        .pagination-info { font-size: 14px; color: #6b7280; font-weight: 500; }
+        .pagination-controls { display: flex; align-items: center; gap: 8px; }
 
         .page-arrow {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          cursor: pointer;
-          color: #6b7280;
-          border: 1px solid transparent;
-          background: transparent;
+          display: flex; align-items: center; justify-content: center;
+          width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: #6B7280;
         }
-        .page-arrow:hover:not(:disabled) {
-          background: #f9fafb;
-          border-color: #d1d5db;
-        }
-        .page-arrow:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
+        .page-arrow:hover:not(:disabled) { background: #f9fafb; border-color: #d1d5db; }
+        .page-arrow:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        .page-numbers {
-          display: flex;
-          gap: 6px;
-        }
+        .page-numbers { display: flex; gap: 6px; }
         .page-number {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-width: 36px;
-          height: 36px;
-          padding: 0 8px;
-          border: 1px solid #e5e7eb;
-          background: white;
-          border-radius: 100%;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: 600;
-          color: #374151;
+          display: flex; align-items: center; justify-content: center;
+          min-width: 36px; height: 36px; padding: 0 8px;
+          border: 1px solid #e5e7eb; background: white; border-radius: 100%; cursor: pointer;
+          font-size: 14px; font-weight: 600; color: #374151;
         }
-        .page-number:hover {
-          background: #f9fafb;
-          border-color: #d1d5db;
-        }
-        .page-number.active {
-          background: #0b2527;
-          color: white;
-          border-color: #0b2527;
-        }
+        .page-number:hover { background: #f9fafb; border-color: #d1d5db; }
+        .page-number.active { background: #0b2527; color: white; border-color: #0b2527; }
 
         @media (max-width: 960px) {
-          .controls-row {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 12px;
-          }
-          .search-box {
-            max-width: 100%;
-          }
-          .right-actions {
-            justify-content: flex-end;
-          }
-          table.companies-table {
-            min-width: 700px;
-          }
-          .action-cell {
-            padding-right: 12px;
-          }
-          .pagination-wrapper {
-            flex-direction: column;
-            gap: 16px;
-            align-items: center;
-          }
-          .pagination-info {
-            order: 2;
-          }
-          .pagination-controls {
-            order: 1;
-          }
+          .controls-row { flex-direction: column; align-items: stretch; gap: 12px; }
+          .search-box { max-width: 100%; }
+          .right-actions { justify-content: flex-end; }
+          table.companies-table { min-width: 700px; }
+          .action-cell { padding-right: 12px; }
+          .pagination-wrapper { flex-direction: column; gap: 16px; align-items: center; }
+          .pagination-info { order: 2; }
+          .pagination-controls { order: 1; }
         }
       `}</style>
     </div>

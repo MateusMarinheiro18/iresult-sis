@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import EscalaBuilderForm from '@/components/admin/escalas/EscalaBuilderForm';
+import EscalaBuilderForm from '@/components/admin/escalas/builder/EscalaBuilderForm';
 
 export default function NewEscalaPageClient() {
   return (
