@@ -1,4 +1,4 @@
-// src/components/admin/escalas/EscalaBuilderForm.tsx
+// src/components/admin/escalas/builder/EscalaBuilderForm.tsx
 'use client';
 
 import React, { FormEvent, useState } from 'react';
@@ -52,7 +52,7 @@ export default function EscalaBuilderForm({
   mode = 'create',
   initialData,
 }: {
-  mode?: 'create';
+  mode?: 'create' | 'edit';
   initialData?: EscalaFormState;
 }) {
   const router = useRouter();
@@ -400,7 +400,7 @@ export default function EscalaBuilderForm({
       nome,
       dataVencimento: state.dataVencimento || null,
       ativo: state.ativo ? 1 : 0,
-      modulos: state.modulos.map((m) => ({
+      modulos: state.modulos.map((m) => (({
         tempId: m.tempId,
         nome: m.nome.trim(),
         valorInicialFavoravel: m.valorInicialFavoravel || null,
@@ -409,28 +409,41 @@ export default function EscalaBuilderForm({
         valorFinalIntermediario: m.valorFinalIntermediario || null,
         valorInicialRisco: m.valorInicialRisco || null,
         valorFinalRisco: m.valorFinalRisco || null,
-      })),
-      categorias: state.categorias.map((c) => ({
+        id: (m as any).id ?? null,
+      }))),
+      categorias: state.categorias.map((c) => (({
         tempId: c.tempId,
         nome: c.nome.trim(),
         moduloTempId: c.moduloTempId,
-      })),
-      perguntas: state.perguntas.map((p) => ({
+        id: (c as any).id ?? null,
+      }))),
+      perguntas: state.perguntas.map((p) => (({
         tempId: p.tempId,
         pergunta: p.pergunta.trim(),
         ordem: p.ordem,
         moduloTempId: p.moduloTempId,
         categoriaTempId: p.categoriaTempId,
-        respostas: p.respostas.map((r) => ({ resposta: r.resposta.trim(), valor: Number(r.valor) })),
-      })),
+        id: (p as any).id ?? null,
+        respostas: p.respostas.map((r) => ({ resposta: r.resposta.trim(), valor: Number(r.valor), id: (r as any).id ?? null })),
+      }))),
     };
 
     setSaving(true);
     try {
-      const res = await fetch('/api/escalas/builder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Erro ao salvar escala.');
-      toast.success('Escala criada com sucesso!');
+      let res;
+      if (mode === 'create') {
+        res = await fetch('/api/escalas/builder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      } else {
+        const escalaId = (initialData && (initialData as any).id) ? (initialData as any).id : null;
+        if (!escalaId) {
+          throw new Error('ID da escala ausente para edição.');
+        }
+        res = await fetch(`/api/escalas/${escalaId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      }
+
+      const data = await res!.json().catch(() => ({}));
+      if (!res!.ok) throw new Error(data?.error || 'Erro ao salvar escala.');
+      toast.success(mode === 'create' ? 'Escala criada com sucesso!' : 'Escala atualizada com sucesso!');
       router.push('/admin/escalas');
     } catch (err: any) {
       console.error(err);
@@ -444,7 +457,6 @@ export default function EscalaBuilderForm({
     <form className="escala-form" onSubmit={handleSubmit}>
       {/* DADOS BÁSICOS */}
       <section className="card data-card">
-        {/* Banner/header com cor primária */}
         <div className="card-banner">
           <div>
             <h2 className="card-banner-title">Dados da escala</h2>
@@ -536,7 +548,7 @@ export default function EscalaBuilderForm({
       {/* FOOTER */}
       <div className="footer-actions">
         <button type="button" className="btn-secondary" onClick={() => router.push('/admin/escalas')} disabled={saving}>Cancelar</button>
-        <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar escala'}</button>
+        <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : (mode === 'create' ? 'Salvar escala' : 'Atualizar escala')}</button>
       </div>
 
       {/* Modals */}
