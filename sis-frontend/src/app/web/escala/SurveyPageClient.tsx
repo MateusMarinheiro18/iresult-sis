@@ -18,6 +18,7 @@ type Question = {
 type Props = {
   escalaId?: number;
   empresaId?: number;
+  funcionarioId?: number; // NOVO
   escalaNome?: string;
   initialQuestions?: Question[];
   error?: string;
@@ -26,6 +27,7 @@ type Props = {
 export default function SurveyPageClient({
   escalaId,
   empresaId,
+  funcionarioId, // NOVO
   escalaNome,
   initialQuestions,
   error,
@@ -44,7 +46,7 @@ export default function SurveyPageClient({
   const currentAnswer = current ? answers[current.id] ?? null : null;
 
   function handleStart() {
-    if (!totalQuestions || !escalaId || !empresaId) return;
+    if (!totalQuestions || !escalaId || !empresaId || !funcionarioId) return;
     setStarted(true);
   }
 
@@ -62,7 +64,7 @@ export default function SurveyPageClient({
   }
 
   async function submitSurvey() {
-    if (!escalaId || !empresaId) {
+    if (!escalaId || !empresaId || !funcionarioId) {
       setSubmitError('Link inválido.');
       return;
     }
@@ -91,6 +93,7 @@ export default function SurveyPageClient({
         body: JSON.stringify({
           escalaId,
           empresaId,
+          funcionarioId, // NOVO
           respostas: respostasArray,
         }),
       });
@@ -199,7 +202,7 @@ export default function SurveyPageClient({
                 <button
                   className={styles.startButton}
                   onClick={handleStart}
-                  disabled={!escalaId || !empresaId}
+                  disabled={!escalaId || !empresaId || !funcionarioId}
                 >
                   Iniciar
                 </button>
@@ -304,4 +307,3 @@ export default function SurveyPageClient({
     </div>
   );
 }
-    

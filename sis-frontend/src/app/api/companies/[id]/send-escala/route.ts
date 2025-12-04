@@ -24,27 +24,28 @@ function buildBaseUrl() {
 }
 
 /**
- * Gera o link público da escala de acordo com a sua página:
- *   /web/escala?escala=<idEscala>&empresa=<idEmpresa>
+ * Gera o link público da escala incluindo o ID do funcionário:
+ *   /web/escala?escala=<idEscala>&empresa=<idEmpresa>&func=<idFuncionario>
  */
 function buildEscalaLink(params: {
   baseUrl: string;
   escalaId: number;
   empresaId: number;
+  funcionarioId: number;
 }) {
-  const { baseUrl, escalaId, empresaId } = params;
+  const { baseUrl, escalaId, empresaId, funcionarioId } = params;
 
   try {
     const url = new URL('/web/escala', baseUrl);
     url.searchParams.set('escala', String(escalaId));
     url.searchParams.set('empresa', String(empresaId));
+    url.searchParams.set('func', String(funcionarioId));
     return url.toString();
   } catch {
-    // fallback se o new URL der erro por algum motivo
     return `${baseUrl.replace(
       /\/$/,
       '',
-    )}/web/escala?escala=${escalaId}&empresa=${empresaId}`;
+    )}/web/escala?escala=${escalaId}&empresa=${empresaId}&func=${funcionarioId}`;
   }
 }
 
@@ -73,7 +74,6 @@ export async function POST(
     const message =
       typeof body?.message === 'string' ? body.message.trim() : '';
 
-    // employeeId continua existindo APENAS para filtrar quem recebe
     const rawEmployeeId = body?.employeeId;
     let employeeId: number | undefined;
     if (
@@ -91,7 +91,6 @@ export async function POST(
       employeeId = n;
     }
 
-    // 1) Empresa
     const empresa = await prisma.empresa.findUnique({
       where: { id: companyId },
     });
@@ -103,7 +102,6 @@ export async function POST(
       );
     }
 
-    // 2) Escala vinculada via EscalaHasEmpresa
     const vinculo = await prisma.escalaHasEmpresa.findFirst({
       where: { idEmpresa: companyId },
       include: { escala: true },
@@ -119,7 +117,6 @@ export async function POST(
     const escalaId = vinculo.idEscala;
     const escalaNome = vinculo.escala?.nome ?? `Escala #${escalaId}`;
 
-    // 3) Funcionários (um só ou todos da empresa)
     const employees = await prisma.empresaFuncionario.findMany({
       where: {
         id_empresa: companyId,
@@ -142,7 +139,6 @@ export async function POST(
 
     const baseUrl = buildBaseUrl();
 
-    // 4) Monta destinatários COM o link (sem id do funcionário na URL)
     const recipients = employees
       .filter((emp) => isValidEmail(emp.email))
       .map((emp) => ({
@@ -153,6 +149,7 @@ export async function POST(
           baseUrl,
           escalaId,
           empresaId: companyId,
+          funcionarioId: emp.id_funcionario,
         }),
       }));
 
@@ -177,7 +174,6 @@ export async function POST(
         ? body.subject.trim()
         : `Pesquisa - ${empresa.razaoSocial ?? 'Empresa'}`;
 
-    // 5) Envia os e-mails de fato
     await sendEscalaEmails({
       subject,
       message:
@@ -187,6 +183,20 @@ export async function POST(
     });
 
     const sent = recipients.length;
+
+    // Atualizar EscalaHasEmpresa com data de envio e total de destinatários
+    await prisma.escalaHasEmpresa.update({
+      where: {
+        idEscala_idEmpresa: {
+          idEscala: escalaId,
+          idEmpresa: companyId,
+        },
+      },
+      data: {
+        dataEnvio: new Date(),
+        totalDestinatarios: sent,
+      },
+    });
 
     return NextResponse.json(
       {

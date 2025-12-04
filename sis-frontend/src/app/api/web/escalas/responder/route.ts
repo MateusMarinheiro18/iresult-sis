@@ -10,6 +10,7 @@ type RespostaPayload = {
 type Body = {
   escalaId?: number;
   empresaId?: number;
+  funcionarioId?: number;
   respostas?: RespostaPayload[];
 };
 
@@ -21,13 +22,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'JSON inválido.' }, { status: 400 });
   }
 
-  const { escalaId, empresaId, respostas } = body;
+  const { escalaId, empresaId, funcionarioId, respostas } = body;
 
   if (
     !escalaId ||
     !empresaId ||
+    !funcionarioId ||
     Number.isNaN(Number(escalaId)) ||
     Number.isNaN(Number(empresaId)) ||
+    Number.isNaN(Number(funcionarioId)) ||
     !Array.isArray(respostas) ||
     respostas.length === 0
   ) {
@@ -39,13 +42,17 @@ export async function POST(request: NextRequest) {
 
   const escalaIdNum = Number(escalaId);
   const empresaIdNum = Number(empresaId);
+  const funcionarioIdNum = Number(funcionarioId);
 
   try {
-    const [escala, empresa, vinculo] = await Promise.all([
+    const [escala, empresa, vinculo, funcionario] = await Promise.all([
       prisma.escala.findUnique({ where: { id: escalaIdNum } }),
       prisma.empresa.findUnique({ where: { id: empresaIdNum } }),
       prisma.escalaHasEmpresa.findFirst({
         where: { idEscala: escalaIdNum, idEmpresa: empresaIdNum },
+      }),
+      prisma.empresaFuncionario.findUnique({
+        where: { id_funcionario: funcionarioIdNum },
       }),
     ]);
 
@@ -59,6 +66,13 @@ export async function POST(request: NextRequest) {
     if (!empresa || empresa.ativo !== 1 || !vinculo) {
       return NextResponse.json(
         { error: 'Esta enquete não está disponível para esta empresa.' },
+        { status: 400 }
+      );
+    }
+
+    if (!funcionario || funcionario.id_empresa !== empresaIdNum) {
+      return NextResponse.json(
+        { error: 'Funcionário não encontrado ou não pertence a esta empresa.' },
         { status: 400 }
       );
     }
@@ -108,6 +122,7 @@ export async function POST(request: NextRequest) {
       data: respostas.map((r) => ({
         idEscala: escalaIdNum,
         idEmpresa: empresaIdNum,
+        idFuncionario: funcionarioIdNum,
         idPergunta: Number(r.perguntaId),
         idResposta: Number(r.respostaId),
         dataResposta: now,

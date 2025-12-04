@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 type SearchParamsType = {
   escala?: string;
   empresa?: string;
+  func?: string; // NOVO: ID do funcionário
 };
 
 type Props = {
@@ -17,14 +18,18 @@ export default async function SurveyPage(props: Props) {
 
   const escalaId = searchParams?.escala ? Number(searchParams.escala) : undefined;
   const empresaId = searchParams?.empresa ? Number(searchParams.empresa) : undefined;
+  const funcionarioId = searchParams?.func ? Number(searchParams.func) : undefined;
 
   if (
     !escalaId ||
     !empresaId ||
+    !funcionarioId ||
     Number.isNaN(escalaId) ||
     Number.isNaN(empresaId) ||
+    Number.isNaN(funcionarioId) ||
     escalaId <= 0 ||
-    empresaId <= 0
+    empresaId <= 0 ||
+    funcionarioId <= 0
   ) {
     return (
       <SurveyPageClient
@@ -34,7 +39,7 @@ export default async function SurveyPage(props: Props) {
   }
 
   try {
-    const [escala, empresa, vinculo] = await Promise.all([
+    const [escala, empresa, vinculo, funcionario] = await Promise.all([
       prisma.escala.findUnique({
         where: { id: escalaId },
         include: {
@@ -56,6 +61,9 @@ export default async function SurveyPage(props: Props) {
       prisma.escalaHasEmpresa.findFirst({
         where: { idEscala: escalaId, idEmpresa: empresaId },
       }),
+      prisma.empresaFuncionario.findUnique({
+        where: { id_funcionario: funcionarioId },
+      }),
     ]);
 
     if (!escala || escala.ativo !== 1) {
@@ -70,6 +78,12 @@ export default async function SurveyPage(props: Props) {
       );
     }
 
+    if (!funcionario || funcionario.id_empresa !== empresaId) {
+      return (
+        <SurveyPageClient error="Funcionário não encontrado ou não pertence a esta empresa." />
+      );
+    }
+
     const questions =
       escala.perguntas?.map((p) => ({
         id: p.id,
@@ -81,13 +95,13 @@ export default async function SurveyPage(props: Props) {
           })) ?? [],
       })) ?? [];
 
-    // opcional: remove perguntas sem alternativas
     const filteredQuestions = questions.filter((q) => q.options.length > 0);
 
     return (
       <SurveyPageClient
         escalaId={escalaId}
         empresaId={empresaId}
+        funcionarioId={funcionarioId}
         escalaNome={escala.nome}
         initialQuestions={filteredQuestions}
       />
