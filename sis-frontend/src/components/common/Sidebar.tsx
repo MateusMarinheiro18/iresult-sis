@@ -53,7 +53,7 @@ const DEFAULT_MENUS: Record<Variant, MenuItem[]> = {
     { key: "perfil", label: "Meu Perfil", href: "/client/profile", icon: <PersonOutline /> },
   ],
   admin: [
-//    { key: "dashboard", label: "Dashboard", href: "/admin/dashboard", icon: <HomeOutlined /> },
+    { key: "dashboard", label: "Dashboard", href: "/admin/dashboard", icon: <HomeOutlined /> },
     { key: "calendario", label: "Calendário", href: "/admin/calendario", icon: <CalendarTodayOutlined /> },
     { key: "trilhas", label: "Trilhas", href: "/admin/trilhas", icon: <MapOutlined /> },
     { key: "escalas", label: "Escalas", href: "/admin/escalas", icon: <SearchOutlined /> },
