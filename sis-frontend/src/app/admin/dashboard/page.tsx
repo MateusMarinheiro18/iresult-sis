@@ -1,7 +1,7 @@
 // app/admin/dashboard/page.tsx
 'use client';
 
-import DashboardAdmin from '@/components/admin/dashboard/DashboardAdmin';
+import DashboardAdmin from './DashboardAdminPageClient';
 
 export default function DashboardPage() {
   return <DashboardAdmin />;
