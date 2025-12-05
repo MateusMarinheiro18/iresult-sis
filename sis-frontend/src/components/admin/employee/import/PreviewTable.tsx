@@ -2,15 +2,30 @@
 import React from 'react';
 import { EmployeeRow } from './validators';
 
+type GroupOption = {
+  id: number;
+  nome: string;
+};
+
 type Props = {
   rows: EmployeeRow[];
   errorsByRow: Record<number, string[]>;
   previewLimit?: number;
   onEditCell: (idx: number, key: string, value: string) => void;
   onRemoveRow: (idx: number) => void;
+
+  // adicionada a prop opcional que estava faltando
+  groups?: GroupOption[];
 };
 
-export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, onEditCell, onRemoveRow }: Props) {
+export default function PreviewTable({
+  rows,
+  errorsByRow,
+  previewLimit = 200,
+  onEditCell,
+  onRemoveRow,
+  groups = [],
+}: Props) {
   // Função para formatar data ISO para formato brasileiro DD/MM/YYYY
   function formatDateForDisplay(dateStr: string | null | undefined): string {
     if (!dateStr) return '';
@@ -121,6 +136,7 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
             <th>Data Nasc.</th>
             <th>Cidade Nasc.</th>
             <th>Gestor</th>
+            <th>Grupo</th>
             <th></th>
           </tr>
         </thead>
@@ -176,6 +192,30 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
                     onChange={(e) => onEditCell(idx, 'gestor', e.target.value)}
                   />
                 </td>
+
+                {/* renderiza select de grupos caso grupos existam, senão mostra texto */}
+                <td>
+                  {groups.length > 0 ? (
+                    <select
+                      value={r.grupo ?? ''}
+                      onChange={(e) => onEditCell(idx, 'grupo', e.target.value)}
+                    >
+                      <option value="">— selecione —</option>
+                      {groups.map((g) => (
+                        <option key={g.id} value={g.nome}>
+                          {g.nome}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={r.grupo ?? ''}
+                      onChange={(e) => onEditCell(idx, 'grupo', e.target.value)}
+                      placeholder="grupo"
+                    />
+                  )}
+                </td>
+
                 <td>
                   <button type="button" className="btn small danger" onClick={() => onRemoveRow(idx)}>Remover</button>
                 </td>
@@ -213,14 +253,14 @@ export default function PreviewTable({ rows, errorsByRow, previewLimit = 200, on
           text-align: left;
           color: #374151;
         }
-        input { 
+        input, select { 
           width: 100%; 
           padding: 6px 8px; 
           border-radius: 6px; 
           border: 1px solid #e6e6e6;
           font-size: 13px;
         }
-        input:focus {
+        input:focus, select:focus {
           outline: none;
           border-color: #0B2527;
         }
