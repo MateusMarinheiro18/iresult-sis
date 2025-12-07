@@ -1,4 +1,4 @@
-// File: src/app/admin/dashboard/DashboardAdminPageClient.tsx
+// src/app/admin/dashboard/DashboardAdminPageClient.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -13,7 +13,21 @@ export type Escala = { id: number; nome: string; totalRespostas: number; totalDe
 export type Modulo = { id: number; nome: string; media: number; classificacao: 'FAVORAVEL' | 'INTERMEDIARIO' | 'RISCO' };
 export type Categoria = { id: number; nome: string; media: number; classificacao: 'FAVORAVEL' | 'INTERMEDIARIO' | 'RISCO' };
 export type Trilha = { id: number; nome: string; progresso: number };
-export type Agendamento = { id: number; tipo: string; nome: string; data: string; horario: string };
+
+/**
+ * AGORA inclui dataRaw opcional.
+ * - data: string legível (pode vir do backend)
+ * - horario: string legível (pode vir do backend)
+ * - dataRaw: ISO (preferir)
+ */
+export type Agendamento = {
+  id: number;
+  tipo: string;
+  nome: string;
+  data: string | null;
+  horario: string | null;
+  dataRaw?: string | null;
+};
 
 export type DashboardData = { empresas: Empresa[]; escalas: Escala[]; modulos: Modulo[]; trilhas: Trilha[]; agendamentos: Agendamento[] };
 
@@ -81,7 +95,7 @@ export default function DashboardAdminPageClient() {
   if (!data) return null;
 
   return (
-    <div style={{ minHeight: '100vh', padding: '10px 32px 24px' }}>
+    <div style={{ minHeight: '100vh', background: '#F5F5F7', padding: '32px 24px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <Header />
 
