@@ -25,6 +25,22 @@ function formatTimeToBrazil(d: Date | string | null | undefined) {
   });
 }
 
+/**
+ * Converte um Date/ISO em um Date que representa a hora local em America/Sao_Paulo.
+ * Técnica: usar toLocaleString com timeZone e criar um novo Date a partir da string resultante.
+ * Isso produz uma Date no ambiente Node/Browser que expressa o instante no fuso de SP.
+ */
+function toDateInSaoPaulo(d: Date | string | null | undefined): Date | null {
+  if (!d) return null;
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  if (Number.isNaN(dateObj.getTime())) return null;
+  // "Normalize" para o horário local de São Paulo como Date
+  // (a string gerada representa a data/hora local em SP; recriando Date gera um objeto no fuso local do ambiente,
+  // mas como usamos apenas para comparação relativa, isso resolve o deslocamento de dia).
+  const asString = dateObj.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+  return new Date(asString);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -38,11 +54,12 @@ export async function GET(request: NextRequest) {
       orderBy: { razaoSocial: 'asc' }
     });
 
-    // 2) Escalas + progresso
+    // 2) Escalas + progresso (distinct funcionários por escala/empresa)
     const whereEscala: any = { ativo: 1 };
     if (empresaId) whereEscala.empresas = { some: { idEmpresa: Number(empresaId) } };
     if (escalaId) whereEscala.id = Number(escalaId);
 
+    // buscar escalas com empresas vinculadas e (antiga) respostas — usaremos distinct posteriormente
     const escalasRaw = await prisma.escala.findMany({
       where: whereEscala,
       select: {
@@ -50,22 +67,67 @@ export async function GET(request: NextRequest) {
         nome: true,
         empresas: {
           where: empresaId ? { idEmpresa: Number(empresaId) } : {},
-          select: { totalDestinatarios: true }
-        },
-        respostas: {
-          where: empresaId ? { idEmpresa: Number(empresaId) } : {},
-          select: { id: true }
+          select: {
+            idEmpresa: true,
+            totalDestinatarios: true
+          }
         }
       },
       orderBy: { nome: 'asc' }
     });
 
-    const escalas = escalasRaw.map((escala: any) => {
-      const totalDestinatarios = escala.empresas.reduce((sum: number, e: any) => sum + (e.totalDestinatarios || 0), 0);
-      const totalRespostas = escala.respostas.length;
+    const escalasPromises = escalasRaw.map(async (escala: any) => {
+      // soma totalDestinatarios dos vínculos
+      const totalDestinatariosFromLinks = escala.empresas.reduce(
+        (s: number, e: { totalDestinatarios: number | null }) => s + (e.totalDestinatarios || 0),
+        0
+      );
+
+      let totalDestinatarios = totalDestinatariosFromLinks;
+
+      // fallback: se totalDestinatarios === 0, contar funcionários ativos nas empresas vinculadas
+      if (totalDestinatarios === 0 && Array.isArray(escala.empresas) && escala.empresas.length > 0) {
+        const empresaIds = escala.empresas.map((e: any) => e.idEmpresa).filter(Boolean);
+        if (empresaIds.length > 0) {
+          totalDestinatarios = await prisma.empresaFuncionario.count({
+            where: {
+              id_empresa: { in: empresaIds },
+              ativo: 1
+            }
+          });
+        }
+      }
+
+      // contar distinct idFuncionario nas respostas (filtrando por empresa se fornecida)
+      const whereResposta: any = {
+        idEscala: escala.id,
+        ativo: 1
+      };
+      if (empresaId) whereResposta.idEmpresa = Number(empresaId);
+
+      const respostasRows = await prisma.respostaFuncionario.findMany({
+        where: whereResposta,
+        select: { idFuncionario: true }
+      });
+
+      const distinctFuncionarioIds = new Set<number>();
+      respostasRows.forEach((r: any) => {
+        if (r.idFuncionario !== null && r.idFuncionario !== undefined) distinctFuncionarioIds.add(Number(r.idFuncionario));
+      });
+
+      const totalRespostas = distinctFuncionarioIds.size;
       const progressoPercentual = totalDestinatarios > 0 ? Math.round((totalRespostas / totalDestinatarios) * 100) : 0;
-      return { id: escala.id, nome: escala.nome, totalRespostas, totalDestinatarios, progressoPercentual };
+
+      return {
+        id: escala.id,
+        nome: escala.nome,
+        totalRespostas,
+        totalDestinatarios,
+        progressoPercentual
+      };
     });
+
+    const escalas = await Promise.all(escalasPromises);
 
     // 3) Módulos (se houver escala selecionada)
     let modulos: any[] = [];
@@ -122,24 +184,50 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 4) Trilhas
+    // 4) Trilhas — calcular progresso com base em itens cuja `data` já passou no fuso de São Paulo
     const whereTrilha: any = { ativo: 1 };
     if (empresaId) whereTrilha.empresas = { some: { idEmpresa: Number(empresaId) } };
 
+    // buscar trilhas junto com os itens (data) para calcular progresso corretamente
     const trilhasRaw = await prisma.trilha.findMany({
       where: whereTrilha,
       select: {
         id: true,
         nome: true,
-        itens: { where: { ativo: 1 }, select: { id: true } }
+        itens: {
+          where: { ativo: 1 },
+          select: { id: true, data: true }
+        }
       },
       orderBy: { nome: 'asc' }
     });
 
-    const trilhas = trilhasRaw.map((t: any) => ({ id: t.id, nome: t.nome, progresso: t.itens.length > 0 ? Math.round(Math.random() * 100) : 0 }));
+    // agora calcule progresso: % de itens com data < agora (no timezone SP)
+    const nowSP = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
 
-    // 5) Agendamentos (próximos 5) — importante: formatar data/hora para America/Sao_Paulo e também enviar dataRaw ISO
-    // Nota: mantivemos o filtro "data >= hoje" — se você quiser que "hoje" seja avaliado em fuso SP, podemos ajustar também.
+    const trilhas = trilhasRaw.map((t: any) => {
+      const items = Array.isArray(t.itens) ? t.itens : [];
+      const totalItems = items.length;
+
+      let completed = 0;
+      if (totalItems > 0) {
+        for (const it of items) {
+          if (!it?.data) continue;
+          const itemInSP = toDateInSaoPaulo(it.data);
+          if (!itemInSP) continue;
+          if (itemInSP.getTime() < nowSP.getTime()) completed++;
+        }
+      }
+
+      const progresso = totalItems > 0 ? Math.round((completed / totalItems) * 100) : 0;
+      return {
+        id: t.id,
+        nome: t.nome,
+        progresso
+      };
+    });
+
+    // 5) Agendamentos (próximos 5) — formatamos data/hora p/ SP e enviamos dataRaw
     const hoje = new Date();
     const whereAgendamento: any = { ativo: 1, data: { gte: hoje } };
     if (empresaId) whereAgendamento.trilha = { empresas: { some: { idEmpresa: Number(empresaId) } } };
@@ -152,17 +240,13 @@ export async function GET(request: NextRequest) {
     });
 
     const agendamentos = agendamentosRaw.map((item: any) => {
-      // item.data vem como Date | null
       const rawIso = item.data ? (item.data instanceof Date ? item.data.toISOString() : new Date(item.data).toISOString()) : null;
       return {
         id: item.id,
         tipo: item.tipo || 'Evento',
         nome: item.nome,
-        // data legível formatada explicitamente para America/Sao_Paulo
         data: item.data ? formatDateToBrazil(item.data) : '',
-        // horario formatado em SP
         horario: item.data ? formatTimeToBrazil(item.data) : '',
-        // dataRaw com ISO (útil para frontend calcular com precisão)
         dataRaw: rawIso
       };
     });
