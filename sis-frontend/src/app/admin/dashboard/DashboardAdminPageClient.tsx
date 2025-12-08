@@ -95,7 +95,7 @@ export default function DashboardAdminPageClient() {
   if (!data) return null;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F5F7', padding: '32px 24px' }}>
+    <div style={{ minHeight: '100vh', padding: '32px 24px' }}>
       <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <Header />
 

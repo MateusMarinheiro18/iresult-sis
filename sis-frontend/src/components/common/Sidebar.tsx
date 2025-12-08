@@ -59,7 +59,7 @@ const DEFAULT_MENUS: Record<Variant, MenuItem[]> = {
     { key: "escalas", label: "Escalas", href: "/admin/escalas", icon: <SearchOutlined /> },
     { key: "relatorios", label: "Relatórios", href: "/admin/relatorios", icon: <BarChartOutlined /> },
     { key: "empresas", label: "Empresas", href: "/admin/empresas", icon: <BusinessCenter /> },
-//    { key: "administrador", label: "Administrador", href: "/admin/administrador", icon: <PersonOutline />, permission: "integrations.view" },
+    { key: "administradores", label: "Administradores", href: "/admin/administradores", icon: <PersonOutline />, permission: "integrations.view" },
   ],
 };
 
