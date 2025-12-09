@@ -173,7 +173,7 @@ export default function ClientLoginPage() {
             />
 
             <div className="flex justify-center items-center flex-wrap gap-x-3 gap-y-1">
-              <Link href="/client/forgot" className="text-sky-300 hover:underline" style={{ color: '#F0F1F1' }}>
+              <Link href="/admin/forgot" className="text-sky-300 hover:underline" style={{ color: '#F0F1F1' }}>
                 Esqueci a senha
               </Link>
             </div>
