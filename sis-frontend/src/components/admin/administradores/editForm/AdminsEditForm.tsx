@@ -6,27 +6,19 @@ import toast from 'react-hot-toast';
 type Payload = {
   nome?: string;
   email?: string;
-  senha?: string | null;
-  ativo?: number | boolean | null;
 };
 
 export default function AdminsEditForm({ initial }: { initial?: any }) {
-  // initial esperado: { id, nome, email, ativo? }
+  // initial esperado: { id, nome, email }
   const router = useRouter();
 
   const [nome, setNome] = useState(initial?.nome ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
-  const [senha, setSenha] = useState(''); // em edição senha começa vazia
-  const [ativo, setAtivo] = useState(
-    typeof initial?.ativo !== 'undefined' ? !!initial?.ativo : true
-  );
   const [saving, setSaving] = useState(false);
 
   function validate(): string | null {
     if (!nome || nome.trim().length < 2) return 'Nome é obrigatório (mínimo 2 caracteres).';
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email é obrigatório e deve ser válido.';
-    // **IMPORTANTE**: senha é opcional em edição. validamos apenas se não vazia.
-    if (senha && senha.length > 0 && senha.length < 6) return 'Senha deve ter no mínimo 6 caracteres.';
     return null;
   }
 
@@ -46,9 +38,6 @@ export default function AdminsEditForm({ initial }: { initial?: any }) {
     const payload: Payload = {
       nome: nome.trim(),
       email: email.trim(),
-      // se senha vazia -> enviamos null para indicar "não alterar" (PUT aceita ausência)
-      senha: senha && senha.length > 0 ? senha : undefined,
-      ativo: ativo ? 1 : 0,
     };
 
     const loadingId = toast.loading('Salvando alterações...');
@@ -72,7 +61,7 @@ export default function AdminsEditForm({ initial }: { initial?: any }) {
       }
 
       toast.success('Administrador atualizado com sucesso!', { id: loadingId });
-      // refresh / redirect to list
+      // redireciona para a lista
       setTimeout(() => router.push('/admin/administradores'), 500);
     } catch (err) {
       console.error('Erro ao atualizar administrador (fetch)', err);
@@ -105,36 +94,6 @@ export default function AdminsEditForm({ initial }: { initial?: any }) {
             placeholder="usuario@dominio.com"
             required
           />
-        </div>
-
-        <div className="field">
-          <label className="label">Senha (deixe em branco para manter)</label>
-          <input
-            className="input"
-            type="password"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            placeholder="Nova senha (mínimo 6 caracteres)"
-          />
-        </div>
-
-        <div className="field" style={{ alignSelf: 'center' }}>
-          <label className="label">Ativo</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label className="switch new-switch" aria-label="Ativo">
-              <input
-                type="checkbox"
-                id="ativo-checkbox-admin-edit"
-                checked={ativo}
-                onChange={(e) => setAtivo(e.target.checked)}
-                aria-checked={ativo}
-              />
-              <span className="slider" />
-            </label>
-            <label htmlFor="ativo-checkbox-admin-edit" style={{ fontSize: 13, color: '#374151' }}>
-              {ativo ? 'Sim' : 'Não'}
-            </label>
-          </div>
         </div>
       </div>
 
@@ -175,49 +134,6 @@ export default function AdminsEditForm({ initial }: { initial?: any }) {
         .btn.primary { background: #0b2527; color: white; box-shadow: 0 6px 20px rgba(11,37,39,0.12); }
         .btn.primary:disabled { opacity:0.6; cursor:not-allowed; }
         .btn.secondary { background: white; color: #0b2527; border: 1px solid #0b2527; }
-
-        /* SWITCH styles (mesmos do builder) */
-        .new-switch {
-          position: relative;
-          display: inline-block;
-          width: 56px;
-          height: 32px;
-        }
-        .new-switch input { opacity:0; width:0; height:0; position:absolute; left:0; top:0; }
-        .new-switch .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: #e5e7eb;
-          transition: .18s;
-          border-radius: 999px;
-          box-shadow: inset 0 1px 0 rgba(11,37,39,0.03);
-        }
-        .new-switch .slider::before {
-          content: "";
-          position: absolute;
-          height: 26px;
-          width: 26px;
-          left: 3px;
-          top: 3px;
-          background: #ffffff;
-          border-radius: 50%;
-          transition: transform .18s;
-          box-shadow: 0 4px 10px rgba(2,6,23,0.12);
-        }
-        .new-switch input:checked + .slider {
-          background: #0B2527;
-        }
-        .new-switch input:checked + .slider::before {
-          transform: translateX(24px);
-        }
-        .new-switch input:focus-visible + .slider {
-          outline: 3px solid rgba(11,37,39,0.12);
-          outline-offset: 2px;
-        }
 
         @media (max-width: 960px) {
           .grid { grid-template-columns: 1fr; }

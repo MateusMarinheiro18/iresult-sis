@@ -2,114 +2,149 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { sendAdminAccessEmail } from '@/lib/email/sendAdminAccessEmail';
 
-// substitua pelo seu guard real
-async function checkIsSuperAdminOrSession(req: NextRequest) {
-  return true;
-}
+/**
+ * Handlers:
+ * - PUT  -> atualiza admin (e gera nova senha, como já combinado)
+ * - DELETE -> remove administrador (hard delete, pois o modelo Administrador não tem campos de soft-delete)
+ *
+ * Ajuste checkAdminAuth para usar sua lógica de autorização.
+ */
 
 function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+function generateRandomPassword(length = 12) {
+  return crypto
+    .randomBytes(Math.ceil(length * 0.75))
+    .toString('base64')
+    .replace(/\+/g, 'A')
+    .replace(/\//g, 'B')
+    .slice(0, length);
+}
+
+// stub de autorização — substitua pela sua lógica real
+async function checkAdminAuth(req: NextRequest) {
+  // TODO: verificar sessão / token / permissões
+  return true;
 }
 
 type UpdateBody = {
   nome?: string;
   email?: string;
-  senha?: string | null;
-  ativo?: number | boolean | null; // aceitamos, mas NÃO mandaremos para prisma por padrão
-  updated_by?: number | null;
 };
 
-async function resolveParams(paramsAny: any) {
-  return await paramsAny;
-}
-
-export async function PUT(request: NextRequest, context: { params: any }) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const allowed = await checkIsSuperAdminOrSession(request);
+    const allowed = await checkAdminAuth(request);
     if (!allowed) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
 
-    const params = await resolveParams(context.params);
-    const idStr = params?.id;
-    const adminId = Number(idStr);
+    const { id } = await context.params;
+    const adminId = Number(id);
     if (Number.isNaN(adminId) || adminId <= 0) {
-      return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
+      return NextResponse.json({ error: 'ID inválido.' }, { status: 400 });
     }
 
-    const body = (await request.json()) as UpdateBody;
-    const nome = typeof body.nome === 'string' ? body.nome.trim() : undefined;
-    const email = typeof body.email === 'string' ? body.email.trim() : undefined;
-    const senha = typeof body.senha === 'string' ? body.senha : undefined;
+    const body = (await request.json().catch(() => ({}))) as UpdateBody;
+    const nome = body.nome !== undefined ? String(body.nome).trim() : undefined;
+    const email = body.email !== undefined ? String(body.email).trim().toLowerCase() : undefined;
 
-    if (nome !== undefined && (!nome || nome.length < 2)) {
-      return NextResponse.json({ error: 'Nome é obrigatório (mínimo 2 caracteres).' }, { status: 400 });
-    }
-    if (email !== undefined && !isValidEmail(email)) {
+    if (email && !isValidEmail(email)) {
       return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
     }
-    if (senha !== undefined && senha !== null && senha !== '' && senha.length < 6) {
-      return NextResponse.json({ error: 'Senha deve ter no mínimo 6 caracteres.' }, { status: 400 });
+
+    // verifica existência do admin
+    const existing = await prisma.administrador.findUnique({ where: { id: adminId } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Administrador não encontrado.' }, { status: 404 });
     }
 
-    // Verifica duplicidade de email (excluindo o próprio registro)
-    if (email) {
+    // se email mudou, checar unicidade (exclui o próprio registro) usando findFirst já que email não é unique
+    if (email && email !== existing.email) {
       const other = await prisma.administrador.findFirst({
-        where: { email, NOT: { id: adminId } },
+        where: { email, id: { not: adminId } },
       });
-      if (other) return NextResponse.json({ error: 'Email já cadastrado para outro administrador.' }, { status: 409 });
+      if (other) {
+        return NextResponse.json({ error: 'Email já em uso por outro administrador.' }, { status: 409 });
+      }
     }
 
-    // Monta objeto de update apenas com campos suportados (nome, email, senhaHash)
-    const data: any = {};
-    if (nome !== undefined) data.nome = nome;
-    if (email !== undefined) data.email = email;
+    // gera nova senha aleatória (texto puro) e faz hash
+    const plainPassword = generateRandomPassword(12);
+    const saltRounds = 10;
+    const salt = await bcrypt.genSalt(saltRounds);
+    const senhaHash = await bcrypt.hash(plainPassword, salt);
 
-    // senha -> gerar hash e adicionar como senhaHash
-    if (senha !== undefined && senha !== null && senha !== '') {
-      const saltRounds = 10;
-      const salt = await bcrypt.genSalt(saltRounds);
-      const senhaHash = await bcrypt.hash(senha, salt);
-      data.senhaHash = senhaHash;
-    }
-
-    if (Object.keys(data).length === 0) {
-      return NextResponse.json({ error: 'Nada para atualizar.' }, { status: 400 });
-    }
-
+    // atualiza admin e substitui senhaHash
     const updated = await prisma.administrador.update({
       where: { id: adminId },
-      data,
-      select: { id: true, nome: true, email: true },
+      data: {
+        ...(nome !== undefined ? { nome } : {}),
+        ...(email !== undefined ? { email } : {}),
+        senhaHash,
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+      },
     });
 
+    // envia e-mail com a nova senha (fire-and-forget)
+    try {
+      await sendAdminAccessEmail({
+        to: updated.email,
+        name: updated.nome,
+        plainPassword,
+      });
+    } catch (sendErr) {
+      console.error('Erro ao enviar e-mail de senha ao admin (update):', sendErr);
+    }
+
     return NextResponse.json({ data: updated });
-  } catch (err: any) {
+  } catch (err) {
     console.error('PUT /api/admins/[id] error', err);
-    // caso ocorra erro de validação do prisma por outro campo inesperado, capture e retorne 500
     return NextResponse.json({ error: 'Erro interno ao atualizar administrador.' }, { status: 500 });
   }
 }
 
-export async function DELETE(request: NextRequest, context: { params: any }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const allowed = await checkIsSuperAdminOrSession(request);
+    const allowed = await checkAdminAuth(request);
     if (!allowed) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
 
-    const params = await resolveParams(context.params);
-    const idStr = params?.id;
-    const adminId = Number(idStr);
+    const { id } = await context.params;
+    const adminId = Number(id);
     if (Number.isNaN(adminId) || adminId <= 0) {
-      return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
+      return NextResponse.json({ error: 'ID inválido.' }, { status: 400 });
     }
 
-    await prisma.administrador.delete({ where: { id: adminId } });
+    // verifica existência
+    const existing = await prisma.administrador.findUnique({ where: { id: adminId } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Administrador não encontrado.' }, { status: 404 });
+    }
 
-    return NextResponse.json({ data: { id: adminId }, message: 'Administrador removido com sucesso.' });
-  } catch (err: any) {
+    // Apaga o registro (hard delete). Se preferir soft-delete, troque por update marcando campos deleted/deletedBy.
+    try {
+      await prisma.administrador.delete({ where: { id: adminId } });
+    } catch (prismaErr: any) {
+      console.error('Erro ao deletar administrador (prisma):', prismaErr);
+      // pode ser por FK constraints — informe o problema ao cliente
+      return NextResponse.json({ error: 'Erro ao deletar administrador (restrição de integridade).' }, { status: 400 });
+    }
+
+    return NextResponse.json({ ok: true, message: 'Administrador removido.' });
+  } catch (err) {
     console.error('DELETE /api/admins/[id] error', err);
-    if (err?.code === 'P2003' || err?.code === 'ER_ROW_IS_REFERENCED' || err?.code === 'ER_ROW_IS_REFERENCED_2') {
-      return NextResponse.json({ error: 'Não é possível remover: existem registros relacionados.' }, { status: 409 });
-    }
-    return NextResponse.json({ error: 'Erro interno ao remover administrador.' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro interno ao deletar administrador.' }, { status: 500 });
   }
 }
