@@ -1,3 +1,4 @@
+// src/app/client/reset/page.tsx
 'use client'
 
 import React, { useState, useEffect } from 'react'
@@ -7,6 +8,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Typography from '@mui/material/Typography'
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
+
+import toast from 'react-hot-toast'
 
 export default function ClientResetPasswordPage() {
   const search = useSearchParams()
@@ -19,26 +22,29 @@ export default function ClientResetPasswordPage() {
 
   useEffect(() => {
     if (!token) {
-      alert('Link inválido. Verifique o e-mail enviado.')
+      toast.error('Link inválido. Verifique o e-mail enviado.')
     }
   }, [token])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
     if (!token) {
-      alert('Token ausente.')
+      toast.error('Token ausente.')
       return
     }
     if (password.length < 6) {
-      alert('A senha deve ter pelo menos 6 caracteres.')
+      toast.error('A senha deve ter pelo menos 6 caracteres.')
       return
     }
     if (password !== confirm) {
-      alert('Senhas não conferem.')
+      toast.error('Senhas não conferem.')
       return
     }
 
     setSaving(true)
+    const loadingId = toast.loading('Salvando nova senha...')
+
     try {
       const res = await fetch('/api/admins/reset', {
         method: 'POST',
@@ -46,17 +52,24 @@ export default function ClientResetPasswordPage() {
         body: JSON.stringify({ token, password, confirm }),
       })
       const data = await res.json().catch(() => ({}))
+
       if (!res.ok) {
-        alert(data?.error ?? 'Erro ao redefinir senha.')
+        toast.error(data?.error ?? 'Erro ao redefinir senha.', { id: loadingId })
         setSaving(false)
         return
       }
-      alert('Senha redefinida com sucesso. Você será redirecionado ao login.')
-      // redireciona para a tela de login do cliente (ajuste se for admin)
-      router.push('/client/login')
+
+      toast.success('Senha redefinida com sucesso. Redirecionando para o login...', { id: loadingId })
+      setTimeout(() => {
+        // ajuste a rota de login se necessário
+        router.push('/client/login')
+      }, 800)
     } catch (err) {
       console.error(err)
-      alert('Erro de rede.')
+      toast.error('Erro de rede.', { id: loadingId })
+      setSaving(false)
+    } finally {
+      // se já redirecionou, este setSaving pode não ser necessário, mas é seguro manter
       setSaving(false)
     }
   }

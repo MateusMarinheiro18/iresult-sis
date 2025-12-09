@@ -10,6 +10,7 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 
 import classnames from 'classnames'
+import toast from 'react-hot-toast'
 
 /**
  * Desktop Logo (used on the left column)
@@ -36,11 +37,49 @@ function LogoMobile() {
 
 export default function ClientForgotPasswordPage() {
   const [email, setEmail] = useState('')
+  const [sending, setSending] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  function isValidEmail(e: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    console.log('password reset request', { email })
-    alert('Link de redefinição enviado (simulação)')
+
+    const value = String(email || '').trim().toLowerCase()
+    if (!value) {
+      toast.error('Informe seu e-mail.')
+      return
+    }
+    if (!isValidEmail(value)) {
+      toast.error('Informe um e-mail válido.')
+      return
+    }
+
+    setSending(true)
+    const loadingId = toast.loading('Enviando link de redefinição...')
+
+    try {
+      const res = await fetch('/api/admins/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value }),
+      })
+
+      if (res.ok) {
+        // feedback genérico para não vazar existência do e-mail
+        toast.success('Email enviado!', { id: loadingId })
+        setEmail('')
+      } else {
+        const body = await res.json().catch(() => ({}))
+        toast.error(body?.error ?? 'Erro ao solicitar redefinição de senha. Tente novamente mais tarde.', { id: loadingId })
+      }
+    } catch (err) {
+      console.error('Erro ao chamar /api/admins/forgot', err)
+      toast.error('Erro de rede ao solicitar redefinição de senha.', { id: loadingId })
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -117,6 +156,7 @@ export default function ClientForgotPasswordPage() {
               fullWidth
               variant="contained"
               type="submit"
+              disabled={sending}
               sx={{
                 py: 1.5,
                 borderRadius: '999px',
@@ -125,11 +165,11 @@ export default function ClientForgotPasswordPage() {
                 '&:hover': { backgroundColor: '#233A3C' }
               }}
             >
-              Enviar link de redefinição
+              {sending ? 'Enviando…' : 'Enviar link de redefinição'}
             </Button>
 
             <div className="text-center mt-4">
-              <Link href="/client/login" className="text-sky-300 hover:underline" style={{ color: '#F0F1F1' }}>
+              <Link href="/admin/login" className="text-sky-300 hover:underline" style={{ color: '#F0F1F1' }}>
                 Voltar para o login
               </Link>
             </div>
