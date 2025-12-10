@@ -234,7 +234,7 @@ export default function SurveyPageClient({
             </header>
 
             <section className={styles.optionsList}>
-              {current?.options.map((option) => {
+              {current?.options.map((option, optIndex) => {
                 const selected = currentAnswer === option.id;
                 return (
                   <button
@@ -254,7 +254,7 @@ export default function SurveyPageClient({
                           : styles.optionIndex
                       }
                     >
-                      {option.id}
+                      {optIndex + 1}
                     </div>
                     <span className={styles.optionLabel}>{option.label}</span>
                   </button>
