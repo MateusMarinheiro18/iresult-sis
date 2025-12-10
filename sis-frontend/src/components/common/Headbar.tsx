@@ -8,12 +8,13 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import MenuIcon from "@mui/icons-material/Menu";
-import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import AccountCircleOutlined from "@mui/icons-material/AccountCircleOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 type Variant = "client" | "admin";
 
@@ -21,14 +22,28 @@ interface HeadbarProps {
   variant?: Variant;
   dynamicCounts?: Record<string, number>;
   onToggleMobile?: () => void;
+  /**
+   * Optional override for the logout endpoint.
+   * If not provided, defaults to:
+   *  - admin -> /api/admins/logout
+   *  - client -> /api/logout
+   */
+  logoutUrl?: string;
 }
 
-export default function Headbar({ variant = "client", dynamicCounts = {}, onToggleMobile }: HeadbarProps) {
+export default function Headbar({
+  variant = "client",
+  dynamicCounts = {},
+  onToggleMobile,
+  logoutUrl,
+}: HeadbarProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [dark, setDark] = useState<boolean>(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const router = useRouter();
 
   // focus search with Ctrl+K (or Cmd+K)
   useEffect(() => {
@@ -43,6 +58,49 @@ export default function Headbar({ variant = "client", dynamicCounts = {}, onTogg
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  function getDefaultLogoutUrl(v: Variant) {
+    return v === "admin" ? "/api/admins/logout" : "/api/logout";
+  }
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    setAnchorEl(null); // fecha menu
+    setLoggingOut(true);
+    const id = toast.loading("Saindo...");
+
+    const url = logoutUrl ?? getDefaultLogoutUrl(variant);
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      // tenta extrair mensagem
+      let data: any = {};
+      try { data = await res.json(); } catch { data = {}; }
+
+      if (!res.ok) {
+        const msg = data?.error ?? "Erro ao sair da sessão.";
+        toast.error(msg, { id });
+        setLoggingOut(false);
+        return;
+      }
+
+      toast.success(data?.message ?? "Sessão finalizada.", { id });
+
+      // redireciona para página de login adequada
+      const redirectPath = variant === "admin" ? "/admin/login" : "/client/login";
+      // replace evita voltar para tela autenticada
+      router.replace(redirectPath);
+    } catch (err) {
+      console.error("Erro no logout:", err);
+      toast.error("Erro de rede ao encerrar a sessão.", { id });
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <header className="w-full backdrop-blur-sm border-b border-gray-100 bg-[#F3F4FF]">
@@ -80,29 +138,15 @@ export default function Headbar({ variant = "client", dynamicCounts = {}, onTogg
           </div>
         </div>
 
-        {/* center spacer to mimic the subtle centered blurred area in the image */}
+        {/* center spacer */}
         <div className="flex-1" />
 
         {/* Right icons */}
         <div className="flex items-center gap-2">
           {/* theme toggle */}
-          <IconButton
-            onClick={() => setDark((d) => !d)}
-            aria-label="Alternar tema"
-            size="small"
-            className="rounded-full p-1"
-          >
-            {dark ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}
-          </IconButton>
 
-          {/* notifications */}
-          <IconButton aria-label="Notificações" size="small" className="rounded-full p-1">
-            <Badge badgeContent={dynamicCounts?.notifications ?? 0} color="error">
-              <NotificationsNoneOutlinedIcon />
-            </Badge>
-          </IconButton>
 
-          {/* profile icon (replaces profile photo) */}
+          {/* profile icon */}
           <div className="relative">
             <IconButton
               onClick={(e) => setAnchorEl(e.currentTarget)}
@@ -128,18 +172,21 @@ export default function Headbar({ variant = "client", dynamicCounts = {}, onTogg
               <MenuItem
                 onClick={() => {
                   setAnchorEl(null);
-                  window.location.href = variant === "client" ? "/client/profile" : "/admin/profile";
+                  const profilePath = variant === "client" ? "/client/profile" : "/admin/profile";
+                  router.push(profilePath);
                 }}
               >
                 Meu Perfil
               </MenuItem>
+
               <MenuItem
                 onClick={() => {
-                  setAnchorEl(null);
-                  window.location.href = "/logout";
+                  // dispara logout
+                  handleLogout();
                 }}
+                disabled={loggingOut}
               >
-                Sair
+                {loggingOut ? "Saindo..." : "Sair"}
               </MenuItem>
             </Menu>
           </div>
