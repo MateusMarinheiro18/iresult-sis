@@ -62,7 +62,7 @@ export default function ClientResetPasswordPage() {
       toast.success('Senha redefinida com sucesso. Redirecionando para o login...', { id: loadingId })
       setTimeout(() => {
         // ajuste a rota de login se necessário
-        router.push('/client/login')
+        router.push('/admin/login')
       }, 800)
     } catch (err) {
       console.error(err)

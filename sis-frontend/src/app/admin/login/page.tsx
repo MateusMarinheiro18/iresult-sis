@@ -1,98 +1,119 @@
-// src/app/client/login/page.tsx
-'use client'
+// src/app/admin/login/page.tsx
+'use client';
 
-import React, { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 // MUI
-import Typography from '@mui/material/Typography'
-import TextField from '@mui/material/TextField'
-import IconButton from '@mui/material/IconButton'
-import InputAdornment from '@mui/material/InputAdornment'
-import Checkbox from '@mui/material/Checkbox'
-import Button from '@mui/material/Button'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Divider from '@mui/material/Divider'
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
+import Button from '@mui/material/Button';
 
-import classnames from 'classnames'
+import classnames from 'classnames';
 
-/**
- * Desktop Logo (used on the left column)
- */
 function LogoDesktop() {
   return (
     <div className="w-72">
       <img src="/logos/LogoGreen.png" alt="logo" className="w-full h-auto" />
     </div>
-  )
+  );
 }
 
-/**
- * Mobile white logo (used as floating element on small screens)
- * Place a file at: public/logos/LogoWhite.png
- */
 function LogoMobile() {
   return (
     <div className="w-28">
       <img src="/logos/LogoWhite.png" alt="logo white" className="w-full h-auto" />
     </div>
-  )
+  );
 }
 
-export default function ClientLoginPage() {
-  const router = useRouter() 
-  const [isPasswordShown, setIsPasswordShown] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+export default function AdminLoginPage() {
+  const router = useRouter();
+  const [isPasswordShown, setIsPasswordShown] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleClickShowPassword = () => setIsPasswordShown(s => !s)
+  const handleClickShowPassword = () => setIsPasswordShown((s) => !s);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+    e.preventDefault();
+    if (loading) return;
 
-    console.log('Simulando login...', { email, password })
-    router.push('/admin/dashboard')
+    if (!email || !password) {
+      toast.error('Informe email e senha.');
+      return;
+    }
+
+    setLoading(true);
+    const tId = toast.loading('Autenticando...');
+
+    try {
+      const res = await fetch('/api/admins/login', {
+        method: 'POST',
+        credentials: 'include', // essencial para gravar cookie HttpOnly
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), senha: password }),
+      });
+
+      let data: any = {};
+      try { data = await res.json(); } catch { data = {}; }
+
+      if (!res.ok) {
+        toast.error(data?.error ?? 'Erro ao autenticar.', { id: tId });
+        setLoading(false);
+        return;
+      }
+
+      toast.success(data?.message ?? 'Autenticado!', { id: tId });
+
+      // forçar reload completo para garantir que cookies sejam lidos pelo middleware
+      const next = new URL(window.location.href).searchParams.get('next') ?? data?.redirectTo ?? '/admin/dashboard';
+      
+      // usar window.location.href ao invés de router.push para forçar reload completo
+      window.location.href = next;
+    } catch (err) {
+      console.error('Erro no login', err);
+      toast.error('Erro de rede ao autenticar.', { id: tId });
+      setLoading(false);
+    }
   }
 
   return (
-    // relative so we can position the mobile logo absolute to the viewport portion of this page
     <div className="relative min-h-screen flex">
-      {/* MOBILE floating logo: visible only < md, absolute, doesn't push content */}
       <div className="md:hidden absolute top-32 left-1/2 transform -translate-x-1/2 z-50">
         <LogoMobile />
       </div>
 
-      {/* LEFT (desktop only) */}
       <aside
         className="hidden md:flex flex-1 flex-col items-center justify-center p-12 text-left"
         style={{ background: '#F3F4FF' }}
         aria-hidden
-        >
-        {/* container centralizado */}
+      >
         <div className="flex flex-col items-start justify-center max-w-[420px] text-left">
-            <header className="mb-8">
+          <header className="mb-8">
             <Typography variant="h4" className="text-[#0B2527] mb-2" sx={{ fontWeight: 700 }}>
-                Bem-vindo, administrador!
+              Bem-vindo, administrador!
             </Typography>
             <Typography className="text-slate-700">
-                Acesse o portal para acompanhar suas pesquisas e indicadores.
+              Acesse o portal para acompanhar suas pesquisas e indicadores.
             </Typography>
-            </header>
+          </header>
 
-            {/* Logo maior e centralizada */}
-            <div className="w-72">
+          <div className="w-72">
             <LogoDesktop />
-            </div>
+          </div>
         </div>
-        </aside>
+      </aside>
 
-      {/* RIGHT - form column */}
       <main
         className={classnames('flex items-center justify-center flex-1 p-6 md:p-12')}
         style={{ background: '#0B2527', color: '#ffffff' }}
       >
-        {/* NOTE: add pt-20 on small screens so the mobile floating logo doesn't overlap inputs */}
         <div className="w-full max-w-md pt-20 md:pt-0">
           <div className="mb-6 text-center">
             <Typography variant="h4" sx={{ color: '#E6EEF0', fontWeight: 300 }}>
@@ -108,24 +129,13 @@ export default function ClientLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               variant="filled"
-              InputLabelProps={{
-                style: { color: '#8A8A8A' } // cor do label
-              }}
-              inputProps={{
-                style: { color: '#8A8A8A' } // cor do texto digitado
-              }}
+              InputLabelProps={{ style: { color: '#8A8A8A' } }}
+              inputProps={{ style: { color: '#8A8A8A' } }}
               sx={{
                 backgroundColor: '#F6F7FB',
-                borderRadius: '999px', // deixa arredondado
-                '& .MuiFilledInput-root': {
-                  backgroundColor: '#F6F7FB',
-                  borderRadius: '999px',
-                  '&:hover': { backgroundColor: '#F6F7FB' },
-                  '&:before, &:after': { display: 'none' } // remove underline do filled
-                },
-                '& .MuiInputBase-input::placeholder': {
-                  color: '#8A8A8A'
-                }
+                borderRadius: '999px',
+                '& .MuiFilledInput-root': { backgroundColor: '#F6F7FB', borderRadius: '999px', '&:hover': { backgroundColor: '#F6F7FB' }, '&:before, &:after': { display: 'none' } },
+                '& .MuiInputBase-input::placeholder': { color: '#8A8A8A' },
               }}
             />
 
@@ -136,12 +146,8 @@ export default function ClientLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               variant="filled"
-              InputLabelProps={{
-                style: { color: '#8A8A8A' }
-              }}
-              inputProps={{
-                style: { color: '#8A8A8A' }
-              }}
+              InputLabelProps={{ style: { color: '#8A8A8A' } }}
+              inputProps={{ style: { color: '#8A8A8A' } }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -155,20 +161,13 @@ export default function ClientLoginPage() {
                       <i className={isPasswordShown ? 'ri-eye-off-line' : 'ri-eye-line'} />
                     </IconButton>
                   </InputAdornment>
-                )
+                ),
               }}
               sx={{
                 backgroundColor: '#F6F7FB',
                 borderRadius: '999px',
-                '& .MuiFilledInput-root': {
-                  backgroundColor: '#F6F7FB',
-                  borderRadius: '999px',
-                  '&:hover': { backgroundColor: '#F6F7FB' },
-                  '&:before, &:after': { display: 'none' }
-                },
-                '& .MuiInputBase-input::placeholder': {
-                  color: '#8A8A8A'
-                }
+                '& .MuiFilledInput-root': { backgroundColor: '#F6F7FB', borderRadius: '999px', '&:hover': { backgroundColor: '#F6F7FB' }, '&:before, &:after': { display: 'none' } },
+                '& .MuiInputBase-input::placeholder': { color: '#8A8A8A' },
               }}
             />
 
@@ -182,19 +181,20 @@ export default function ClientLoginPage() {
               fullWidth
               variant="contained"
               type="submit"
+              disabled={loading}
               sx={{
                 py: 1.5,
                 borderRadius: '999px',
                 backgroundColor: '#0B2527',
                 border: '2px solid #F6F7FB',
-                '&:hover': { backgroundColor: '#233A3C' }
+                '&:hover': { backgroundColor: '#233A3C' },
               }}
             >
-              Acessar
+              {loading ? 'Autenticando...' : 'Acessar'}
             </Button>
           </form>
         </div>
       </main>
     </div>
-  )
+  );
 }
