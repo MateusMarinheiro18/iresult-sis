@@ -5,7 +5,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { prisma } from '@/lib/prisma';
 
 const COOKIE_NAME = 'sis_admin_sess'; // DEVE SER O MESMO DO MIDDLEWARE
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = process.env.APP_JWT_SECRET || 'dev-secret-change-me';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
 
 function cookieOptions() {

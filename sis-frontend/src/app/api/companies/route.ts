@@ -1,13 +1,52 @@
 // src/app/api/companies/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyAdminToken } from '@/lib/auth/jwt';
 
 function sanitizeNumberString(s?: string) {
   return s ? s.replace(/\D+/g, '') : null;
 }
 
+function getBrasiliaDate() {
+  const now = new Date();
+  const localTime = now.getTime();
+  const utc = localTime;
+  
+  // O fuso de Brasília (America/Sao_Paulo) é UTC-3, ou seja, -180 minutos.
+  const brasiliaOffsetInMs = -3 * 3600000; 
+
+  // O truque é criar um Date no fuso de Brasília, mas 'fingindo' ser UTC,
+  // o que força o objeto a se renderizar com a hora correta.
+  return new Date(utc + brasiliaOffsetInMs);
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Extrair e validar token JWT do cookie
+    const token = request.cookies.get('sis_admin_sess')?.value;
+    if (!token) {
+      return NextResponse.json(
+        { message: 'Não autenticado' },
+        { status: 401 }
+      );
+    }
+
+    const { ok, payload, error } = verifyAdminToken(token);
+    if (!ok || !payload) {
+      return NextResponse.json(
+        { message: 'Token inválido ou expirado' },
+        { status: 401 }
+      );
+    }
+
+    const adminId = Number(payload.sub);
+    if (!adminId || Number.isNaN(adminId)) {
+      return NextResponse.json(
+        { message: 'ID do administrador inválido' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     if (!body.razaoSocial || typeof body.razaoSocial !== 'string') {
@@ -22,8 +61,6 @@ export async function POST(request: NextRequest) {
     const email = body.email ? String(body.email).trim() : null;
     const telefone = sanitizeNumberString(body.telefone) ?? null;
     const cep = sanitizeNumberString(body.cep) ?? null;
-
-    const createdBy = body.createdBy ?? null;
 
     // trata escalaId (opcional)
     let escalaId: number | null = null;
@@ -55,6 +92,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const dataBrasilia = getBrasiliaDate();
+
     const created = await prisma.empresa.create({
       data: {
         razaoSocial,
@@ -63,8 +102,8 @@ export async function POST(request: NextRequest) {
         telefone,
         cep,
         ativo: 1,
-        created: new Date(),
-        createdBy,
+        created: dataBrasilia,
+        createdBy: adminId,
       },
     });
 
@@ -85,14 +124,13 @@ export async function POST(request: NextRequest) {
           idEmpresa: created.id,
           nome,
           ativo: 1,
-          created: new Date(),
-          createdBy,
+          created: dataBrasilia,
+          createdBy: adminId,
         })),
-        skipDuplicates: true, // respeita o unique (idEmpresa, nome)
+        skipDuplicates: true,
       });
     }
 
-    // poderia já retornar com os grupos, mas por enquanto mantém como antes
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     console.error('POST /api/companies error', error);

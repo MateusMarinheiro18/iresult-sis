@@ -1,7 +1,7 @@
 // src/lib/auth/jwt.ts
 import jwt from 'jsonwebtoken';
 
-const SECRET = process.env.APP_JWT_SECRET || process.env.NEXTAUTH_SECRET;
+const SECRET = process.env.APP_JWT_SECRET || 'dev-secret-change-me';
 const EXPIRES_IN = Number(process.env.APP_JWT_EXPIRES || 28800); // seconds
 
 if (!SECRET) {
