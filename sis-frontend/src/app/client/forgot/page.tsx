@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import toast from 'react-hot-toast'
 
 // MUI
 import Typography from '@mui/material/Typography'
@@ -36,11 +37,54 @@ function LogoMobile() {
 
 export default function ClientForgotPasswordPage() {
   const [email, setEmail] = useState('')
+  const [sending, setSending] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  function isValidEmail(e: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    console.log('password reset request', { email })
-    alert('Link de redefinição enviado (simulação)')
+    if (sending) return
+
+    const value = String(email || '').trim().toLowerCase()
+    if (!value) {
+      toast.error('Informe seu e-mail.')
+      return
+    }
+    if (!isValidEmail(value)) {
+      toast.error('Informe um e-mail válido.')
+      return
+    }
+
+    setSending(true)
+    const loadingId = toast.loading('Enviando link de redefinição...')
+
+    try {
+      const res = await fetch('/api/rh/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value }),
+      })
+
+      if (res.ok) {
+        // feedback genérico para não vazar existência do e-mail
+        toast.success('Email enviado! Verifique sua caixa de entrada.', { id: loadingId })
+        setEmail('')
+      } else {
+        const body = await res.json().catch(() => ({}))
+        // preferir mensagem amigável; backend pode retornar 404 se email não existir
+        const errMsg =
+          body?.error ??
+          'Erro ao solicitar redefinição de senha. Se o email existir, você receberá em breve o link.'
+        toast.error(errMsg, { id: loadingId })
+      }
+    } catch (err) {
+      console.error('Erro ao chamar /api/rh/forgot', err)
+      toast.error('Erro de rede ao solicitar redefinição de senha.', { id: loadingId })
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -117,6 +161,7 @@ export default function ClientForgotPasswordPage() {
               fullWidth
               variant="contained"
               type="submit"
+              disabled={sending}
               sx={{
                 py: 1.5,
                 borderRadius: '999px',
@@ -125,7 +170,7 @@ export default function ClientForgotPasswordPage() {
                 '&:hover': { backgroundColor: '#233A3C' }
               }}
             >
-              Enviar link de redefinição
+              {sending ? 'Enviando…' : 'Enviar link de redefinição'}
             </Button>
 
             <div className="text-center mt-4">
