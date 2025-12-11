@@ -89,7 +89,7 @@ export default function DashboardClientPageClient() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#F5F5F7' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#F3F4FF' }}>
         <div style={{ fontSize: 18, color: '#666' }}>Carregando dashboard...</div>
       </div>
     );
@@ -99,7 +99,7 @@ export default function DashboardClientPageClient() {
     return (
       <div style={{ padding: 24 }}>
         <HeaderClient />
-        <div style={{ maxWidth: 900, margin: '24px auto', background: '#fff', padding: 20, borderRadius: 12, border: '1px solid #eee' }}>
+        <div style={{ maxWidth: 900, margin: '24px auto', background: '#F3F4FF', padding: 20, borderRadius: 12, border: '1px solid #eee' }}>
           <h2 style={{ marginTop: 0 }}>Dashboard</h2>
           <p style={{ color: '#666' }}>Não foi possível identificar sua empresa. Verifique se está logado ou se sua conta está vinculada a uma empresa.</p>
         </div>
@@ -111,7 +111,7 @@ export default function DashboardClientPageClient() {
     return (
       <div style={{ padding: 24 }}>
         <HeaderClient />
-        <div style={{ maxWidth: 900, margin: '24px auto', background: '#fff', padding: 20, borderRadius: 12, border: '1px solid #fee' }}>
+        <div style={{ maxWidth: 900, margin: '24px auto', background: '#F3F4FF', padding: 20, borderRadius: 12, border: '1px solid #fee' }}>
           <h2 style={{ marginTop: 0 }}>Erro</h2>
           <p style={{ color: '#a00' }}>{error}</p>
         </div>

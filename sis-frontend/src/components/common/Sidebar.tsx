@@ -45,12 +45,10 @@ interface SidebarProps {
 
 const DEFAULT_MENUS: Record<Variant, MenuItem[]> = {
   client: [
-//    { key: "dashboard", label: "Dashboard", href: "/client/dashboard", icon: <HomeOutlined /> },
-    { key: "enquetes", label: "Minhas Pesquisas", href: "/client/enquetes", icon: <FilterOutlined /> },
-    { key: "agendamentos", label: "Agenda / Trilhas", href: "/client/agenda", icon: <CalendarTodayOutlined /> },
-    { key: "indicadores", label: "Indicadores", href: "/client/indicadores", icon: <BarChartOutlined /> },
-    { key: "contato", label: "Contato / RH", href: "/client/contato", icon: <TramOutlined /> },
-    { key: "perfil", label: "Meu Perfil", href: "/client/profile", icon: <PersonOutline /> },
+    { key: "dashboard", label: "Dashboard", href: "/client/dashboard", icon: <HomeOutlined /> },
+    { key: "calendario", label: "Calendário", href: "/client/calendario", icon: <CalendarTodayOutlined /> },
+    { key: "trilhas", label: "Trilhas", href: "/client/trilhas", icon: <MapOutlined /> },
+    { key: "relatorios", label: "Relatórios", href: "/client/relatorios", icon: <BarChartOutlined /> },
   ],
   admin: [
     { key: "dashboard", label: "Dashboard", href: "/admin/dashboard", icon: <HomeOutlined /> },

@@ -21,7 +21,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
   const dynamicCounts = { notifications: 2, enquetes: 5 };
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-[#F3F4FF]">
       <Sidebar 
         variant="client" 
         openOnMobile={mobileOpen} 
