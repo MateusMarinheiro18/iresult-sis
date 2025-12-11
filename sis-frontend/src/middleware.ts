@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyAdminToken, verifyRhToken } from './lib/auth/jwt';
 
+// Forçar Node.js runtime ao invés de Edge Runtime
+export const runtime = 'nodejs';
+
 const ADMIN_COOKIE = 'sis_admin_sess';
 const RH_COOKIE = 'sis_rh_sess';
 
