@@ -60,7 +60,7 @@ export default function Headbar({
   }, []);
 
   function getDefaultLogoutUrl(v: Variant) {
-    return v === "admin" ? "/api/admins/logout" : "/api/logout";
+    return v === "admin" ? "/api/admins/logout" : "/api/rh/logout";
   }
 
   async function handleLogout() {
