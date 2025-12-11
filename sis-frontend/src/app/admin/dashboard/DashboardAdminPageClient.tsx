@@ -113,7 +113,7 @@ export default function DashboardAdminPageClient() {
           <ScalesGrid escalas={data.escalas} escalaSelecionada={escalaSelecionada} setEscalaSelecionada={setEscalaSelecionada} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 24 }}>
+        <div className="dashboard-main-grid">
           <ModulesPanel
             modulos={data.modulos}
             moduloSelecionado={moduloSelecionado}
@@ -126,6 +126,26 @@ export default function DashboardAdminPageClient() {
           <SidebarPanel trilhas={data.trilhas} agendamentos={data.agendamentos} />
         </div>
       </div>
+
+      <style jsx>{`
+        .dashboard-main-grid {
+          display: grid;
+          grid-template-columns: 1fr 400px;
+          gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+          .dashboard-main-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 768px) {
+          div[style*="padding: 32px 24px"] {
+            padding: 16px 12px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

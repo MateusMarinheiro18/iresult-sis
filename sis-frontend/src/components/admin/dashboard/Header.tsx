@@ -77,6 +77,23 @@ export default function Header() {
             font-size: 13px;
           }
         }
+
+        @media (max-width: 640px) {
+          .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 24px;
+          }
+
+          .page-header-title h1 {
+            font-size: 22px;
+          }
+
+          .page-header-subtitle {
+            font-size: 12px;
+          }
+        }
       `}</style>
     </header>
   );

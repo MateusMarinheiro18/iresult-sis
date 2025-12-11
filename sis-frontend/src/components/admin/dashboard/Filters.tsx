@@ -102,6 +102,21 @@ export default function Filters({
             gap: 12px;
           }
         }
+
+        @media (max-width: 640px) {
+          .filters-root {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .field {
+            width: 100%;
+          }
+
+          .action button {
+            width: 100%;
+          }
+        }
       `}</style>
     </div>
   );

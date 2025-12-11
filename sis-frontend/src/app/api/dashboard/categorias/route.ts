@@ -57,6 +57,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // NOVO: buscar dataEnvio SOMENTE se houver filtro de empresa
+    let dataEnvioCategorias: Date | null = null;
+    
+    const moduloInfo = await prisma.escalaModulo.findUnique({
+      where: { id: Number(moduloId) },
+      select: { idEscala: true }
+    });
+
+    if (moduloInfo && empresaId) {
+      const vinculoCategorias = await prisma.escalaHasEmpresa.findUnique({
+        where: {
+          idEscala_idEmpresa: {
+            idEscala: moduloInfo.idEscala,
+            idEmpresa: Number(empresaId)
+          }
+        },
+        select: { dataEnvio: true }
+      });
+      dataEnvioCategorias = vinculoCategorias?.dataEnvio || null;
+      console.log(`\n🔍 DATA DE ENVIO (categorias): ${dataEnvioCategorias ? dataEnvioCategorias.toISOString() : 'NULL'}`);
+    }
+
     // ========================================================================
     // 2. BUSCAR CATEGORIAS DO MÓDULO
     // ========================================================================
@@ -67,24 +89,7 @@ export async function GET(request: NextRequest) {
       },
       select: {
         id: true,
-        nome: true,
-        perguntas: {
-          where: { ativo: 1 },
-          select: {
-            id: true,
-            respostasFuncionarios: {
-              where: {
-                ativo: 1,
-                ...(empresaId ? { idEmpresa: Number(empresaId) } : {})
-              },
-              select: {
-                respostaPossivel: {
-                  select: { valor: true }
-                }
-              }
-            }
-          }
-        }
+        nome: true
       },
       orderBy: { nome: 'asc' }
     });
@@ -92,23 +97,57 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 3. CALCULAR MÉDIA E CLASSIFICAÇÃO DE CADA CATEGORIA
     // ========================================================================
-    const categorias = categoriasRaw.map((categoria: CategoriaRaw) => {
-      // Coletar todos os valores das respostas
-      const valores: number[] = [];
-      categoria.perguntas.forEach((pergunta: Pergunta) => {
-        pergunta.respostasFuncionarios.forEach((resposta: RespostaFuncionario) => {
-          if (resposta.respostaPossivel?.valor) {
-            valores.push(resposta.respostaPossivel.valor);
+    const categoriasPromises = categoriasRaw.map(async (categoria: any) => {
+      const whereRespostas: any = {
+        ativo: 1,
+        pergunta: {
+          ativo: 1,
+          idCategoria: categoria.id
+        }
+      };
+      
+      if (empresaId) whereRespostas.idEmpresa = Number(empresaId);
+      if (dataEnvioCategorias) {
+        whereRespostas.dataResposta = { gte: dataEnvioCategorias };
+        console.log(`✅ Filtrando categorias >= ${dataEnvioCategorias.toISOString()}`);
+      } else {
+        console.log(`⚠️ Sem filtro de empresa - pegando TODAS as respostas`);
+      }
+
+      const respostas = await prisma.respostaFuncionario.findMany({
+        where: whereRespostas,
+        select: {
+          dataResposta: true,
+          respostaPossivel: {
+            select: { valor: true }
           }
-        });
+        }
       });
 
-      // Calcular média
+      const valores: number[] = [];
+      
+      console.log(`\n=== CATEGORIA: ${categoria.nome} ===`);
+      console.log(`Total de respostas: ${respostas.length}`);
+      
+      respostas.forEach((resp: any) => {
+        const valor = resp.respostaPossivel?.valor;
+        const dataResp = resp.dataResposta ? new Date(resp.dataResposta).toISOString() : 'NULL';
+        
+        console.log(`  - Data: ${dataResp} | Valor: ${valor}`);
+        
+        if (valor !== null && valor !== undefined) {
+          valores.push(Number(valor));
+        }
+      });
+
+      console.log(`Valores: [${valores.join(', ')}]`);
+
       const media = valores.length > 0
         ? valores.reduce((sum: number, v: number) => sum + v, 0) / valores.length
         : 0;
 
-      // Classificar usando os MESMOS ranges do módulo pai
+      console.log(`Média: ${media.toFixed(2)}\n`);
+
       let classificacao = 'INTERMEDIARIO';
       
       if (
@@ -134,6 +173,8 @@ export async function GET(request: NextRequest) {
         classificacao
       };
     });
+
+    const categorias = await Promise.all(categoriasPromises);
 
     return NextResponse.json(categorias);
 

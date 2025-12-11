@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
           where: empresaId ? { idEmpresa: Number(empresaId) } : {},
           select: {
             idEmpresa: true,
-            totalDestinatarios: true
+            totalDestinatarios: true,
+            dataEnvio: true // NOVO: buscar dataEnvio
           }
         }
       },
@@ -98,12 +99,30 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // NOVO: pegar a dataEnvio mais recente para filtrar respostas
+      let dataEnvioMaisRecente: Date | null = null;
+      if (empresaId) {
+        const vinculo = escala.empresas.find((e: any) => e.idEmpresa === Number(empresaId));
+        dataEnvioMaisRecente = vinculo?.dataEnvio || null;
+      } else {
+        // Se não há filtro de empresa, pegar a data mais recente entre todas
+        const datas = escala.empresas.map((e: any) => e.dataEnvio).filter(Boolean);
+        if (datas.length > 0) {
+          dataEnvioMaisRecente = new Date(Math.max(...datas.map((d: Date) => d.getTime())));
+        }
+      }
+
       // contar distinct idFuncionario nas respostas (filtrando por empresa se fornecida)
       const whereResposta: any = {
         idEscala: escala.id,
         ativo: 1
       };
       if (empresaId) whereResposta.idEmpresa = Number(empresaId);
+      
+      // NOVO: só contar respostas após dataEnvio
+      if (dataEnvioMaisRecente) {
+        whereResposta.dataResposta = { gte: dataEnvioMaisRecente };
+      }
 
       const respostasRows = await prisma.respostaFuncionario.findMany({
         where: whereResposta,
@@ -132,6 +151,23 @@ export async function GET(request: NextRequest) {
     // 3) Módulos (se houver escala selecionada)
     let modulos: any[] = [];
     if (escalaId) {
+      // NOVO: buscar dataEnvio SOMENTE se houver filtro de empresa
+      let dataEnvioModulos: Date | null = null;
+      
+      if (empresaId) {
+        const vinculoModulos = await prisma.escalaHasEmpresa.findUnique({
+          where: {
+            idEscala_idEmpresa: {
+              idEscala: Number(escalaId),
+              idEmpresa: Number(empresaId)
+            }
+          },
+          select: { dataEnvio: true }
+        });
+        dataEnvioModulos = vinculoModulos?.dataEnvio || null;
+        console.log(`\n🔍 DATA DE ENVIO encontrada: ${dataEnvioModulos ? dataEnvioModulos.toISOString() : 'NULL'}`);
+      }
+
       const modulosRaw = await prisma.escalaModulo.findMany({
         where: { idEscala: Number(escalaId), ativo: 1 },
         select: {
@@ -142,46 +178,72 @@ export async function GET(request: NextRequest) {
           valorInicialIntermediario: true,
           valorFinalIntermediario: true,
           valorInicialRisco: true,
-          valorFinalRisco: true,
-          perguntas: {
-            where: { ativo: 1 },
-            select: {
-              id: true,
-              respostasFuncionarios: {
-                where: {
-                  ativo: 1,
-                  ...(empresaId ? { idEmpresa: Number(empresaId) } : {})
-                },
-                select: {
-                  respostaPossivel: {
-                    select: { valor: true }
-                  }
-                }
-              }
-            }
-          }
+          valorFinalRisco: true
         }
       });
 
-      modulos = modulosRaw.map((modulo: any) => {
-        const valores: number[] = [];
-        modulo.perguntas.forEach((pergunta: any) => {
-          pergunta.respostasFuncionarios.forEach((resposta: any) => {
-            const v = resposta.respostaPossivel?.valor;
-            if (v !== null && v !== undefined) valores.push(Number(v));
-          });
+      const modulosPromises = modulosRaw.map(async (modulo: any) => {
+        const whereRespostas: any = {
+          ativo: 1,
+          pergunta: {
+            ativo: 1,
+            idModulo: modulo.id
+          }
+        };
+        
+        if (empresaId) whereRespostas.idEmpresa = Number(empresaId);
+        if (dataEnvioModulos) {
+          whereRespostas.dataResposta = { gte: dataEnvioModulos };
+          console.log(`✅ Filtrando respostas >= ${dataEnvioModulos.toISOString()}`);
+        } else {
+          console.log(`⚠️ Sem filtro de empresa - pegando TODAS as respostas`);
+        }
+
+        const respostas = await prisma.respostaFuncionario.findMany({
+          where: whereRespostas,
+          select: {
+            idFuncionario: true,
+            dataResposta: true,
+            respostaPossivel: {
+              select: { valor: true }
+            }
+          }
         });
 
-        const media = valores.length > 0 ? valores.reduce((s: number, x: number) => s + x, 0) / valores.length : 0;
+        const valores: number[] = [];
+        
+        console.log(`\n=== MÓDULO: ${modulo.nome} ===`);
+        console.log(`Total de respostas encontradas: ${respostas.length}`);
+        
+        respostas.forEach((resp: any) => {
+          const valor = resp.respostaPossivel?.valor;
+          const dataResp = resp.dataResposta ? new Date(resp.dataResposta).toISOString() : 'NULL';
+          
+          console.log(`  - Func ${resp.idFuncionario} | Data: ${dataResp} | Valor: ${valor}`);
+          
+          if (valor !== null && valor !== undefined) {
+            valores.push(Number(valor));
+          }
+        });
+
+        console.log(`Valores coletados: [${valores.join(', ')}]`);
+
+        const media = valores.length > 0 
+          ? valores.reduce((s: number, x: number) => s + x, 0) / valores.length 
+          : 0;
+
+        console.log(`Média: ${media.toFixed(2)}\n`);
 
         let classificacao = 'INTERMEDIARIO';
         const viF = modulo.valorInicialFavoravel; const vfF = modulo.valorFinalFavoravel;
         const viR = modulo.valorInicialRisco; const vfR = modulo.valorFinalRisco;
-        if (viF !== null && viF !== undefined && vfF !== null && vfF !== undefined && media >= Number(viF) && media <= Number(vfF)) classificacao = 'FAVORAVEL';
-        else if (viR !== null && viR !== undefined && vfR !== null && vfR !== undefined && media >= Number(viR) && media <= Number(vfR)) classificacao = 'RISCO';
+        if (viF !== null && vfF !== null && media >= Number(viF) && media <= Number(vfF)) classificacao = 'FAVORAVEL';
+        else if (viR !== null && vfR !== null && media >= Number(viR) && media <= Number(vfR)) classificacao = 'RISCO';
 
         return { id: modulo.id, nome: modulo.nome, media: Number(media.toFixed(2)), classificacao };
       });
+
+      modulos = await Promise.all(modulosPromises);
     }
 
     // 4) Trilhas — calcular progresso com base em itens cuja `data` já passou no fuso de São Paulo
