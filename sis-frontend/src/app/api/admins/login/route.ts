@@ -8,17 +8,20 @@ const COOKIE_NAME = 'sis_admin_sess'; // DEVE SER O MESMO DO MIDDLEWARE
 const JWT_SECRET = process.env.APP_JWT_SECRET || 'dev-secret-change-me';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 dias
 
+// Mova o tipo para escopo do módulo (ANTES das funções)
+type JWTP = { sub: number | string; email?: string } & JwtPayload;
+
 function cookieOptions() {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   return {
     httpOnly: true,
     path: '/',
-    sameSite: 'lax' as const,
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const, // sempre 'lax' (funciona em HTTP e HTTPS)
+    secure: isProduction && process.env.USE_SECURE_COOKIES === 'true', // controle via env
     maxAge: COOKIE_MAX_AGE,
   };
 }
-
-type JWTP = { sub: number | string; email?: string } & JwtPayload;
 
 /** POST -> autentica (email + senha) e seta cookie JWT */
 export async function POST(req: NextRequest) {
@@ -26,6 +29,11 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => ({}))) as any;
     const email = (body.email ?? '').toString().trim();
     const senha = (body.senha ?? '').toString();
+
+    // DEBUG: log ambiente
+    console.log('[LOGIN DEBUG] NODE_ENV:', process.env.NODE_ENV);
+    console.log('[LOGIN DEBUG] USE_SECURE_COOKIES:', process.env.USE_SECURE_COOKIES);
+    console.log('[LOGIN DEBUG] Cookie options:', cookieOptions());
 
     if (!email || !senha) {
       return NextResponse.json({ error: 'Email e senha são obrigatórios.' }, { status: 400 });
@@ -52,6 +60,9 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ message: 'Autenticado', redirectTo: '/admin/dashboard' });
     res.cookies.set(COOKIE_NAME, token, cookieOptions());
+
+    // DEBUG: confirme que cookie foi setado
+    console.log('[LOGIN DEBUG] Cookie setado:', COOKIE_NAME, 'token length:', token.length);
 
     return res;
   } catch (err) {
