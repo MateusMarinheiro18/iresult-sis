@@ -15,7 +15,7 @@ function buildBaseUrl() {
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.APP_URL ||
     process.env.VERCEL_URL ||
-    'http://localhost:3000';
+    'http://146.190.121.239:3001';
 
   if (!fromEnv.startsWith('http://') && !fromEnv.startsWith('https://')) {
     return `https://${fromEnv}`;

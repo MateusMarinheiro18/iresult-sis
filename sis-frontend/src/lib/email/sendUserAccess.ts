@@ -40,7 +40,7 @@ export async function sendUserAccessEmail(opts: Opts) {
     return;
   }
 
-  const portal = process.env.FRONTEND_BASE_URL ?? 'http://localhost:3000';
+  const portal = process.env.FRONTEND_BASE_URL ?? 'http://146.190.121.239:3001';
   const subject = 'Acesso ao portal — sua conta foi criada';
   const html = `
     <p>Olá ${opts.name ?? ''},</p>

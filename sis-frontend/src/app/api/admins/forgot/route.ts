@@ -6,7 +6,7 @@ import { sendAdminPasswordResetEmail } from '@/lib/email/sendAdminPasswordResetE
 
 const SECRET = process.env.PASSWORD_RESET_JWT_SECRET ?? '';
 const EXPIRES_SECONDS = Number(process.env.PASSWORD_RESET_TOKEN_EXPIRES_SECONDS ?? '7200'); // 2h default
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? process.env.FRONTEND_BASE_URL ?? 'http://localhost:3000';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? process.env.FRONTEND_BASE_URL ?? 'http://146.190.121.239:3001';
 
 function isValidEmail(email: string) {
   return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
