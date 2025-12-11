@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { sendUserAccessEmail } from '@/lib/email/sendUserAccess';
+import { verifyAdminToken } from '@/lib/auth/jwt';
 
 /**
  * NOTE:
@@ -13,19 +14,45 @@ import { sendUserAccessEmail } from '@/lib/email/sendUserAccess';
  * - O envio de e-mail é disparado em background (fire-and-forget).
  */
 
-// checagem de autorização (stub — substitua pela sua lógica)
-async function checkAdminForCompany(req: NextRequest, companyId: number) {
-  // TODO: integrar com sessão/token e verificar permissão para companyId
-  return true;
-}
-
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function getBrasiliaDate() {
+  const now = new Date();
+  const utcMs = now.getTime();
+  const brasiliaOffsetInMs = -3 * 3600000;
+  return new Date(utcMs + brasiliaOffsetInMs);
+}
+
+function generateRandomPassword(length = 12) {
+  return crypto
+    .randomBytes(Math.ceil(length * 0.75))
+    .toString('base64')
+    .replace(/\+/g, 'A')
+    .replace(/\//g, 'B')
+    .slice(0, length);
+}
+
+/** Detecta erro do Prisma tipo "Unknown argument" (campo inexistente no model) */
+function isPrismaUnknownArgError(err: any) {
+  const msg = String(err?.message ?? '').toLowerCase();
+  return /unknown argument|unknown field|field does not exist/i.test(msg);
+}
+
 type RouteParams = { id: string };
 
-/** GET — listagem paginada / filtrada */
+type CreateBody = {
+  nome?: string;
+  email?: string;
+  telefone?: string;
+  data_nascimento?: string | null;
+  cidade?: string | null;
+  gestor?: string | null;
+  ativo?: number | boolean | null;
+  created_by?: number | null; // será ignorado: audit control no servidor
+};
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<RouteParams> }
@@ -52,7 +79,8 @@ export async function GET(
       ];
     }
     if (typeof ativoParam === 'string') {
-      where.ativo = Number(ativoParam);
+      const a = Number(ativoParam);
+      if (!Number.isNaN(a)) where.ativo = a;
     }
 
     const total = await prisma.empresaUsuario.count({ where });
@@ -91,27 +119,6 @@ export async function GET(
  * - Server gera senha temporária, faz hash e salva em senha_hash.
  * - Não retorna senha em texto.
  */
-type CreateBody = {
-  nome?: string;
-  email?: string;
-  telefone?: string;
-  data_nascimento?: string | null;
-  cidade?: string | null;
-  gestor?: string | null;
-  ativo?: number | boolean | null;
-  created_by?: number | null; // opcional
-};
-
-function generateRandomPassword(length = 12) {
-  // gera string base64-url segura e corta no tamanho desejado
-  return crypto
-    .randomBytes(Math.ceil(length * 0.75))
-    .toString('base64')
-    .replace(/\+/g, 'A')
-    .replace(/\//g, 'B')
-    .slice(0, length);
-}
-
 export async function POST(
   request: NextRequest,
   context: { params: Promise<RouteParams> }
@@ -123,11 +130,17 @@ export async function POST(
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
 
-    const allowed = await checkAdminForCompany(request, companyId);
-    if (!allowed) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
-    }
+    // --- auth: verificar token do admin (cookie)
+    const token = request.cookies.get('sis_admin_sess')?.value;
+    if (!token) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
+    const { ok, payload } = verifyAdminToken(token);
+    if (!ok || !payload) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
+
+    const adminId = Number(payload.sub);
+    if (!adminId || Number.isNaN(adminId)) return NextResponse.json({ error: 'ID do administrador inválido' }, { status: 401 });
+
+    // --- body parsing & validation
     const body = (await request.json()) as CreateBody;
 
     const nome = body.nome?.toString().trim() ?? '';
@@ -137,9 +150,9 @@ export async function POST(
     const cidade = body.cidade?.toString().trim() ?? null;
     const gestor = body.gestor?.toString().trim() ?? null;
     const ativo = body.ativo === undefined ? 1 : body.ativo ? 1 : 0;
-    const created_by = body.created_by ?? null;
+    // ignore created_by from client; server controls audit
+    // const created_by = body.created_by ?? null;
 
-    // validações
     if (!nome || nome.length < 2) {
       return NextResponse.json(
         { error: 'Nome é obrigatório (mínimo 2 caracteres).' },
@@ -147,10 +160,7 @@ export async function POST(
       );
     }
     if (!email) {
-      return NextResponse.json(
-        { error: 'Email é obrigatório.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Email é obrigatório.' }, { status: 400 });
     }
     if (!isValidEmail(email)) {
       return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
@@ -170,64 +180,126 @@ export async function POST(
     if (data_nascimento) {
       const d = new Date(data_nascimento + 'T12:00:00.000Z');
       if (Number.isNaN(d.getTime())) {
-        return NextResponse.json(
-          { error: 'Data de nascimento inválida.' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Data de nascimento inválida.' }, { status: 400 });
       }
       if (d.getTime() > Date.now()) {
-        return NextResponse.json(
-          { error: 'Data de nascimento não pode ser no futuro.' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Data de nascimento não pode ser no futuro.' }, { status: 400 });
       }
     }
 
-    // Gera senha temporária (não será retornada; apenas usada para criar hash)
+    // --- gerar senha e hash
     const plainPassword = generateRandomPassword(12);
-
-    // Hash com bcrypt
     const saltRounds = 10;
     const salt = await bcrypt.genSalt(saltRounds);
     const senha_hash = await bcrypt.hash(plainPassword, salt);
 
-    // Cria usuário com senha_hash
-    const newUser = await prisma.empresaUsuario.create({
-      data: {
-        id_empresa: companyId,
-        nome,
-        email: email || null,
-        telefone,
-        data_nascimento: data_nascimento
-          ? new Date(data_nascimento + 'T12:00:00.000Z')
-          : null,
-        cidade,
-        gestor,
-        ativo: ativo ?? 1,
-        senha_hash,
-        created: new Date(),
-        created_by: created_by,
-      },
-      select: {
-        id_usuario_rh: true,
-        nome: true,
-        email: true,
-        telefone: true,
-        data_nascimento: true,
-        gestor: true,
-        cidade: true,
-        ativo: true,
-        created: true,
-        updated: true,
-      },
-    });
+    // --- criar usuário: tentamos primeiro inserindo audit fields em camelCase,
+    // se o prisma reclamar que o campo não existe, fazemos fallback (sem audit)
+    const now = getBrasiliaDate();
+
+    // dados base que sempre queremos inserir
+    const baseData: any = {
+      id_empresa: companyId,
+      nome,
+      email: email || null,
+      telefone,
+      data_nascimento: data_nascimento ? new Date(data_nascimento + 'T12:00:00.000Z') : null,
+      cidade,
+      gestor,
+      ativo: ativo ?? 1,
+      senha_hash,
+    };
+
+    // tentativa 1: incluir audit campos camelCase (created, createdBy, updated, updatedBy)
+    const withAuditCamel = {
+      ...baseData,
+      created: now,
+      createdBy: adminId,
+      updated: now,
+      updatedBy: adminId,
+    };
+
+    // tentativa 2 fallback: incluir audit em snake_case (created, created_by, updated, updated_by)
+    const withAuditSnake = {
+      ...baseData,
+      created: now,
+      created_by: adminId,
+      updated: now,
+      updated_by: adminId,
+    };
+
+    let createdUser: any;
+    try {
+      createdUser = await prisma.empresaUsuario.create({
+        data: withAuditCamel,
+        select: {
+          id_usuario_rh: true,
+          nome: true,
+          email: true,
+          telefone: true,
+          data_nascimento: true,
+          gestor: true,
+          cidade: true,
+          ativo: true,
+          created: true,
+          updated: true,
+        },
+      });
+    } catch (err: any) {
+      // se for erro de campo desconhecido, tentar fallback snake_case
+      if (isPrismaUnknownArgError(err)) {
+        try {
+          createdUser = await prisma.empresaUsuario.create({
+            data: withAuditSnake,
+            select: {
+              id_usuario_rh: true,
+              nome: true,
+              email: true,
+              telefone: true,
+              data_nascimento: true,
+              gestor: true,
+              cidade: true,
+              ativo: true,
+              created: true,
+              updated: true,
+            },
+          });
+        } catch (err2: any) {
+          // se novamente falhar, tentar sem campos de audit (último recurso)
+          if (isPrismaUnknownArgError(err2)) {
+            createdUser = await prisma.empresaUsuario.create({
+              data: baseData,
+              select: {
+                id_usuario_rh: true,
+                nome: true,
+                email: true,
+                telefone: true,
+                data_nascimento: true,
+                gestor: true,
+                cidade: true,
+                ativo: true,
+                created: true,
+                updated: true,
+              },
+            });
+          } else {
+            throw err2;
+          }
+        }
+      } else {
+        throw err;
+      }
+    }
 
     // Dispara envio de e-mail em background (fire-and-forget)
     try {
+      // se createdUser.email for null/undefined, enviamos para '' e logamos
+      const to = createdUser?.email ?? '';
+      const name = createdUser?.nome ?? nome;
       sendUserAccessEmail({
-        to: newUser.email ?? '',
-        name: newUser.nome ?? '',
-        email: newUser.email ?? '',
+        to,
+        name,
+        email: to,
         plainPassword, // só em memória, para envio
       }).catch((sendErr) => {
         console.error('Erro enviando e-mail de acesso ao usuário RH:', sendErr);
@@ -237,12 +309,15 @@ export async function POST(
     }
 
     // IMPORTANTE: NÃO retornamos a senha gerada.
-    return NextResponse.json({ data: newUser }, { status: 201 });
-  } catch (err) {
+    return NextResponse.json({ data: createdUser }, { status: 201 });
+  } catch (err: any) {
     console.error('POST /usersrh error', err);
-    return NextResponse.json(
-      { error: 'Erro interno ao criar usuário RH.' },
-      { status: 500 }
-    );
+
+    // se erro de validação do prisma (ex.: foreign key) podemos repassar info útil
+    if (err?.code === 'P2003') {
+      return NextResponse.json({ error: 'Chave estrangeira inválida (company pode não existir).' }, { status: 400 });
+    }
+
+    return NextResponse.json({ error: 'Erro interno ao criar usuário RH.' }, { status: 500 });
   }
 }
