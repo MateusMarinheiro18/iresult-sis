@@ -1,12 +1,13 @@
-// File: src/app/api/companies/[id]/employees/[employeeId]/route.ts
+// src/app/api/companies/[id]/employees/[employeeId]/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseDateStringMaybe } from '@/lib/employeeValidators';
+import { verifyAdminToken } from '@/lib/auth/jwt';
 
-// placeholder auth - keep async in case you check DB / tokens later
-async function checkAdminForCompany(req: NextRequest, companyId: number) {
-  // TODO: implement real auth/authorization
+// placeholder auth check by company (keeps stub for now)
+async function checkAdminForCompany(_adminId: number, _companyId: number) {
+  // TODO: implementar verificação real (token/sessão/permissões)
   return true;
 }
 
@@ -18,17 +19,26 @@ type PatchBody = {
   cidade_nascimento?: string | null;
   gestor?: string | null;
   ativo?: number | boolean | null;
-  idGrupo?: number | string | null; // NOVO: grupo interno da empresa
+  idGrupo?: number | string | null; // grupo interno da empresa
 };
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-/**
- * NOTE: In Next App Router dynamic route handlers `params` can be a Promise.
- * Always `await params` before accessing its properties.
- */
+/** util: get date in Brasilia (UTC-3) */
+function getBrasiliaDate() {
+  const now = new Date();
+  const utcMs = now.getTime();
+  const brasiliaOffsetInMs = -3 * 3600000;
+  return new Date(utcMs + brasiliaOffsetInMs);
+}
+
+/** Detecta erro do Prisma tipo "Unknown argument" (campo inexistente no model) */
+function isPrismaUnknownArgError(err: any) {
+  const m = String(err?.message ?? '').toLowerCase();
+  return /unknown argument|unknown field|field does not exist/i.test(m);
+}
 
 type RouteParams = { id: string; employeeId: string };
 
@@ -49,7 +59,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'employeeId inválido' }, { status: 400 });
     }
 
-    const allowed = await checkAdminForCompany(request, companyId);
+    // auth: require admin token in cookie
+    const token = request.cookies.get('sis_admin_sess')?.value;
+    if (!token) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    const { ok, payload } = verifyAdminToken(token);
+    if (!ok || !payload) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
+
+    const adminId = Number(payload.sub);
+    if (!adminId || Number.isNaN(adminId)) return NextResponse.json({ error: 'ID do administrador inválido' }, { status: 401 });
+
+    // company-level permission check (stub)
+    const allowed = await checkAdminForCompany(adminId, companyId);
     if (!allowed) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
 
     const body = (await request.json()) as PatchBody;
@@ -70,10 +90,7 @@ export async function PATCH(
     if (body.nome !== undefined) {
       const nome = (body.nome ?? '').toString().trim();
       if (!nome || nome.length < 2) {
-        return NextResponse.json(
-          { error: 'Nome inválido (mínimo 2 caracteres).' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'Nome inválido (mínimo 2 caracteres).' }, { status: 400 });
       }
       updates.nome = nome;
     }
@@ -92,10 +109,7 @@ export async function PATCH(
           },
         });
         if (exists) {
-          return NextResponse.json(
-            { error: 'Email já cadastrado para esta empresa.' },
-            { status: 409 }
-          );
+          return NextResponse.json({ error: 'Email já cadastrado para esta empresa.' }, { status: 409 });
         }
         updates.email = emailRaw;
       } else {
@@ -108,22 +122,14 @@ export async function PATCH(
     }
 
     if (body.data_nascimento !== undefined) {
-      const val = body.data_nascimento
-        ? body.data_nascimento.toString().trim()
-        : '';
+      const val = body.data_nascimento ? body.data_nascimento.toString().trim() : '';
       if (val) {
         const d = parseDateStringMaybe(val);
         if (!d) {
-          return NextResponse.json(
-            { error: 'Data de nascimento inválida.' },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: 'Data de nascimento inválida.' }, { status: 400 });
         }
         if (d.getTime() > Date.now()) {
-          return NextResponse.json(
-            { error: 'Data de nascimento não pode ser no futuro.' },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: 'Data de nascimento não pode ser no futuro.' }, { status: 400 });
         }
         updates.data_nascimento = d;
       } else {
@@ -132,9 +138,7 @@ export async function PATCH(
     }
 
     if (body.cidade_nascimento !== undefined) {
-      updates.cidade_nascimento = body.cidade_nascimento
-        ? body.cidade_nascimento.toString().trim()
-        : null;
+      updates.cidade_nascimento = body.cidade_nascimento ? body.cidade_nascimento.toString().trim() : null;
     }
 
     if (body.gestor !== undefined) {
@@ -147,65 +151,73 @@ export async function PATCH(
 
     // NOVO: tratar idGrupo (atualizar grupo do funcionário)
     if (Object.prototype.hasOwnProperty.call(body, 'idGrupo')) {
-      const raw = body.idGrupo;
-
+      const raw = (body as any).idGrupo;
       let idGrupoToSet: number | null = null;
 
       if (raw === null || raw === '' || raw === undefined) {
-        // limpar grupo
-        idGrupoToSet = null;
+        idGrupoToSet = null; // limpar grupo
       } else {
         const n = Number(raw);
         if (Number.isNaN(n) || n <= 0) {
-          return NextResponse.json(
-            { error: 'Grupo inválido.' },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: 'Grupo inválido.' }, { status: 400 });
         }
         idGrupoToSet = n;
 
-        // valida se o grupo pertence à empresa e está ativo (ou pelo menos não deletado)
+        // valida se o grupo pertence à empresa e não está deletado
         const grupo = await prisma.empresaGrupo.findFirst({
-          where: {
-            id: idGrupoToSet,
-            idEmpresa: companyId,
-            deleted: null,
-          },
+          where: { id: idGrupoToSet, idEmpresa: companyId, deleted: null },
         });
-
         if (!grupo) {
-          return NextResponse.json(
-            { error: 'Grupo inválido para esta empresa.' },
-            { status: 400 }
-          );
+          return NextResponse.json({ error: 'Grupo inválido para esta empresa.' }, { status: 400 });
         }
       }
 
+      // nome do campo no DB usado no projeto anterior era `id_grupo`
       updates.id_grupo = idGrupoToSet;
     }
 
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
-        { error: 'Nenhum campo para atualizar.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Nenhum campo para atualizar.' }, { status: 400 });
     }
 
-    const updated = await prisma.empresaFuncionario.update({
-      where: { id_funcionario: employeeId },
-      data: {
-        ...updates,
-        updated: new Date(),
-      },
-    });
+    // sempre controlar auditoria pelo servidor (tentativa camelCase -> snake_case -> sem audit)
+    const now = getBrasiliaDate();
+    const withAuditCamel = { ...updates, updated: now, updatedBy: adminId };
+    const withAuditSnake = { ...updates, updated: now, updated_by: adminId };
+
+    let updated: any;
+    try {
+      updated = await prisma.empresaFuncionario.update({
+        where: { id_funcionario: employeeId },
+        data: withAuditCamel,
+      });
+    } catch (err: any) {
+      if (isPrismaUnknownArgError(err)) {
+        try {
+          updated = await prisma.empresaFuncionario.update({
+            where: { id_funcionario: employeeId },
+            data: withAuditSnake,
+          });
+        } catch (err2: any) {
+          if (isPrismaUnknownArgError(err2)) {
+            // last resort: update without audit fields
+            updated = await prisma.empresaFuncionario.update({
+              where: { id_funcionario: employeeId },
+              data: updates,
+            });
+          } else {
+            throw err2;
+          }
+        }
+      } else {
+        throw err;
+      }
+    }
 
     return NextResponse.json({ data: updated }, { status: 200 });
   } catch (err) {
     console.error('PATCH /employees/[employeeId] error', err);
-    return NextResponse.json(
-      { error: 'Erro interno ao atualizar funcionário.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erro interno ao atualizar funcionário.' }, { status: 500 });
   }
 }
 
@@ -226,40 +238,75 @@ export async function DELETE(
       return NextResponse.json({ error: 'employeeId inválido' }, { status: 400 });
     }
 
-    const allowed = await checkAdminForCompany(request, companyId);
-    if (!allowed) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
-    }
+    // auth
+    const token = request.cookies.get('sis_admin_sess')?.value;
+    if (!token) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    const { ok, payload } = verifyAdminToken(token);
+    if (!ok || !payload) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
+
+    const adminId = Number(payload.sub);
+    if (!adminId || Number.isNaN(adminId)) return NextResponse.json({ error: 'ID do administrador inválido' }, { status: 401 });
+
+    // company-level permission stub
+    const allowed = await checkAdminForCompany(adminId, companyId);
+    if (!allowed) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
 
     const existing = await prisma.empresaFuncionario.findUnique({
       where: { id_funcionario: employeeId },
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: 'Funcionário não encontrado.' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Funcionário não encontrado.' }, { status: 404 });
     }
-
     if (existing.id_empresa !== companyId) {
-      return NextResponse.json(
-        { error: 'Funcionário não encontrado para essa empresa.' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Funcionário não encontrado para essa empresa.' }, { status: 404 });
     }
 
-    const deleted = await prisma.empresaFuncionario.update({
-      where: { id_funcionario: employeeId },
-      data: { deleted: new Date() },
-    });
+    const now = getBrasiliaDate();
 
-    return NextResponse.json({ data: deleted }, { status: 200 });
+    // try camelCase audit fields first
+    try {
+      const deleted = await prisma.empresaFuncionario.update({
+        where: { id_funcionario: employeeId },
+        data: {
+          deleted: now,
+          deleted_by: adminId,
+          updated: now,
+          updated_by: adminId,
+          ativo: 0,
+        },
+      });
+      return NextResponse.json({ data: deleted }, { status: 200 });
+    } catch (err: any) {
+      if (isPrismaUnknownArgError(err)) {
+        try {
+          const deleted = await prisma.empresaFuncionario.update({
+            where: { id_funcionario: employeeId },
+            data: {
+              deleted: now,
+              deleted_by: adminId,
+              updated: now,
+              updated_by: adminId,
+              ativo: 0,
+            } as any,
+          });
+          return NextResponse.json({ data: deleted }, { status: 200 });
+        } catch (err2: any) {
+          if (isPrismaUnknownArgError(err2)) {
+            // fallback minimal
+            const deleted = await prisma.empresaFuncionario.update({
+              where: { id_funcionario: employeeId },
+              data: { deleted: now, ativo: 0 },
+            });
+            return NextResponse.json({ data: deleted }, { status: 200 });
+          }
+          throw err2;
+        }
+      }
+      throw err;
+    }
   } catch (err) {
     console.error('DELETE /employees/[employeeId] error', err);
-    return NextResponse.json(
-      { error: 'Erro interno ao deletar funcionário.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erro interno ao deletar funcionário.' }, { status: 500 });
   }
 }

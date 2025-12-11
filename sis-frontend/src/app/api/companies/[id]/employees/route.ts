@@ -1,17 +1,35 @@
 // src/app/api/companies/[id]/employees/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { validateEmployeeRow } from '@/lib/employeeValidators';
+import { validateEmployeeRow, parseDateStringMaybe } from '@/lib/employeeValidators';
+import { verifyAdminToken } from '@/lib/auth/jwt';
 
-// Substitua pelo seu check de autenticação/autorização
-async function checkAdminForCompany(req: NextRequest, companyId: number) {
-  // TODO: integrar com sessão/token e verificar permissão para companyId
+// Substitua pelo seu check de autorização por company quando precisar
+async function checkAdminForCompany(_adminId: number, _companyId: number) {
   return true;
 }
 
 type RouteParams = { id: string };
 
-// GET /api/companies/[id]/employees
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/** retorna Date no fuso de Brasília (UTC-3) */
+function getBrasiliaDate() {
+  const now = new Date();
+  const utcMs = now.getTime();
+  const brasiliaOffsetInMs = -3 * 3600000;
+  return new Date(utcMs + brasiliaOffsetInMs);
+}
+
+/** Detecta erro do Prisma tipo "Unknown argument" (campo inexistente no model) */
+function isPrismaUnknownArgError(err: any) {
+  const m = String(err?.message ?? '').toLowerCase();
+  return /unknown argument|unknown field|field does not exist/i.test(m);
+}
+
+/** GET /api/companies/[id]/employees — listagem paginada/filtrada */
 export async function GET(
   request: NextRequest,
   context: { params: Promise<RouteParams> }
@@ -23,6 +41,20 @@ export async function GET(
     if (Number.isNaN(companyId) || companyId <= 0) {
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
+
+    // auth: exigir token no cookie
+    const token = request.cookies.get('sis_admin_sess')?.value;
+    if (!token) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
+    const { ok, payload } = verifyAdminToken(token);
+    if (!ok || !payload) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
+
+    const adminId = Number(payload.sub);
+    if (!adminId || Number.isNaN(adminId)) return NextResponse.json({ error: 'ID do administrador inválido' }, { status: 401 });
+
+    // checagem extra por empresa (stub — substitua por lógica real se quiser)
+    const allowed = await checkAdminForCompany(adminId, companyId);
+    if (!allowed) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
 
     const url = new URL(request.url);
     const q = url.searchParams.get('q') ?? undefined;
@@ -39,7 +71,8 @@ export async function GET(
       ];
     }
     if (typeof ativoParam === 'string') {
-      where.ativo = Number(ativoParam);
+      const a = Number(ativoParam);
+      if (!Number.isNaN(a)) where.ativo = a;
     }
 
     const total = await prisma.empresaFuncionario.count({ where });
@@ -61,6 +94,7 @@ export async function GET(
   }
 }
 
+/** POST /api/companies/[id]/employees — criar funcionário */
 type CreateBody = {
   nome?: string;
   email?: string;
@@ -71,11 +105,6 @@ type CreateBody = {
   ativo?: number | boolean | null;
 };
 
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-// POST /api/companies/[id]/employees
 export async function POST(
   request: NextRequest,
   context: { params: Promise<RouteParams> }
@@ -88,17 +117,26 @@ export async function POST(
       return NextResponse.json({ error: 'companyId inválido' }, { status: 400 });
     }
 
-    const allowed = await checkAdminForCompany(request, companyId);
-    if (!allowed) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
-    }
+    // auth
+    const token = request.cookies.get('sis_admin_sess')?.value;
+    if (!token) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
+    const { ok, payload } = verifyAdminToken(token);
+    if (!ok || !payload) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
+
+    const adminId = Number(payload.sub);
+    if (!adminId || Number.isNaN(adminId)) return NextResponse.json({ error: 'ID do administrador inválido' }, { status: 401 });
+
+    // company permission stub
+    const allowed = await checkAdminForCompany(adminId, companyId);
+    if (!allowed) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 });
 
     const body = (await request.json()) as CreateBody;
 
     const nome = body.nome?.toString().trim() ?? '';
     const email = body.email?.toString().trim() ?? '';
     const telefone = body.telefone?.toString().trim() ?? null;
-    const data_nascimento = body.data_nascimento?.toString().trim() ?? null;
+    const data_nascimento_raw = body.data_nascimento?.toString().trim() ?? null;
     const cidade_nascimento = body.cidade_nascimento?.toString().trim() ?? null;
     const gestor = body.gestor?.toString().trim() ?? null;
     const ativo = body.ativo === undefined ? 1 : body.ativo ? 1 : 0;
@@ -124,38 +162,61 @@ export async function POST(
         );
       }
     }
-    if (data_nascimento) {
-      const d = new Date(data_nascimento + 'T12:00:00.000Z'); // Adiciona meio-dia UTC
-      if (Number.isNaN(d.getTime())) {
-        return NextResponse.json(
-          { error: 'Data de nascimento inválida.' },
-          { status: 400 }
-        );
+
+    let data_nascimento: Date | null = null;
+    if (data_nascimento_raw) {
+      // preferir parse reutilizável se houver utilitário
+      const parsed = parseDateStringMaybe ? parseDateStringMaybe(data_nascimento_raw) : null;
+      if (parsed) data_nascimento = parsed;
+      else {
+        const d = new Date(data_nascimento_raw + 'T12:00:00.000Z');
+        if (Number.isNaN(d.getTime())) {
+          return NextResponse.json({ error: 'Data de nascimento inválida.' }, { status: 400 });
+        }
+        data_nascimento = d;
       }
-      if (d.getTime() > Date.now()) {
-        return NextResponse.json(
-          { error: 'Data de nascimento não pode ser no futuro.' },
-          { status: 400 }
-        );
+      if (data_nascimento.getTime() > Date.now()) {
+        return NextResponse.json({ error: 'Data de nascimento não pode ser no futuro.' }, { status: 400 });
       }
     }
 
-    const newEmployee = await prisma.empresaFuncionario.create({
-      data: {
-        id_empresa: companyId,
-        nome,
-        email,
-        telefone,
-        data_nascimento: data_nascimento
-          ? new Date(data_nascimento + 'T12:00:00.000Z')
-          : null,
-        cidade_nascimento,
-        gestor,
-        ativo: ativo ?? 1,
-      },
-    });
+    // montar dados base
+    const baseData: any = {
+      id_empresa: companyId,
+      nome,
+      email: email || null,
+      telefone,
+      data_nascimento: data_nascimento ?? null,
+      cidade_nascimento,
+      gestor,
+      ativo: ativo ?? 1,
+    };
 
-    return NextResponse.json({ data: newEmployee }, { status: 201 });
+    // audit fields
+    const now = getBrasiliaDate();
+    const withAuditCamel = { ...baseData, created: now, createdBy: adminId, updated: now, updatedBy: adminId };
+    const withAuditSnake = { ...baseData, created: now, created_by: adminId, updated: now, updated_by: adminId };
+
+    let createdEmployee: any;
+    try {
+      createdEmployee = await prisma.empresaFuncionario.create({ data: withAuditCamel });
+    } catch (err: any) {
+      if (isPrismaUnknownArgError(err)) {
+        try {
+          createdEmployee = await prisma.empresaFuncionario.create({ data: withAuditSnake });
+        } catch (err2: any) {
+          if (isPrismaUnknownArgError(err2)) {
+            createdEmployee = await prisma.empresaFuncionario.create({ data: baseData });
+          } else {
+            throw err2;
+          }
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    return NextResponse.json({ data: createdEmployee }, { status: 201 });
   } catch (err) {
     console.error('POST /employees error', err);
     return NextResponse.json(

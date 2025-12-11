@@ -106,6 +106,8 @@ export default function FileUploader({ onParsed, setMessage, setParsing }: Props
           out.cidade_nascimento = (v ?? '').toString().trim();
         } else if (k.includes('gestor') || k.includes('manager')) {
           out.gestor = (v ?? '').toString().trim();
+        } else if (k === 'grupo' || k.includes('group') || k.includes('departamento')) {
+          out.grupo = (v ?? '').toString().trim();
         } else if (k === 'ativo' || k === 'active') {
           out.ativo = (v === '0' || v === 0 || v === false) ? 0 : 1;
         } else {
