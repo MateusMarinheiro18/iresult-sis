@@ -17,8 +17,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // mocks de contadores (sem autenticação, públicos)
-  const dynamicCounts = { notifications: 2, enquetes: 5 };
+  const dynamicCounts = { notifications: 1, escalasPendentes: 3 };
 
   return (
     <div className="min-h-screen flex bg-[#F3F4FF]">
@@ -34,12 +33,8 @@ export default function ClientShell({ children }: { children: React.ReactNode })
           sidebarCollapsed ? 'min-[851px]:ml-20' : 'min-[851px]:ml-72'
         }`}
       >
-        {/* Headbar não controla o mobile state — recebe callback */}
         <Headbar variant="client" dynamicCounts={dynamicCounts} onToggleMobile={() => setMobileOpen((s) => !s)} />
-
-        <main className="p-6 flex-1">
-          {children}
-        </main>
+        <main className="p-6 flex-1">{children}</main>
       </div>
     </div>
   );
