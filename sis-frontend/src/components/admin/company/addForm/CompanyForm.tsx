@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { normalizeCnpj, formatCnpj as formatCnpjUtil, isValidCnpj } from '@/lib/cnpj';
 
 type EscalaOption = {
   id: number;
@@ -38,16 +39,6 @@ function extractMessageFromBody(body: any): string | null {
 }
 
 /* ---------- Formatting helpers (masking while typing) ---------- */
-
-function formatCnpj(value?: string) {
-  const d = (value ?? '').replace(/\D/g, '').slice(0, 14);
-  if (!d) return '';
-  if (d.length <= 2) return d;
-  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
-  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
-  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
-  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
-}
 
 function formatCep(value?: string) {
   const d = (value ?? '').replace(/\D/g, '').slice(0, 8);
@@ -87,7 +78,7 @@ export default function CompanyForm({ initial }: { initial?: any }) {
   const router = useRouter();
 
   const [razaoSocial, setRazaoSocial] = useState(initial?.razaoSocial ?? '');
-  const [cnpj, setCnpj] = useState<string>(initial?.cnpj ? formatCnpj(initial.cnpj) : '');
+  const [cnpj, setCnpj] = useState<string>(initial?.cnpj ? formatCnpjUtil(initial.cnpj) : '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [telefone, setTelefone] = useState<string>(
     initial?.telefone ? formatPhoneBR(initial.telefone) : ''
@@ -95,10 +86,14 @@ export default function CompanyForm({ initial }: { initial?: any }) {
   const [cep, setCep] = useState<string>(initial?.cep ? formatCep(initial.cep) : '');
   const [saving, setSaving] = useState(false);
 
+  // novo estado para erro de CNPJ
+  const [cnpjError, setCnpjError] = useState<string | null>(null);
+  const [cnpjTouched, setCnpjTouched] = useState(false);
+
   // Escala vinculada
   const [escalas, setEscalas] = useState<EscalaOption[]>([]);
   const [escalaId, setEscalaId] = useState<string>(
-    initial?.escalaId ? String(initial.escalaId) : ''
+    initial?.escalaId ? String(initial?.escalaId) : ''
   );
 
   // Grupos internos da empresa
@@ -118,11 +113,11 @@ export default function CompanyForm({ initial }: { initial?: any }) {
   // Se `initial` mudar (edge cases), reatribui valores
   useEffect(() => {
     setRazaoSocial(initial?.razaoSocial ?? '');
-    setCnpj(initial?.cnpj ? formatCnpj(initial.cnpj) : '');
+    setCnpj(initial?.cnpj ? formatCnpjUtil(initial.cnpj) : '');
     setEmail(initial?.email ?? '');
     setTelefone(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
     setCep(initial?.cep ? formatCep(initial.cep) : '');
-    setEscalaId(initial?.escalaId ? String(initial.escalaId) : '');
+    setEscalaId(initial?.escalaId ? String(initial?.escalaId) : '');
 
     if (Array.isArray(initial?.grupos)) {
       if (initial.grupos.length > 0 && typeof initial.grupos[0] === 'string') {
@@ -209,11 +204,45 @@ export default function CompanyForm({ initial }: { initial?: any }) {
     setGroups((prev) => prev.filter((g) => g !== name));
   }
 
+  // Validação do CNPJ em tempo real: quando muda o campo
+  function handleCnpjChange(value: string) {
+    setCnpj(value);
+    setCnpjTouched(true);
+
+    const digits = normalizeCnpj(value);
+    if (!digits) {
+      setCnpjError(null);
+      return;
+    }
+
+    if (digits.length < 14) {
+      // não marca erro até completar os 14 dígitos
+      setCnpjError(null);
+      return;
+    }
+
+    // quando tiver 14 dígitos, valida de fato
+    if (!isValidCnpj(digits)) {
+      setCnpjError('CNPJ inválido.');
+    } else {
+      setCnpjError(null);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
     if (!razaoSocial.trim()) {
       toast.error('Razão social é obrigatória.');
+      return;
+    }
+
+    // se houver CNPJ preenchido, bloqueia envio se inválido
+    const cnpjDigits = sanitizeDigits(cnpj);
+    if (cnpjDigits && !isValidCnpj(cnpjDigits)) {
+      toast.error('CNPJ inválido. Corrija antes de salvar.');
+      setCnpjTouched(true);
+      setCnpjError('CNPJ inválido.');
       return;
     }
 
@@ -282,9 +311,14 @@ export default function CompanyForm({ initial }: { initial?: any }) {
           <input
             className="input"
             value={cnpj}
-            onChange={(e) => setCnpj(formatCnpj(e.target.value))}
+            onChange={(e) => handleCnpjChange(formatCnpjUtil(e.target.value))}
             placeholder="00.000.000/0001-00"
+            aria-invalid={!!cnpjError}
           />
+          {/* Mensagem de erro inline */}
+          {cnpjTouched && cnpjError && (
+            <div style={{ marginTop: 8, color: '#b91c1c', fontSize: 13 }}>{cnpjError}</div>
+          )}
         </div>
 
         <div className="field">
