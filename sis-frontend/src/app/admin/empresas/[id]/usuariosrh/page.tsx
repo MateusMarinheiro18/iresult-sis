@@ -57,6 +57,19 @@ export default async function UsersRhPage(props: Props) {
     console.error('Erro ao buscar usuários RH:', err);
   }
 
-  // 4) Renderizar Client Component com os dados
-  return <UsersRhPageClient companyId={companyId} initialData={users} />;
+  // 4) Buscar nome da empresa (somente o campo necessário)
+  let companyName: string | null = null;
+  try {
+    const company = await prisma.empresa.findUnique({
+      where: { id: companyId },
+      select: { razaoSocial: true },
+    });
+    companyName = company?.razaoSocial ?? null;
+  } catch (err) {
+    console.error('Erro ao buscar empresa:', err);
+    companyName = null;
+  }
+
+  // 5) Renderizar Client Component com os dados e o nome da empresa
+  return <UsersRhPageClient companyId={companyId} companyName={companyName} initialData={users} />;
 }

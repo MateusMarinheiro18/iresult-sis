@@ -6,9 +6,11 @@ import UsersRhTableClient from '@/components/admin/usersrh/table/UsersRhTableCli
 
 export default function UsersRhPageClient({
   companyId,
+  companyName,
   initialData,
 }: {
   companyId: number;
+  companyName?: string | null;
   initialData?: any[];
 }) {
   const router = useRouter();
@@ -21,7 +23,7 @@ export default function UsersRhPageClient({
       <main className="container">
         {/* HEADER COM TÍTULO E BOTÃO VOLTAR */}
         <div className="header-row">
-          <h1 className="title">USUÁRIOS RH</h1>
+          <h1 className="title">USUÁRIOS RH{companyName ? ` - ${companyName}` : ''}</h1>
           <button className="back-btn" onClick={() => router.push('/admin/empresas')}>
             <svg
               xmlns="http://www.w3.org/2000/svg"

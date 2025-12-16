@@ -1,4 +1,3 @@
-// src/app/admin/empresas/[id]/funcionarios/EmployeesPageClient.tsx
 'use client';
 
 import React from 'react';
@@ -7,9 +6,11 @@ import EmployeesTableClient from '@/components/admin/employee/table/EmployeeTabl
 
 export default function EmployeesPageClient({
   companyId,
+  companyName,
   initialData,
 }: {
   companyId: number;
+  companyName?: string | null;
   initialData?: any[]; // permissivo: pode vir undefined
 }) {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function EmployeesPageClient({
       <main className="container">
         {/* HEADER COM TÍTULO E BOTÃO VOLTAR */}
         <div className="header-row">
-          <h1 className="title">FUNCIONÁRIOS</h1>
+          <h1 className="title">FUNCIONÁRIOS{companyName ? ` - ${companyName}` : ''}</h1>
           <button className="back-btn" onClick={() => router.push('/admin/empresas')}>
             <svg
               xmlns="http://www.w3.org/2000/svg"

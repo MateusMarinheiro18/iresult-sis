@@ -1,4 +1,3 @@
-// src/app/admin/empresas/[id]/funcionarios/page.tsx
 import React from 'react';
 import { prisma } from '@/lib/prisma';
 import EmployeesPageClient from './EmployeesPageClient';
@@ -47,6 +46,19 @@ export default async function EmployeesPage(props: Props) {
     console.error('Erro ao buscar funcionários:', err);
   }
 
-  // 4) Renderizar Client Component com os dados
-  return <EmployeesPageClient companyId={companyId} initialData={employees} />;
+  // 4) Buscar nome da empresa (somente o campo necessário)
+  let companyName: string | null = null;
+  try {
+    const company = await prisma.empresa.findUnique({
+      where: { id: companyId },
+      select: { razaoSocial: true },
+    });
+    companyName = company?.razaoSocial ?? null;
+  } catch (err) {
+    console.error('Erro ao buscar empresa:', err);
+    companyName = null;
+  }
+
+  // 5) Renderizar Client Component com os dados e o nome da empresa
+  return <EmployeesPageClient companyId={companyId} companyName={companyName} initialData={employees} />;
 }
