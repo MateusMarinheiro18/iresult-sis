@@ -233,7 +233,10 @@ export default function EscalaBuilderForm({
       toast.error('Crie pelo menos um módulo antes de adicionar perguntas.');
       return;
     }
-    const defaultModuloTempId = state.modulos[0]?.tempId ?? '';
+
+    // <-- ALTERAÇÃO: não pré-selecionar o primeiro módulo — deixar em branco para mostrar placeholder -->
+    const defaultModuloTempId = ''; // anteriormente: state.modulos[0]?.tempId ?? '';
+
     setEditingQuestionTempId(null);
     setQuestionDraft({
       tempId: createTempId('perg'),
@@ -526,6 +529,7 @@ export default function EscalaBuilderForm({
         id: (p as any).id ?? null,
         respostas: p.respostas.map((r) => ({ resposta: r.resposta.trim(), valor: Number(r.valor), id: (r as any).id ?? null })),
       }))),
+
     };
 
     setSaving(true);

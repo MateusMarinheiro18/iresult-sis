@@ -90,15 +90,18 @@ export default function QuestionModal({
               <div className="field-grid-2">
                 <div className="field">
                   <label className="label">Módulo <span className="required">*</span></label>
+
+                  {/* SELECT MÓDULO: com placeholder e seta interna */}
                   <select
-                    className="input"
-                    value={draft.moduloTempId}
+                    className="input select-with-caret"
+                    value={draft.moduloTempId ?? ''}
                     onChange={(e) => {
                       const newModulo = e.target.value;
                       onChangeDraft('moduloTempId', newModulo as any);
                       onChangeDraft('categoriaTempId', '' as any);
                     }}
                   >
+                    <option value="">Selecione...</option>
                     {modulos.map((m) => (
                       <option key={m.tempId} value={m.tempId}>{m.nome}</option>
                     ))}
@@ -109,17 +112,17 @@ export default function QuestionModal({
                   <label className="label">Categoria <span className="required">*</span></label>
                   <div className="category-row">
                     <select
-                      className="input"
-                      value={draft.categoriaTempId}
+                      className="input select-with-caret"
+                      value={draft.categoriaTempId ?? ''}
                       onChange={(e) => onChangeDraft('categoriaTempId', e.target.value as any)}
                     >
                       <option value="">Selecione...</option>
-                      {categoriasPorModulo(draft.moduloTempId).map((c) => (
+                      {categoriasPorModulo(draft.moduloTempId ?? '').map((c) => (
                         <option key={c.tempId} value={c.tempId}>{c.nome}</option>
                       ))}
                     </select>
 
-                    {/* ICON: + quando não criando; X quando criando (ambos na cor #0B2527) */}
+                    {/* ICON: + quando não criando; X quando criando */}
                     {!creatingCategory ? (
                       <button
                         type="button"
@@ -292,9 +295,23 @@ export default function QuestionModal({
 
         .textarea { min-height: 80px; border-radius:8px; border:1px solid #e5e7eb; padding:8px 10px; font-size:14px; color:#111827; resize:vertical; }
         .textarea::placeholder { color:#374151; opacity:0.7; }
-        .input { width:100%; border-radius:8px; border:1px solid #e5e7eb; padding:8px 10px; font-size:14px; color:#111827; }
+        .input { width:100%; border-radius:8px; border:1px solid #e5e7eb; padding:8px 10px; font-size:14px; color:#111827; background-color:#fff; box-sizing:border-box; }
         .input::placeholder { color:#374151; opacity:0.7; }
         select.input { appearance:none; -webkit-appearance:none; -moz-appearance:none; }
+
+        /* === novo: select com caret (seta) dentro ===
+           usamos um pequeno SVG inline como background-image e posicionamos à direita.
+        */
+        .select-with-caret {
+          padding-right: 42px; /* espaço para a seta */
+          background-repeat: no-repeat;
+          background-position: right 12px center;
+          background-size: 18px 18px;
+        }
+        /* caret SVG em data URI (preto/escuro) */
+        .select-with-caret {
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24'><path fill='none' stroke='%230B2527' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/></svg>");
+        }
 
         .field-grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:start; }
 
