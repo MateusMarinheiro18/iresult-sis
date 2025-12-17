@@ -57,8 +57,21 @@ function parseNumberOrNull(v?: string | number): number | null {
   return n;
 }
 
+// epsilon para comparar floats
 const EPS = 1e-9;
+// gap mínimo solicitado
+const MIN_GAP = 0.1;
 
+/**
+ * Regras implementadas:
+ * - Se um par (inicial/final) está parcialmente preenchido => erro.
+ * - Valores entre 1 e 5.
+ * - Dentro de cada faixa: inicial <= final.
+ * - Entre faixas adjacentes, exige-se que nextLower - prevUpper >= MIN_GAP.
+ *   Ou seja: upper_prev + MIN_GAP <= lower_next.
+ * - Isso evita: igualdade (ex.: 1-3 e 3-4) e sobreposição, e força um gap de ao menos 0.1.
+ * - Se intermediário ausente e temos risco + favorável, também exigimos gap >= MIN_GAP.
+ */
 function validateModuleRanges(mod: ModuloFormState): string | null {
   const ri = parseNumberOrNull(mod.valorInicialRisco);
   const rf = parseNumberOrNull(mod.valorFinalRisco);
@@ -70,12 +83,12 @@ function validateModuleRanges(mod: ModuloFormState): string | null {
   const anyFilled = [ri, rf, ii, ifv, fi, ff].some((x) => x !== null);
   if (!anyFilled) return null;
 
-  // Se um dos pares está parcialmente preenchido, erro
+  // Pares parcialmente preenchidos não são aceitos
   if ((ri === null) !== (rf === null)) return 'Preencha ambos os valores da faixa "Risco" ou deixe-os vazios.';
   if ((ii === null) !== (ifv === null)) return 'Preencha ambos os valores da faixa "Intermediário" ou deixe-os vazios.';
   if ((fi === null) !== (ff === null)) return 'Preencha ambos os valores da faixa "Favorável" ou deixe-os vazios.';
 
-  // Checa intervalo 1..5 e inicial <= final
+  // Checar 1..5 e initial <= final
   const pairs: Array<[number | null, number | null, string]> = [
     [ri, rf, 'Risco'],
     [ii, ifv, 'Intermediário'],
@@ -90,24 +103,25 @@ function validateModuleRanges(mod: ModuloFormState): string | null {
     }
   }
 
-  // Se tanto risco quanto intermediário presentes: devem tocar (sem gap e sem overlap)
+  // Validações de gap mínimo entre faixas adjacentes:
+  // Risco -> Intermediário: require ii - rf >= MIN_GAP (se ambos presentes)
   if (rf !== null && ii !== null) {
-    if (Math.abs(rf - ii) > EPS) {
-      return 'A faixa "Risco" e "Intermediário" devem ser contíguas (sem buracos e sem sobreposição)';
+    if (ii - rf + EPS < MIN_GAP) {
+      return `Há sobreposição ou gap insuficiente entre "Risco" (até ${rf}) e "Intermediário" (a partir de ${ii}). Deve haver pelo menos ${MIN_GAP.toFixed(1)} de distância entre o final de uma e o início da outra (ex.: risco até 2.9 e intermediário a partir de 3.0).`;
     }
   }
 
-  // Se tanto intermediario quanto favoravel presentes: devem tocar
+  // Intermediário -> Favorável: require fi - ifv >= MIN_GAP (se ambos presentes)
   if (ifv !== null && fi !== null) {
-    if (Math.abs(ifv - fi) > EPS) {
-      return 'A faixa "Intermediário" e "Favorável" devem ser contíguas (sem buracos e sem sobreposição): valor final do Intermediário deve ser igual ao valor inicial do Favorável.';
+    if (fi - ifv + EPS < MIN_GAP) {
+      return `Há sobreposição ou gap insuficiente entre "Intermediário" (até ${ifv}) e "Favorável" (a partir de ${fi}). Deve haver pelo menos ${MIN_GAP.toFixed(1)} de distância entre as faixas.`;
     }
   }
 
-  // Caso risco e favoravel preenchidos mas intermediario ausente: também não deve haver buraco
+  // Caso intermediário ausente, risco e favorável presentes:
   if (rf !== null && fi !== null && ii === null && ifv === null) {
-    if (Math.abs(rf - fi) > EPS) {
-      return 'As faixas informadas não podem deixar buracos entre elas; verifique as faixas "Risco" e "Favorável".';
+    if (fi - rf + EPS < MIN_GAP) {
+      return `As faixas "Risco" e "Favorável" precisam ter pelo menos ${MIN_GAP.toFixed(1)} de distância entre elas quando não há faixa "Intermediário". Por exemplo, se Favorável começa em 3.0, Risco deve terminar em no máximo 2.9.`;
     }
   }
 
@@ -171,7 +185,7 @@ export default function EscalaBuilderForm({
       return;
     }
 
-    // Validação das faixas do módulo antes de salvar (inclui regra de contiguidade)
+    // Validação das faixas do módulo antes de salvar (inclui regra do gap mínimo de 0.1).
     const err = validateModuleRanges(moduleDraft);
     if (err) {
       toast.error(err);
@@ -543,11 +557,9 @@ export default function EscalaBuilderForm({
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape' || e.key === 'Esc') {
-        // close module modal if open
         if (moduleModalOpen) {
           closeModuleModal();
         }
-        // close question modal if open
         if (questionModalOpen) {
           closeQuestionModal();
         }
@@ -557,7 +569,6 @@ export default function EscalaBuilderForm({
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-    // we intentionally depend on the modal open states so handler reacts correctly
   }, [moduleModalOpen, questionModalOpen]);
 
   return (
