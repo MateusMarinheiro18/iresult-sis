@@ -1,4 +1,4 @@
-// prisma/models/empresa.prisma
+// prisma/models/empresa.prisma (apenas o model Empresa - substitua o bloco existente)
 model Empresa {
   id          Int       @id @default(autoincrement()) @map("id_empresa")
   razaoSocial String    @map("razao_social")
@@ -6,6 +6,15 @@ model Empresa {
   email       String?   @map("email")
   telefone    String?   @map("telefone")
   cep         String?   @map("CEP")
+
+  // NOVOS CAMPOS DE ENDEREÇO (adicionados)
+  logradouro  String?   @map("logradouro")
+  numero      String?   @map("numero")
+  complemento String?   @map("complemento")
+  cidade      String?   @map("cidade")
+  estado      String?   @map("estado") // sigla (ex: SP)
+  pais        String?   @map("pais")   // nome completo (ex: Brasil)
+
   ativo       Int?      @map("ativo")
   created     DateTime? @map("created")
   createdBy   Int?      @map("created_by")
