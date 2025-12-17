@@ -1,7 +1,7 @@
 // src/components/admin/escalas/builder/EscalaBuilderForm.tsx
 'use client';
 
-import React, { FormEvent, useState } from 'react';
+import React, { FormEvent, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useConfirm } from '@/components/ui/ConfirmProvider';
@@ -47,6 +47,74 @@ function createEmptyResposta(valor?: number): RespostaFormState {
 function createDefaultRespostasLikert(): RespostaFormState[] {
   return [1, 2, 3, 4, 5].map((v) => createEmptyResposta(v));
 }
+
+/* ---------- Helpers para validação de faixas de módulo ---------- */
+
+function parseNumberOrNull(v?: string | number): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
+  if (Number.isNaN(n)) return null;
+  return n;
+}
+
+const EPS = 1e-9;
+
+function validateModuleRanges(mod: ModuloFormState): string | null {
+  const ri = parseNumberOrNull(mod.valorInicialRisco);
+  const rf = parseNumberOrNull(mod.valorFinalRisco);
+  const ii = parseNumberOrNull(mod.valorInicialIntermediario);
+  const ifv = parseNumberOrNull(mod.valorFinalIntermediario);
+  const fi = parseNumberOrNull(mod.valorInicialFavoravel);
+  const ff = parseNumberOrNull(mod.valorFinalFavoravel);
+
+  const anyFilled = [ri, rf, ii, ifv, fi, ff].some((x) => x !== null);
+  if (!anyFilled) return null;
+
+  // Se um dos pares está parcialmente preenchido, erro
+  if ((ri === null) !== (rf === null)) return 'Preencha ambos os valores da faixa "Risco" ou deixe-os vazios.';
+  if ((ii === null) !== (ifv === null)) return 'Preencha ambos os valores da faixa "Intermediário" ou deixe-os vazios.';
+  if ((fi === null) !== (ff === null)) return 'Preencha ambos os valores da faixa "Favorável" ou deixe-os vazios.';
+
+  // Checa intervalo 1..5 e inicial <= final
+  const pairs: Array<[number | null, number | null, string]> = [
+    [ri, rf, 'Risco'],
+    [ii, ifv, 'Intermediário'],
+    [fi, ff, 'Favorável'],
+  ];
+  for (const [a, b, label] of pairs) {
+    if (a !== null && b !== null) {
+      if (a < 1 || a > 5 || b < 1 || b > 5) {
+        return `Valores da faixa "${label}" devem estar entre 1 e 5.`;
+      }
+      if (a > b + EPS) return `Na faixa "${label}" o valor inicial não pode ser maior que o valor final.`;
+    }
+  }
+
+  // Se tanto risco quanto intermediário presentes: devem tocar (sem gap e sem overlap)
+  if (rf !== null && ii !== null) {
+    if (Math.abs(rf - ii) > EPS) {
+      return 'A faixa "Risco" e "Intermediário" devem ser contíguas (sem buracos e sem sobreposição)';
+    }
+  }
+
+  // Se tanto intermediario quanto favoravel presentes: devem tocar
+  if (ifv !== null && fi !== null) {
+    if (Math.abs(ifv - fi) > EPS) {
+      return 'A faixa "Intermediário" e "Favorável" devem ser contíguas (sem buracos e sem sobreposição): valor final do Intermediário deve ser igual ao valor inicial do Favorável.';
+    }
+  }
+
+  // Caso risco e favoravel preenchidos mas intermediario ausente: também não deve haver buraco
+  if (rf !== null && fi !== null && ii === null && ifv === null) {
+    if (Math.abs(rf - fi) > EPS) {
+      return 'As faixas informadas não podem deixar buracos entre elas; verifique as faixas "Risco" e "Favorável".';
+    }
+  }
+
+  return null;
+}
+
+/* ---------- Componente principal ---------- */
 
 export default function EscalaBuilderForm({
   mode = 'create',
@@ -94,11 +162,19 @@ export default function EscalaBuilderForm({
     if (!moduleDraft) return;
     setModuleDraft({ ...moduleDraft, [field]: value });
   }
+
   async function handleSaveModule() {
     if (!moduleDraft) return;
     const nome = moduleDraft.nome.trim();
     if (!nome) {
       toast.error('Informe o nome do módulo.');
+      return;
+    }
+
+    // Validação das faixas do módulo antes de salvar (inclui regra de contiguidade)
+    const err = validateModuleRanges(moduleDraft);
+    if (err) {
+      toast.error(err);
       return;
     }
 
@@ -379,6 +455,16 @@ export default function EscalaBuilderForm({
     if (!state.modulos.length) { toast.error('Adicione pelo menos um módulo à escala.'); return; }
     if (!state.perguntas.length) { toast.error('Adicione pelo menos uma pergunta.'); return; }
 
+    // validação das faixas de todos os módulos antes de enviar
+    for (let i = 0; i < state.modulos.length; i++) {
+      const m = state.modulos[i];
+      const err = validateModuleRanges(m);
+      if (err) {
+        toast.error(`Módulo "${m.nome || `#${i+1}`}": ${err}`);
+        return;
+      }
+    }
+
     // validate perguntas
     for (let i = 0; i < state.perguntas.length; i++) {
       const p = state.perguntas[i];
@@ -452,6 +538,27 @@ export default function EscalaBuilderForm({
       setSaving(false);
     }
   }
+
+  // Close modals with Escape key
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        // close module modal if open
+        if (moduleModalOpen) {
+          closeModuleModal();
+        }
+        // close question modal if open
+        if (questionModalOpen) {
+          closeQuestionModal();
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+    // we intentionally depend on the modal open states so handler reacts correctly
+  }, [moduleModalOpen, questionModalOpen]);
 
   return (
     <form className="escala-form" onSubmit={handleSubmit}>
