@@ -165,10 +165,39 @@ export async function PUT(
     const now = getBrasiliaDate();
     const dataToUpdate: any = {
       razaoSocial: String(body.razaoSocial).trim(),
-      cnpj: body.cnpj ? sanitizeNumberString(body.cnpj) : null,
-      email: body.email ? String(body.email).trim() : null,
-      telefone: body.telefone ? sanitizeNumberString(body.telefone) : null,
-      cep: body.cep ? sanitizeNumberString(body.cep) : null,
+      cnpj: Object.prototype.hasOwnProperty.call(body, 'cnpj')
+        ? (body.cnpj ? sanitizeNumberString(body.cnpj) : null)
+        : undefined,
+      email: Object.prototype.hasOwnProperty.call(body, 'email')
+        ? (body.email ? String(body.email).trim() : null)
+        : undefined,
+      telefone: Object.prototype.hasOwnProperty.call(body, 'telefone')
+        ? (body.telefone ? sanitizeNumberString(body.telefone) : null)
+        : undefined,
+      cep: Object.prototype.hasOwnProperty.call(body, 'cep')
+        ? (body.cep ? sanitizeNumberString(body.cep) : null)
+        : undefined,
+
+      // Novos campos de endereço: consideramos apenas se a propriedade foi enviada no body
+      logradouro: Object.prototype.hasOwnProperty.call(body, 'logradouro')
+        ? (body.logradouro ? String(body.logradouro).trim() : null)
+        : undefined,
+      numero: Object.prototype.hasOwnProperty.call(body, 'numero')
+        ? (body.numero ? String(body.numero).trim() : null)
+        : undefined,
+      complemento: Object.prototype.hasOwnProperty.call(body, 'complemento')
+        ? (body.complemento ? String(body.complemento).trim() : null)
+        : undefined,
+      cidade: Object.prototype.hasOwnProperty.call(body, 'cidade')
+        ? (body.cidade ? String(body.cidade).trim() : null)
+        : undefined,
+      estado: Object.prototype.hasOwnProperty.call(body, 'estado')
+        ? (body.estado ? String(body.estado).trim().toUpperCase() : null)
+        : undefined,
+      pais: Object.prototype.hasOwnProperty.call(body, 'pais')
+        ? (body.pais ? String(body.pais).trim() : null)
+        : undefined,
+
       updated: now,
       updatedBy: adminId, // sempre o admin atual
     };
@@ -195,7 +224,6 @@ export async function PUT(
 
         // se não for null, cria novo vínculo
         if (escalaIdToSet !== null) {
-          // tentativa com audit fields (se o model aceitar)
           const escalaDataWithAudit: any = {
             idEmpresa: id,
             idEscala: escalaIdToSet,
@@ -208,7 +236,6 @@ export async function PUT(
           try {
             await tx.escalaHasEmpresa.create({ data: escalaDataWithAudit as any });
           } catch (err: any) {
-            // se for erro por campo desconhecido, tenta sem audit fields
             if (isPrismaUnknownArgError(err)) {
               const escalaDataFallback = { idEmpresa: id, idEscala: escalaIdToSet };
               await tx.escalaHasEmpresa.create({ data: escalaDataFallback });
@@ -323,7 +350,7 @@ export async function PUT(
 
     if (isPrismaUnknownArgError(error)) {
       return NextResponse.json(
-        { message: 'Erro de schema: verifique se os campos de auditoria existem nas tabelas.' },
+        { message: 'Erro de schema: verifique se os campos de auditoria e de endereço existem nas tabelas.' },
         { status: 400 }
       );
     }

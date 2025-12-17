@@ -1,4 +1,3 @@
-// src/app/api/companies/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyAdminToken } from '@/lib/auth/jwt';
@@ -11,18 +10,13 @@ function getBrasiliaDate() {
   const now = new Date();
   const localTime = now.getTime();
   const utc = localTime;
-  
-  // O fuso de Brasília (America/Sao_Paulo) é UTC-3, ou seja, -180 minutos.
-  const brasiliaOffsetInMs = -3 * 3600000; 
-
-  // O truque é criar um Date no fuso de Brasília, mas 'fingindo' ser UTC,
-  // o que força o objeto a se renderizar com a hora correta.
+  const brasiliaOffsetInMs = -3 * 3600000;
   return new Date(utc + brasiliaOffsetInMs);
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Extrair e validar token JWT do cookie
+    /* --- AUTENTICAÇÃO --- */
     const token = request.cookies.get('sis_admin_sess')?.value;
     if (!token) {
       return NextResponse.json(
@@ -31,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ok, payload, error } = verifyAdminToken(token);
+    const { ok, payload } = verifyAdminToken(token);
     if (!ok || !payload) {
       return NextResponse.json(
         { message: 'Token inválido ou expirado' },
@@ -47,6 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    /* --- BODY --- */
     const body = await request.json();
 
     if (!body.razaoSocial || typeof body.razaoSocial !== 'string') {
@@ -62,7 +57,38 @@ export async function POST(request: NextRequest) {
     const telefone = sanitizeNumberString(body.telefone) ?? null;
     const cep = sanitizeNumberString(body.cep) ?? null;
 
-    // trata escalaId (opcional)
+    /* === NOVOS CAMPOS DE ENDEREÇO === */
+    const logradouro =
+      body.logradouro && typeof body.logradouro === 'string'
+        ? body.logradouro.trim()
+        : null;
+
+    const numero =
+      body.numero && typeof body.numero === 'string'
+        ? body.numero.trim()
+        : null;
+
+    const complemento =
+      body.complemento && typeof body.complemento === 'string'
+        ? body.complemento.trim()
+        : null;
+
+    const cidade =
+      body.cidade && typeof body.cidade === 'string'
+        ? body.cidade.trim()
+        : null;
+
+    const estado =
+      body.estado && typeof body.estado === 'string'
+        ? body.estado.trim().toUpperCase()
+        : null;
+
+    const pais =
+      body.pais && typeof body.pais === 'string'
+        ? body.pais.trim()
+        : null;
+
+    /* --- TRATAR ESCALA --- */
     let escalaId: number | null = null;
     if (body.hasOwnProperty('escalaId')) {
       const raw = body.escalaId;
@@ -75,12 +101,10 @@ export async function POST(request: NextRequest) {
           );
         }
         escalaId = n;
-      } else {
-        escalaId = null;
       }
     }
 
-    // trata grupos (opcional) - array de strings
+    /* --- TRATAR GRUPOS --- */
     let grupos: string[] = [];
     if (Array.isArray(body.grupos)) {
       grupos = Array.from(
@@ -94,6 +118,7 @@ export async function POST(request: NextRequest) {
 
     const dataBrasilia = getBrasiliaDate();
 
+    /* --- CRIAR EMPRESA --- */
     const created = await prisma.empresa.create({
       data: {
         razaoSocial,
@@ -101,13 +126,22 @@ export async function POST(request: NextRequest) {
         email,
         telefone,
         cep,
+
+        // CAMPOS NOVOS DE ENDEREÇO
+        logradouro,
+        numero,
+        complemento,
+        cidade,
+        estado,
+        pais,
+
         ativo: 1,
         created: dataBrasilia,
         createdBy: adminId,
       },
     });
 
-    // cria vínculo na EscalaHasEmpresa se houver escalaId
+    /* --- CRIAR VÍNCULO DE ESCALA SE HOUVER --- */
     if (escalaId !== null) {
       await prisma.escalaHasEmpresa.create({
         data: {
@@ -117,7 +151,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // cria grupos internos, se enviados
+    /* --- CRIAR GRUPOS --- */
     if (grupos.length > 0) {
       await prisma.empresaGrupo.createMany({
         data: grupos.map((nome) => ({

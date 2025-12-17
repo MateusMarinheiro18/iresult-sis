@@ -4,7 +4,11 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { normalizeCnpj, formatCnpj as formatCnpjUtil, isValidCnpj } from '@/lib/cnpj';
+import {
+  normalizeCnpj,
+  formatCnpj as formatCnpjUtil,
+  isValidCnpj,
+} from '@/lib/cnpj';
 
 type EscalaOption = {
   id: number;
@@ -19,6 +23,13 @@ type Payload = {
   cep?: string;
   escalaId?: number | null;
   grupos?: string[]; // nomes dos grupos internos
+  // novos campos de endereço (só enviados se o usuário preencher)
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  pais?: string | null;
 };
 
 function sanitizeDigits(s?: string) {
@@ -86,15 +97,21 @@ export default function CompanyForm({ initial }: { initial?: any }) {
   const [cep, setCep] = useState<string>(initial?.cep ? formatCep(initial.cep) : '');
   const [saving, setSaving] = useState(false);
 
-  // novo estado para erro de CNPJ
+  // novos campos de endereço (valores que o usuário pode editar)
+  const [logradouro, setLogradouro] = useState<string>(initial?.logradouro ?? '');
+  const [numero, setNumero] = useState<string>(initial?.numero ?? '');
+  const [complemento, setComplemento] = useState<string>(initial?.complemento ?? '');
+  const [cidade, setCidade] = useState<string>(initial?.cidade ?? '');
+  const [estado, setEstado] = useState<string>(initial?.estado ?? '');
+  const [pais, setPais] = useState<string>(initial?.pais ?? '');
+
+  const [fetchingCep, setFetchingCep] = useState(false);
   const [cnpjError, setCnpjError] = useState<string | null>(null);
   const [cnpjTouched, setCnpjTouched] = useState(false);
 
   // Escala vinculada
   const [escalas, setEscalas] = useState<EscalaOption[]>([]);
-  const [escalaId, setEscalaId] = useState<string>(
-    initial?.escalaId ? String(initial?.escalaId) : ''
-  );
+  const [escalaId, setEscalaId] = useState<string>(initial?.escalaId ? String(initial?.escalaId) : '');
 
   // Grupos internos da empresa
   const [groups, setGroups] = useState<string[]>(() => {
@@ -118,6 +135,14 @@ export default function CompanyForm({ initial }: { initial?: any }) {
     setTelefone(initial?.telefone ? formatPhoneBR(initial.telefone) : '');
     setCep(initial?.cep ? formatCep(initial.cep) : '');
     setEscalaId(initial?.escalaId ? String(initial?.escalaId) : '');
+
+    // endereço inicial (se houver, colocamos como values)
+    setLogradouro(initial?.logradouro ?? '');
+    setNumero(initial?.numero ?? '');
+    setComplemento(initial?.complemento ?? '');
+    setCidade(initial?.cidade ?? '');
+    setEstado(initial?.estado ?? '');
+    setPais(initial?.pais ?? '');
 
     if (Array.isArray(initial?.grupos)) {
       if (initial.grupos.length > 0 && typeof initial.grupos[0] === 'string') {
@@ -183,7 +208,6 @@ export default function CompanyForm({ initial }: { initial?: any }) {
   }, []);
 
   // Handlers de grupos
-
   function handleAddGroup(e?: React.FormEvent) {
     if (e) e.preventDefault();
     const trimmed = newGroupName.trim();
@@ -204,7 +228,72 @@ export default function CompanyForm({ initial }: { initial?: any }) {
     setGroups((prev) => prev.filter((g) => g !== name));
   }
 
-  // Validação do CNPJ em tempo real: quando muda o campo
+  /* ------------------ CEP lookup ------------------ */
+
+  async function fetchCepLookup(digits: string) {
+    if (!digits || digits.length !== 8) return;
+    setFetchingCep(true);
+    try {
+      const res = await fetch(`/api/cep/lookup?cep=${digits}`, { method: 'GET' });
+      if (!res.ok) {
+        // 404 ou outro erro — não sobrescreve inputs; avisa usuário
+        if (res.status === 404) {
+          toast.error('CEP não encontrado. Preencha o endereço manualmente.');
+        } else {
+          toast.error('Erro ao consultar CEP. Tente novamente mais tarde.');
+        }
+        setFetchingCep(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      // ViaCEP-style: { logradouro, bairro, localidade, uf, complemento? }
+      const fetchedLogradouro = data.logradouro ?? data.street ?? '';
+      const fetchedCidade = data.localidade ?? data.city ?? data.cidade ?? '';
+      const fetchedEstado = (data.uf ?? data.state ?? '')?.toUpperCase() ?? '';
+      const fetchedPais = 'Brasil';
+
+      // Preenche os campos (values) apenas se estiverem vazios — não sobrescreve entrada do usuário
+      setLogradouro((prev) => (prev && prev.trim() ? prev : fetchedLogradouro || ''));
+      setCidade((prev) => (prev && prev.trim() ? prev : fetchedCidade || ''));
+      setEstado((prev) => (prev && prev.trim() ? prev : fetchedEstado || ''));
+      setPais((prev) => (prev && prev.trim() ? prev : fetchedPais));
+
+      // Obs: NÃO alteramos numero nem complemento automaticamente
+    } catch (err) {
+      console.error('Erro lookup CEP', err);
+      toast.error('Erro ao consultar CEP. Tente novamente mais tarde.');
+    } finally {
+      setFetchingCep(false);
+    }
+  }
+
+  // Quando o campo CEP atingir 8 dígitos, consultamos automaticamente
+  function handleCepChange(value: string) {
+    setCep(value);
+
+    const digits = sanitizeDigits(value);
+    if (!digits) {
+      return;
+    }
+
+    if (digits.length === 8) {
+      // chama lookup (não await para não bloquear UI)
+      fetchCepLookup(digits);
+    }
+  }
+
+  // também faz lookup no blur por segurança
+  function handleCepBlur() {
+    const digits = sanitizeDigits(cep);
+    if (digits && digits.length === 8) {
+      fetchCepLookup(digits);
+    }
+  }
+
+  /* ------------------ CNPJ validation ------------------ */
+
   function handleCnpjChange(value: string) {
     setCnpj(value);
     setCnpjTouched(true);
@@ -216,18 +305,18 @@ export default function CompanyForm({ initial }: { initial?: any }) {
     }
 
     if (digits.length < 14) {
-      // não marca erro até completar os 14 dígitos
       setCnpjError(null);
       return;
     }
 
-    // quando tiver 14 dígitos, valida de fato
     if (!isValidCnpj(digits)) {
       setCnpjError('CNPJ inválido.');
     } else {
       setCnpjError(null);
     }
   }
+
+  /* ------------------ Submit ------------------ */
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -256,6 +345,13 @@ export default function CompanyForm({ initial }: { initial?: any }) {
       cep: sanitizeDigits(cep),
       escalaId: escalaId ? Number(escalaId) : null,
       grupos: groups.length > 0 ? groups : undefined,
+      // envia apenas os campos que o usuário efetivamente digitou (ou que foram preenchidos pelo lookup)
+      logradouro: logradouro ? logradouro.trim() : undefined,
+      numero: numero ? numero.trim() : undefined,
+      complemento: complemento ? complemento.trim() : undefined,
+      cidade: cidade ? cidade.trim() : undefined,
+      estado: estado ? estado.trim() : undefined,
+      pais: pais ? pais.trim() : undefined,
     };
 
     try {
@@ -315,7 +411,6 @@ export default function CompanyForm({ initial }: { initial?: any }) {
             placeholder="00.000.000/0001-00"
             aria-invalid={!!cnpjError}
           />
-          {/* Mensagem de erro inline */}
           {cnpjTouched && cnpjError && (
             <div style={{ marginTop: 8, color: '#b91c1c', fontSize: 13 }}>{cnpjError}</div>
           )}
@@ -345,28 +440,86 @@ export default function CompanyForm({ initial }: { initial?: any }) {
 
         <div className="field">
           <label className="label">CEP</label>
+          <div style={{ position: 'relative' }}>
+            <input
+              className="input"
+              value={cep}
+              onChange={(e) => handleCepChange(formatCep(e.target.value))}
+              onBlur={handleCepBlur}
+              placeholder="00000-000"
+            />
+            {fetchingCep && (
+              <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <circle cx="12" cy="12" r="10" stroke="#0b2527" strokeWidth="2" opacity="0.2"></circle>
+                  <path d="M22 12a10 10 0 00-10-10" stroke="#0b2527" strokeWidth="2" strokeLinecap="round"></path>
+                </svg>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* CAMPOS DE ENDEREÇO - agora preenchidos como values a partir do lookup caso estejam vazios */}
+
+        <div className="field">
+          <label className="label">Logradouro</label>
           <input
             className="input"
-            value={cep}
-            onChange={(e) => setCep(formatCep(e.target.value))}
-            placeholder="00000-000"
+            value={logradouro}
+            onChange={(e) => setLogradouro(e.target.value)}
+            placeholder="Rua, Av., Praça..."
           />
         </div>
 
         <div className="field">
-          <label className="label">Escala da empresa</label>
-          <select
+          <label className="label">Número</label>
+          <input
             className="input"
-            value={escalaId}
-            onChange={(e) => setEscalaId(e.target.value)}
-          >
-            <option value="">Nenhuma escala</option>
-            {escalas.map((escala) => (
-              <option key={escala.id} value={escala.id}>
-                {escala.nome}
-              </option>
-            ))}
-          </select>
+            value={numero}
+            onChange={(e) => setNumero(e.target.value)}
+            placeholder="Ex.: 123, s/n"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">Complemento</label>
+          <input
+            className="input"
+            value={complemento}
+            onChange={(e) => setComplemento(e.target.value)}
+            placeholder="Ex.: Apto 101, Bloco B"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">Cidade</label>
+          <input
+            className="input"
+            value={cidade}
+            onChange={(e) => setCidade(e.target.value)}
+            placeholder="Cidade"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">Estado</label>
+          <input
+            className="input"
+            value={estado}
+            onChange={(e) => setEstado(e.target.value)}
+            placeholder="UF (ex.: SP)"
+            maxLength={2}
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">País</label>
+          <input
+            className="input"
+            value={pais}
+            onChange={(e) => setPais(e.target.value)}
+            placeholder="Brasil"
+          />
         </div>
       </div>
 

@@ -19,6 +19,13 @@ type Payload = {
   cep?: string | null;
   escalaId?: number | null;
   grupos?: string[]; // nomes dos grupos internos
+  // novos campos de endereço
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  pais?: string | null;
 };
 
 function sanitizeDigits(s?: string) {
@@ -114,6 +121,13 @@ export default function CompanyEditForm({
     escalaId?: number | null;
     grupos?: any;
     gruposFuncionarios?: any;
+    // podem já vir os campos de endereço do server
+    logradouro?: string | null;
+    numero?: string | null;
+    complemento?: string | null;
+    cidade?: string | null;
+    estado?: string | null;
+    pais?: string | null;
   };
 }) {
   const router = useRouter();
@@ -126,6 +140,16 @@ export default function CompanyEditForm({
   );
   const [cep, setCep] = useState<string>(initial?.cep ? formatCep(initial.cep) : '');
   const [saving, setSaving] = useState(false);
+
+  // novos campos de endereço (valores que o usuário pode editar)
+  const [logradouro, setLogradouro] = useState<string>(initial?.logradouro ?? '');
+  const [numero, setNumero] = useState<string>(initial?.numero ?? '');
+  const [complemento, setComplemento] = useState<string>(initial?.complemento ?? '');
+  const [cidade, setCidade] = useState<string>(initial?.cidade ?? '');
+  const [estado, setEstado] = useState<string>(initial?.estado ?? '');
+  const [pais, setPais] = useState<string>(initial?.pais ?? '');
+
+  const [fetchingCep, setFetchingCep] = useState(false);
 
   // Escala vinculada
   const [escalas, setEscalas] = useState<EscalaOption[]>([]);
@@ -147,6 +171,14 @@ export default function CompanyEditForm({
     setEscalaId(initial?.escalaId ? String(initial.escalaId) : '');
     setGroups(extractInitialGroups(initial));
     setNewGroupName('');
+
+    // endereço inicial (se houver, colocamos como values)
+    setLogradouro(initial?.logradouro ?? '');
+    setNumero(initial?.numero ?? '');
+    setComplemento(initial?.complemento ?? '');
+    setCidade(initial?.cidade ?? '');
+    setEstado(initial?.estado ?? '');
+    setPais(initial?.pais ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
 
@@ -244,6 +276,66 @@ export default function CompanyEditForm({
     }
   }
 
+  /* ------------------ CEP lookup ------------------ */
+
+  async function fetchCepLookup(digits: string) {
+    if (!digits || digits.length !== 8) return;
+    setFetchingCep(true);
+    try {
+      const res = await fetch(`/api/cep/lookup?cep=${digits}`, { method: 'GET' });
+      if (!res.ok) {
+        if (res.status === 404) {
+          toast.error('CEP não encontrado. Preencha o endereço manualmente.');
+        } else {
+          toast.error('Erro ao consultar CEP. Tente novamente mais tarde.');
+        }
+        setFetchingCep(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      const fetchedLogradouro = data.logradouro ?? data.street ?? '';
+      const fetchedCidade = data.localidade ?? data.city ?? data.cidade ?? '';
+      const fetchedEstado = (data.uf ?? data.state ?? '')?.toUpperCase() ?? '';
+      const fetchedPais = 'Brasil';
+
+      // Preenche os campos (values) apenas se estiverem vazios — não sobrescreve entrada do usuário
+      setLogradouro((prev) => (prev && prev.trim() ? prev : fetchedLogradouro || ''));
+      setCidade((prev) => (prev && prev.trim() ? prev : fetchedCidade || ''));
+      setEstado((prev) => (prev && prev.trim() ? prev : fetchedEstado || ''));
+      setPais((prev) => (prev && prev.trim() ? prev : fetchedPais));
+      // NÃO alteramos numero nem complemento automaticamente
+    } catch (err) {
+      console.error('Erro lookup CEP', err);
+      toast.error('Erro ao consultar CEP. Tente novamente mais tarde.');
+    } finally {
+      setFetchingCep(false);
+    }
+  }
+
+  // Quando o campo CEP atingir 8 dígitos, consultamos automaticamente
+  function handleCepChange(value: string) {
+    setCep(value);
+
+    const digits = sanitizeDigits(value);
+    if (!digits) {
+      return;
+    }
+
+    if (digits.length === 8) {
+      fetchCepLookup(digits);
+    }
+  }
+
+  // também faz lookup no blur por segurança
+  function handleCepBlur() {
+    const digits = sanitizeDigits(cep);
+    if (digits && digits.length === 8) {
+      fetchCepLookup(digits);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -272,6 +364,13 @@ export default function CompanyEditForm({
       escalaId: escalaId ? Number(escalaId) : null,
       // enviamos sempre grupos; se for [], o backend vai entender como "zerar grupos"
       grupos: groups,
+      // novos campos de endereço (enviamos o que estiver preenchido)
+      logradouro: logradouro ? logradouro.trim() : undefined,
+      numero: numero ? numero.trim() : undefined,
+      complemento: complemento ? complemento.trim() : undefined,
+      cidade: cidade ? cidade.trim() : undefined,
+      estado: estado ? estado.trim() : undefined,
+      pais: pais ? pais.trim() : undefined,
     };
 
     try {
@@ -366,12 +465,23 @@ export default function CompanyEditForm({
 
         <div className="field">
           <label className="label">CEP</label>
-          <input
-            className="input"
-            value={cep}
-            onChange={(e) => setCep(formatCep(e.target.value))}
-            placeholder="00000-000"
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              className="input"
+              value={cep}
+              onChange={(e) => handleCepChange(formatCep(e.target.value))}
+              onBlur={handleCepBlur}
+              placeholder="00000-000"
+            />
+            {fetchingCep && (
+              <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <circle cx="12" cy="12" r="10" stroke="#0b2527" strokeWidth="2" opacity="0.2"></circle>
+                  <path d="M22 12a10 10 0 00-10-10" stroke="#0b2527" strokeWidth="2" strokeLinecap="round"></path>
+                </svg>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="field">
@@ -388,6 +498,69 @@ export default function CompanyEditForm({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* NOVOS CAMPOS DE ENDEREÇO (valores) */}
+
+        <div className="field">
+          <label className="label">Logradouro</label>
+          <input
+            className="input"
+            value={logradouro}
+            onChange={(e) => setLogradouro(e.target.value)}
+            placeholder="Rua, Av., Praça..."
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">Número</label>
+          <input
+            className="input"
+            value={numero}
+            onChange={(e) => setNumero(e.target.value)}
+            placeholder="Ex.: 123, s/n"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">Complemento</label>
+          <input
+            className="input"
+            value={complemento}
+            onChange={(e) => setComplemento(e.target.value)}
+            placeholder="Ex.: Apto 101, Bloco B"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">Cidade</label>
+          <input
+            className="input"
+            value={cidade}
+            onChange={(e) => setCidade(e.target.value)}
+            placeholder="Cidade"
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">Estado</label>
+          <input
+            className="input"
+            value={estado}
+            onChange={(e) => setEstado(e.target.value)}
+            placeholder="UF (ex.: SP)"
+            maxLength={2}
+          />
+        </div>
+
+        <div className="field">
+          <label className="label">País</label>
+          <input
+            className="input"
+            value={pais}
+            onChange={(e) => setPais(e.target.value)}
+            placeholder="Brasil"
+          />
         </div>
       </div>
 
