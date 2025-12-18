@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyAdminToken } from '@/lib/auth/jwt';
+import type { Escala } from '@prisma/client';
 
 /** util: get date in Brasilia (UTC-3) */
 function getBrasiliaDate(): Date {
@@ -57,6 +58,7 @@ async function attemptUpdate(delegate: any, where: any, dataCamel: any, dataSnak
 
 /** ---------------- GET /api/escalas ----------------
  * Lista escalas ativas ordenadas por id desc (uso admin)
+ * Aceita query ?company=ID para retornar apenas escalas vinculadas àquela empresa
  */
 export async function GET(request: NextRequest) {
   // auth
@@ -67,22 +69,56 @@ export async function GET(request: NextRequest) {
   if (!ok || !payload) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
 
   try {
-    const escalas = await prisma.escala.findMany({
-      where: { ativo: 1, deleted: null },
-      orderBy: { id: 'desc' },
-      select: {
-        id: true,
-        nome: true,
-        dataVencimento: true,
-        ativo: true,
-        created: true,
-        createdBy: true,
-        updated: true,
-      },
-    });
+    const url = new URL(request.url);
+    const companyParam = url.searchParams.get('company');
+    const companyId = companyParam ? Number(companyParam) : null;
+
+    let escalas: any[] = [];
+
+    if (companyId && !Number.isNaN(companyId) && companyId > 0) {
+      // busca ids de escala vinculadas à empresa na tabela de vínculo
+      const links = await prisma.escalaHasEmpresa.findMany({
+        where: { idEmpresa: companyId },
+        select: { idEscala: true },
+      });
+
+      const escalaIds = links.map((l) => l.idEscala).filter(Boolean) as number[];
+
+      if (escalaIds.length > 0) {
+        escalas = await prisma.escala.findMany({
+          where: { id: { in: escalaIds }, ativo: 1, deleted: null },
+          orderBy: { id: 'desc' },
+          select: {
+            id: true,
+            nome: true,
+            dataVencimento: true,
+            ativo: true,
+            created: true,
+            createdBy: true,
+            updated: true,
+          },
+        });
+      }
+      // se escalaIds vazio, escalas permanece []
+    } else {
+      // sem filtro por empresa -> retorna todas escalas ativas
+      escalas = await prisma.escala.findMany({
+        where: { ativo: 1, deleted: null },
+        orderBy: { id: 'desc' },
+        select: {
+          id: true,
+          nome: true,
+          dataVencimento: true,
+          ativo: true,
+          created: true,
+          createdBy: true,
+          updated: true,
+        },
+      });
+    }
 
     // format dates to ISO to avoid transporting Date objects
-    const items = escalas.map((e: any) => ({
+    const items = (escalas || []).map((e: any) => ({
       ...e,
       dataVencimento: e.dataVencimento ? e.dataVencimento.toISOString() : null,
       created: e.created ? e.created.toISOString() : null,
@@ -98,6 +134,7 @@ export async function GET(request: NextRequest) {
 
 /** ---------------- POST /api/escalas ----------------
  * Cria nova escala — auditoria é preenchida pelo servidor
+ * (mantive seu POST existente sem mudanças)
  */
 export async function POST(request: NextRequest) {
   // auth
