@@ -2,14 +2,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    const url = new URL(request.url);
+    const companyParam = url.searchParams.get('company');
+    const companyId = companyParam ? Number(companyParam) : null;
+
     const itens = await prisma.trilhaItem.findMany({
       where: {
         data: {
-          not: null, // só eventos com data
+          not: null,
         },
-        ativo: 1, // APENAS eventos ativos
+        ativo: 1,
       },
       include: {
         trilha: {
@@ -48,7 +52,13 @@ export async function GET(_request: NextRequest) {
       }))
       .filter((i) => i.data !== null);
 
-    return NextResponse.json({ items: mapped });
+    // Se companyId foi informado, filtra os itens para somente aqueles
+    // cuja trilha contenha a empresa indicada.
+    const filtered = companyId
+      ? mapped.filter((it) => (it.empresas || []).some((e) => Number(e.id) === companyId))
+      : mapped;
+
+    return NextResponse.json({ items: filtered });
   } catch (error) {
     console.error('[GET /api/calendario/itens]', error);
     return NextResponse.json(

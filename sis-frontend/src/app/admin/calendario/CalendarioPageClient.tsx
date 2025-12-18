@@ -20,22 +20,14 @@ function buildDayKeyFromDate(d: Date): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-/**
- * Converte uma string ISO/DATE ('2025-12-08' ou '2025-12-08T00:00:00.000Z')
- * para uma Date no fuso local, sem o shift de timezone.
- */
 function parseDateAsLocal(iso: string): Date {
   if (!iso) return new Date(NaN);
-
   const datePart = iso.substring(0, 10); // pega só 'YYYY-MM-DD'
   const [yearStr, monthStr, dayStr] = datePart.split('-');
   const year = Number(yearStr);
   const month = Number(monthStr);
   const day = Number(dayStr);
-
   if (!year || !month || !day) return new Date(NaN);
-
-  // new Date(ano, mesIndex, dia) cria no horário local (sem interpretar como UTC)
   return new Date(year, month - 1, day);
 }
 
@@ -44,7 +36,7 @@ function buildDayKeyFromISO(iso: string): string {
   return buildDayKeyFromDate(d);
 }
 
-export default function CalendarPageClient() {
+export default function CalendarPageClient({ companyId }: { companyId?: number | null }) {
   const today = new Date();
 
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -64,7 +56,10 @@ export default function CalendarPageClient() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch('/api/calendario/itens');
+        // inclui query param company quando fornecido
+        const url = companyId ? `/api/calendario/itens?company=${companyId}` : '/api/calendario/itens';
+
+        const res = await fetch(url);
         if (!res.ok) {
           throw new Error('Falha ao carregar eventos do calendário.');
         }
@@ -92,7 +87,7 @@ export default function CalendarPageClient() {
     }
 
     fetchEvents();
-  }, []);
+  }, [companyId]); // refaz quando companyId mudar
 
   const tiposDisponiveis = useMemo(() => {
     const set = new Set<string>();
@@ -106,7 +101,6 @@ export default function CalendarPageClient() {
     return events.filter((event) => {
       if (!event.data) return false;
 
-      // ❗ Usa data local em vez de new Date(event.data)
       const d = parseDateAsLocal(event.data);
 
       if (d.getMonth() !== currentMonth || d.getFullYear() !== currentYear) {
@@ -148,10 +142,7 @@ export default function CalendarPageClient() {
   }, [filteredEventsForMonth]);
 
   const selectedDateKey = selectedDate ? buildDayKeyFromDate(selectedDate) : null;
-  const eventsForSelectedDate = selectedDateKey
-    ? eventsByDay.get(selectedDateKey) ?? []
-    : [];
-
+  const eventsForSelectedDate = selectedDateKey ? eventsByDay.get(selectedDateKey) ?? [] : [];
   const listEvents = selectedDateKey ? eventsForSelectedDate : filteredEventsForMonth;
 
   const handleSelectDate = (date: Date) => {
