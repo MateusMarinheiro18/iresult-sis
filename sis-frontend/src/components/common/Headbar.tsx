@@ -3,7 +3,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import IconButton from "@mui/material/IconButton";
-import Badge from "@mui/material/Badge";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
@@ -12,6 +11,7 @@ import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import AccountCircleOutlined from "@mui/icons-material/AccountCircleOutlined";
 import SearchIcon from "@mui/icons-material/Search";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -26,10 +26,12 @@ interface HeadbarProps {
    * Optional override for the logout endpoint.
    * If not provided, defaults to:
    *  - admin -> /api/admins/logout
-   *  - client -> /api/logout
+   *  - client -> /api/rh/logout
    */
   logoutUrl?: string;
 }
+
+type Company = { id: number; name: string };
 
 export default function Headbar({
   variant = "client",
@@ -41,6 +43,14 @@ export default function Headbar({
   const open = Boolean(anchorEl);
   const [dark, setDark] = useState<boolean>(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // --- NEW: company selector state ---
+  const [companyAnchor, setCompanyAnchor] = useState<null | HTMLElement>(null);
+  const companyOpen = Boolean(companyAnchor);
+  const [companies, setCompanies] = useState<Company[] | null>(null);
+  const [companyQuery, setCompanyQuery] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
 
   const searchRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
@@ -80,7 +90,11 @@ export default function Headbar({
 
       // tenta extrair mensagem
       let data: any = {};
-      try { data = await res.json(); } catch { data = {}; }
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
 
       if (!res.ok) {
         const msg = data?.error ?? "Erro ao sair da sessão.";
@@ -102,10 +116,83 @@ export default function Headbar({
     }
   }
 
+  // --- NEW: fetch companies (tries API, otherwise fallback sample) ---
+  useEffect(() => {
+    if (variant !== "admin") return;
+
+    let mounted = true;
+    async function load() {
+      setLoadingCompanies(true);
+      try {
+        const res = await fetch("/api/admins/companies");
+        if (!res.ok) throw new Error("no api");
+        const data = (await res.json()) as Company[];
+        if (!mounted) return;
+        setCompanies(data);
+      } catch (e) {
+        // fallback sample list while API is not ready
+        if (!mounted) return;
+        setCompanies([
+          { id: 0, name: "EMPRESA" }, // sentinel default
+          { id: 1, name: "Nova Empresa" },
+          { id: 2, name: "Empresa Beta" },
+          { id: 3, name: "Empresa Gamma" },
+        ]);
+      } finally {
+        if (!mounted) return;
+        setLoadingCompanies(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [variant]);
+
+  // --- NEW: initialize selected from URL query param if present ---
+  useEffect(() => {
+    if (variant !== "admin") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const c = params.get("company");
+      if (c && companies) {
+        const id = Number(c);
+        const found = companies.find((x) => x.id === id);
+        if (found) setSelectedCompany(found);
+      }
+    } catch (err) {
+      // ignore on SSR/hydration mismatch
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies]);
+
+  // helper: update ?company= in URL (preserve other params)
+  function applyCompanyToUrl(companyId: number | null) {
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    if (companyId === null || companyId === 0) {
+      params.delete("company");
+    } else {
+      params.set("company", String(companyId));
+    }
+    // push without reloading the page (client navigation)
+    // note: using router.push so Next can handle it
+    router.push(`${url.pathname}${params.toString() ? "?" + params.toString() : ""}`);
+  }
+
+  function handleCompanySelect(c: Company) {
+    setSelectedCompany(c.id === 0 ? null : c);
+    applyCompanyToUrl(c.id === 0 ? null : c.id);
+    setCompanyAnchor(null);
+  }
+
+  const filteredCompanies =
+    companies?.filter((c) => c.name.toLowerCase().includes(companyQuery.toLowerCase())) ?? [];
+
   return (
     <header className="w-full backdrop-blur-sm border-b border-gray-100 bg-[#F3F4FF]">
       <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center gap-4">
-        {/* Left: hamburger (mobile) + search */}
+        {/* Left: hamburger (mobile) + (search OR company selector for admin) */}
         <div className="flex items-center gap-3">
           <div className="min-[851px]:hidden max-[850px]:block">
             <IconButton onClick={() => onToggleMobile?.()} aria-label="Abrir menu" size="small">
@@ -113,29 +200,110 @@ export default function Headbar({
             </IconButton>
           </div>
 
-          <div className="hidden md:flex items-center bg-white rounded-full shadow-sm px-3 py-2 w-[520px] max-w-full border border-gray-100">
-            <SearchIcon className="text-gray-400 mr-2" />
-            <input
-              ref={searchRef}
-              type="search"
-              placeholder="Search [CTRL + K]"
-              aria-label="Buscar"
-              className="flex-1 outline-none text-sm text-gray-600 placeholder-gray-400 bg-transparent"
-            />
-            <span className="ml-3 text-xs text-gray-400 px-2 py-0.5 rounded">CTRL + K</span>
-          </div>
+          {variant === "admin" ? (
+            // --- Company selector button (styled as pill) ---
+            <div>
+              <button
+                onClick={(e) => setCompanyAnchor(e.currentTarget)}
+                className="inline-flex items-center gap-2 rounded-full border px-4 py-2 font-semibold text-sm leading-none
+                           border-[#0F3B3E] text-[#0F3B3E] bg-white shadow-sm"
+                aria-haspopup="true"
+                aria-expanded={companyOpen ? "true" : undefined}
+                aria-label="Selecionar Empresa"
+                title="Selecionar Empresa"
+              >
+                <span className="truncate max-w-[160px]">
+                  {selectedCompany ? selectedCompany.name : "EMPRESA"}
+                </span>
+                <ArrowDropDownIcon />
+              </button>
 
-          {/* compact search on small screens */}
-          <div className="md:hidden">
-            <button
-              onClick={() => searchRef.current?.focus()}
-              aria-label="Buscar"
-              className="p-2 rounded-full hover:bg-gray-100"
-              title="Buscar"
-            >
-              <SearchIcon />
-            </button>
-          </div>
+              <Menu
+                anchorEl={companyAnchor}
+                open={companyOpen}
+                onClose={() => setCompanyAnchor(null)}
+                anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+                transformOrigin={{ horizontal: "left", vertical: "top" }}
+                PaperProps={{ className: "p-2 w-[320px]" }}
+              >
+                {/* search inside dropdown */}
+                <div className="px-2 py-1">
+                  <input
+                    placeholder="Buscar empresa..."
+                    value={companyQuery}
+                    onChange={(e) => setCompanyQuery(e.target.value)}
+                    className="w-full rounded-md border px-3 py-2 text-sm outline-none"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="max-h-[240px] overflow-auto">
+                  {/* "Todos" / EMPRESA option */}
+                  <MenuItem
+                    onClick={() => handleCompanySelect({ id: 0, name: "EMPRESA" })}
+                    selected={!selectedCompany}
+                  >
+                    Todas as empresas
+                  </MenuItem>
+
+                  {loadingCompanies && (
+                    <div className="px-4 py-2 text-xs text-gray-500">Carregando...</div>
+                  )}
+
+                  {!loadingCompanies && filteredCompanies.length === 0 && (
+                    <div className="px-4 py-2 text-xs text-gray-500">Nenhuma empresa encontrada</div>
+                  )}
+
+                  {!loadingCompanies &&
+                    filteredCompanies.map((c) => (
+                      <MenuItem
+                        key={c.id}
+                        onClick={() => handleCompanySelect(c)}
+                        selected={selectedCompany?.id === c.id}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm">{c.name}</span>
+                          <span className="text-xs text-gray-400">ID: {c.id}</span>
+                        </div>
+                      </MenuItem>
+                    ))}
+                </div>
+
+                <div className="px-2 pt-1 border-t mt-2">
+                  <Link href="/admin/empresas" className="text-xs">
+                    Gerenciar empresas
+                  </Link>
+                </div>
+              </Menu>
+            </div>
+          ) : (
+            // normal search bar for client
+            <>
+              <div className="hidden md:flex items-center bg-white rounded-full shadow-sm px-3 py-2 w-[520px] max-w-full border border-gray-100">
+                <SearchIcon className="text-gray-400 mr-2" />
+                <input
+                  ref={searchRef}
+                  type="search"
+                  placeholder="Search [CTRL + K]"
+                  aria-label="Buscar"
+                  className="flex-1 outline-none text-sm text-gray-600 placeholder-gray-400 bg-transparent"
+                />
+                <span className="ml-3 text-xs text-gray-400 px-2 py-0.5 rounded">CTRL + K</span>
+              </div>
+
+              {/* compact search on small screens */}
+              <div className="md:hidden">
+                <button
+                  onClick={() => searchRef.current?.focus()}
+                  aria-label="Buscar"
+                  className="p-2 rounded-full hover:bg-gray-100"
+                  title="Buscar"
+                >
+                  <SearchIcon />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* center spacer */}
@@ -143,8 +311,15 @@ export default function Headbar({
 
         {/* Right icons */}
         <div className="flex items-center gap-2">
-          {/* theme toggle */}
-
+          {/* theme toggle - keep the placeholder behaviour you had */}
+          <button
+            onClick={() => setDark((s) => !s)}
+            className="p-1 rounded-full hover:bg-gray-100"
+            aria-label="Toggle theme"
+            title="Toggle theme"
+          >
+            {dark ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}
+          </button>
 
           {/* profile icon */}
           <div className="relative">
