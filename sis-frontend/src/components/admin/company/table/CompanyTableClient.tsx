@@ -104,9 +104,9 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
                 <td className="cell id-cell">#{c.id}</td>
 
                 <td className="cell name-cell">
-                  <Link href={`/admin/empresas/${c.id}`} className="name-link">
+                  <span className="name">
                     {c.razaoSocial ?? '—'}
-                  </Link>
+                  </span>
                 </td>
 
                 <td className="cell cnpj-cell">{formatCnpj(c.cnpj)}</td>
@@ -338,14 +338,9 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
           max-width: 300px;
         }
         
-        .name-link { 
+        .name-text { 
           color: #1f2a65; 
-          font-weight: 700; 
-          text-decoration: none; 
-        }
-        
-        .name-link:hover {
-          text-decoration: underline;
+          font-weight: 700;
         }
         
         .cnpj-cell { 
