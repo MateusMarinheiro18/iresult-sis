@@ -38,10 +38,13 @@ const RH_PUBLIC = [
 ];
 
 // rotas públicas específicas de cliente
-const publicClientRoutes = [
+const CLIENT_PUBLIC = [
   '/client/login',
   '/client/forgot',
   '/client/reset',
+  '/api/client/login',
+  '/api/client/forgot',
+  '/api/client/reset',
 ];
 
 // helper: checa se o pathname começa com algum prefixo da lista
@@ -58,8 +61,10 @@ export function middleware(request: NextRequest) {
   // permitir recursos públicos/estáticos
   if (startsWithAny(pathname, PUBLIC_PREFIXES)) return NextResponse.next();
 
-  // permitir caminhos públicos específicos de admin e rh
-  if (startsWithAny(pathname, ADMIN_PUBLIC) || startsWithAny(pathname, RH_PUBLIC)) return NextResponse.next();
+  // permitir caminhos públicos específicos de admin, rh e client
+  if (startsWithAny(pathname, ADMIN_PUBLIC) || startsWithAny(pathname, RH_PUBLIC) || startsWithAny(pathname, CLIENT_PUBLIC)) {
+    return NextResponse.next();
+  }
 
   // permitir OPTIONS (CORS preflight) sem autenticação
   if (request.method === 'OPTIONS') return NextResponse.next();
@@ -122,11 +127,31 @@ export function middleware(request: NextRequest) {
   }
 
   // ---- PROTEGER ROTAS /client ----
-  if (pathname.startsWith('/client') && !publicClientRoutes.includes(pathname)) {
-    const rhToken = request.cookies.get('sis_rh_sess')?.value;
-    if (!rhToken) {
-      return NextResponse.redirect(new URL(`/client/login?next=${encodeURIComponent(pathname)}`, request.url));
+  if (pathname === '/client' || pathname.startsWith('/client/')) {
+    const isApi = pathname.startsWith('/api/');
+    const token = request.cookies.get(RH_COOKIE)?.value;
+
+    if (!token) {
+      if (isApi) {
+        return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+      }
+      const loginUrl = new URL('/client/login', request.url);
+      loginUrl.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
+      return NextResponse.redirect(loginUrl);
     }
+
+    const { ok } = verifyRhToken(token);
+    if (!ok) {
+      if (isApi) {
+        return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+      }
+      const loginUrl = new URL('/client/login', request.url);
+      loginUrl.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // token válido -> next
+    return NextResponse.next();
   }
 
   // para qualquer outro caminho, não interferimos
@@ -134,6 +159,16 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // matcher cobre páginas e APIs /admin e /rh
-  matcher: ['/admin/:path*', '/admin', '/rh/:path*', '/rh', '/api/admins/:path*', '/api/rh/:path*'],
+  // matcher cobre páginas e APIs /admin, /rh e /client
+  matcher: [
+    '/admin/:path*',
+    '/admin',
+    '/rh/:path*',
+    '/rh',
+    '/client/:path*',
+    '/client',
+    '/api/admins/:path*',
+    '/api/rh/:path*',
+    '/api/client/:path*',
+  ],
 };
