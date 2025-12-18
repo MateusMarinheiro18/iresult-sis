@@ -20,25 +20,53 @@ export async function GET(request: NextRequest) {
     const { ok, payload } = verifyAdminToken(token);
     if (!ok || !payload) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
 
-    // buscar trilhas ativas (não deletadas)
-    const trilhasDb = await prisma.trilha.findMany({
-      where: {
-        ativo: 1,
-        deleted: null,
-      },
-      orderBy: {
-        id: 'desc',
-      },
-      select: {
-        id: true,
-        nome: true,
-        dataCriacao: true,
-        ativo: true,
-        created: true,
-        createdBy: true,
-        updated: true,
-      },
-    });
+    const url = new URL(request.url);
+    const companyParam = url.searchParams.get('company');
+    const companyId = companyParam ? Number(companyParam) : null;
+
+    let trilhasDb: any[] = [];
+
+    if (companyId && !Number.isNaN(companyId) && companyId > 0) {
+      // busca ids de trilhas vinculadas à empresa na tabela de vínculo
+      const links = await prisma.empresaHasTrilha.findMany({
+        where: { idEmpresa: companyId },
+        select: { idTrilha: true },
+      });
+
+      const trilhaIds = links.map((l) => l.idTrilha).filter(Boolean) as number[];
+
+      if (trilhaIds.length > 0) {
+        trilhasDb = await prisma.trilha.findMany({
+          where: { id: { in: trilhaIds }, ativo: 1, deleted: null },
+          orderBy: { id: 'desc' },
+          select: {
+            id: true,
+            nome: true,
+            dataCriacao: true,
+            ativo: true,
+            created: true,
+            createdBy: true,
+            updated: true,
+          },
+        });
+      }
+      // se trilhaIds vazio, trilhasDb permanece []
+    } else {
+      // sem filtro por empresa -> retorna todas trilhas ativas
+      trilhasDb = await prisma.trilha.findMany({
+        where: { ativo: 1, deleted: null },
+        orderBy: { id: 'desc' },
+        select: {
+          id: true,
+          nome: true,
+          dataCriacao: true,
+          ativo: true,
+          created: true,
+          createdBy: true,
+          updated: true,
+        },
+      });
+    }
 
     const items = trilhasDb.map((t) => ({
       id: t.id,
