@@ -1,8 +1,6 @@
-// src/components/Sidebar.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   HomeOutlined,
@@ -20,6 +18,7 @@ import {
   ChevronLeftOutlined,
   ChevronRightOutlined,
 } from "@mui/icons-material";
+import CompanyLink from "@/components/common/CompanyLink";
 
 export type Variant = "client" | "admin";
 
@@ -123,7 +122,7 @@ export default function Sidebar({
       {menu.map((it) => {
         if (it.permission && !canAccess(it.permission)) return null;
         const active = pathname.startsWith(it.href);
-        
+
         const itemBase = `flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors duration-150`;
         const itemActive = active
           ? "bg-[#F3F4FF] text-[#0B2527] shadow-sm"
@@ -131,12 +130,13 @@ export default function Sidebar({
 
         return (
           <li key={it.key}>
-            <Link
+            <CompanyLink
               href={it.href}
               className={`${itemBase} ${itemActive}`}
               onClick={() => onRequestClose?.()}
               target={it.external ? "_blank" : undefined}
               rel={it.external ? "noreferrer" : undefined}
+              preserveCompany={variant === "admin" && !it.external}
             >
               {/* Icon container - sempre visível */}
               <span
@@ -150,8 +150,8 @@ export default function Sidebar({
               {/* Label - aparece/desaparece com transição suave */}
               <span
                 className={`whitespace-nowrap transition-all duration-200 ease-in-out ${
-                  isExpanded 
-                    ? "opacity-100 max-w-[200px]" 
+                  isExpanded
+                    ? "opacity-100 max-w-[200px]"
                     : "opacity-0 max-w-0 overflow-hidden"
                 }`}
               >
@@ -164,7 +164,7 @@ export default function Sidebar({
                   {it.badge}
                 </span>
               )}
-            </Link>
+            </CompanyLink>
           </li>
         );
       })}
@@ -184,8 +184,8 @@ export default function Sidebar({
 
       <div
         className={`flex items-center transition-all duration-200 ease-in-out ${
-          isExpanded 
-            ? "opacity-100 max-w-[200px]" 
+          isExpanded
+            ? "opacity-100 max-w-[200px]"
             : "opacity-0 max-w-0 overflow-hidden"
         }`}
       >
