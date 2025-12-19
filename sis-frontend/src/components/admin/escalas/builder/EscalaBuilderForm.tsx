@@ -280,8 +280,11 @@ export default function EscalaBuilderForm({
   }
 
   function handleQuestionDraftChange(field: keyof PerguntaDraftState, value: PerguntaDraftState[keyof PerguntaDraftState]) {
-    if (!questionDraft) return;
-    setQuestionDraft({ ...questionDraft, [field]: value } as PerguntaDraftState);
+    // usar updater funcional para evitar sobrescrita em chamadas sequenciais
+    setQuestionDraft((prev) => {
+      if (!prev) return prev as PerguntaDraftState | null;
+      return { ...prev, [field]: value } as PerguntaDraftState;
+    });
   }
 
   function handleQuestionStep1Next() {
@@ -303,25 +306,30 @@ export default function EscalaBuilderForm({
   }
 
   function handleAddRespostaToDraft() {
-    if (!questionDraft) return;
-    setQuestionDraft({ ...questionDraft, respostas: [...questionDraft.respostas, createEmptyResposta()] });
+    setQuestionDraft((prev) => {
+      if (!prev) return prev;
+      return { ...prev, respostas: [...prev.respostas, createEmptyResposta()] } as PerguntaDraftState;
+    });
   }
 
   function handleUpdateRespostaInDraft(respTempId: string, field: 'resposta' | 'valor', value: string) {
-    if (!questionDraft) return;
-    const updated = questionDraft.respostas.map((r) => {
-      if (r.tempId !== respTempId) return r;
-      if (field === 'resposta') {
-        return { ...r, resposta: value };
-      } else {
-        const newVal = value === '' ? '' : Number(value);
-        return { ...r, valor: newVal as RespostaFormState['valor'] };
-      }
+    setQuestionDraft((prev) => {
+      if (!prev) return prev;
+      const updated = prev.respostas.map((r) => {
+        if (r.tempId !== respTempId) return r;
+        if (field === 'resposta') {
+          return { ...r, resposta: value };
+        } else {
+          const newVal = value === '' ? '' : Number(value);
+          return { ...r, valor: newVal as RespostaFormState['valor'] };
+        }
+      });
+      return { ...prev, respostas: updated } as PerguntaDraftState;
     });
-    setQuestionDraft({ ...questionDraft, respostas: updated });
   }
 
   async function handleRemoveRespostaInDraft(respTempId: string) {
+    // usa confirmação como antes, depois aplica alteração de forma funcional
     if (!questionDraft) return;
     if (questionDraft.respostas.length <= 1) {
       toast.error('A pergunta deve ter pelo menos uma resposta possível.');
@@ -335,7 +343,11 @@ export default function EscalaBuilderForm({
       danger: true,
     });
     if (!ok) return;
-    setQuestionDraft({ ...questionDraft, respostas: questionDraft.respostas.filter((r) => r.tempId !== respTempId) });
+
+    setQuestionDraft((prev) => {
+      if (!prev) return prev;
+      return { ...prev, respostas: prev.respostas.filter((r) => r.tempId !== respTempId) } as PerguntaDraftState;
+    });
   }
 
   function handleQuestionStep2Save() {
@@ -394,12 +406,24 @@ export default function EscalaBuilderForm({
   function confirmCreateCategory() {
     if (!questionDraft) return;
     const nome = newCategoryName.trim();
-    if (!nome) { toast.error('Informe o nome da categoria.'); return; }
+    if (!nome) {
+      toast.error('Informe o nome da categoria.');
+      return;
+    }
     const moduloTempId = questionDraft.moduloTempId;
-    if (!moduloTempId) { toast.error('Selecione um módulo antes de criar a categoria.'); return; }
+    if (!moduloTempId) {
+      toast.error('Selecione um módulo antes de criar a categoria.');
+      return;
+    }
     const newCat: CategoriaFormState = { tempId: createTempId('cat'), nome, moduloTempId };
+
+    // atualiza categorias da escala
     setState((prev) => ({ ...prev, categorias: [...prev.categorias, newCat] }));
-    setQuestionDraft({ ...questionDraft, categoriaTempId: newCat.tempId });
+
+    // seleciona a nova categoria no draft (usando updater funcional)
+    setQuestionDraft((prev) => (prev ? { ...prev, categoriaTempId: newCat.tempId } as PerguntaDraftState : prev));
+
+    // limpa UI de criação inline
     setCreatingCategory(false);
     setNewCategoryName('');
   }
@@ -530,7 +554,7 @@ export default function EscalaBuilderForm({
         respostas: p.respostas.map((r) => ({ resposta: r.resposta.trim(), valor: Number(r.valor), id: (r as any).id ?? null })),
       }))),
 
-    };
+      };
 
     setSaving(true);
     try {
