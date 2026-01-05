@@ -27,6 +27,7 @@ export default function QuestionModal({
   newCategoryName,
   setNewCategoryName,
   onConfirmCreateCategory,
+  onDeleteCategoria, // <- NOVO
 }: {
   open: boolean;
   draft: PerguntaFormState | null;
@@ -51,11 +52,15 @@ export default function QuestionModal({
   newCategoryName: string;
   setNewCategoryName: (v: string) => void;
   onConfirmCreateCategory: () => void;
+  onDeleteCategoria?: (categoriaId: string) => void; // <- NOVO
 }) {
   if (!open || !draft) return null;
 
   const categoriasPorModulo = (modTempId: string) =>
     categorias.filter((c) => c.moduloTempId === modTempId);
+
+  // NOVO: categoria selecionada
+  const categoriaSelecionada = categorias.find((c) => c.tempId === draft.categoriaTempId);
 
   return (
     <div className="modal-root" role="dialog" aria-modal="true" aria-labelledby="question-modal-title">
@@ -151,6 +156,24 @@ export default function QuestionModal({
                       </button>
                     )}
                   </div>
+
+                  {/* NOVO: Botão de deletar categoria selecionada */}
+                  {categoriaSelecionada && !creatingCategory && onDeleteCategoria && (
+                    <button
+                      type="button"
+                      className="btn-delete-categoria"
+                      onClick={() => onDeleteCategoria(categoriaSelecionada.tempId)}
+                      title={`Excluir categoria "${categoriaSelecionada.nome}"`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <path d="M3 6h18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M10 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                        <path d="M14 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                      </svg>
+                      Excluir "{categoriaSelecionada.nome}"
+                    </button>
+                  )}
 
                   {creatingCategory && (
                     <div className="field" style={{ marginTop: 6 }}>
@@ -373,6 +396,41 @@ export default function QuestionModal({
         .btn-secondary:hover { background:#f3f7f7; }
         .btn-tertiary { background:transparent; border:1px solid #e5e7eb; padding:8px 12px; border-radius:999px; color:#0B2527; cursor:pointer; }
         .btn-tertiary.small, .btn-primary.small { padding:6px 10px; font-size:13px; }
+
+        /* NOVO: estilo do botão de deletar categoria */
+        .btn-delete-categoria {
+          margin-top: 8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #dc2626;
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          width: 100%;
+          justify-content: center;
+        }
+
+        .btn-delete-categoria:hover {
+          background: #fee2e2;
+          border-color: #fca5a5;
+          transform: translateY(-1px);
+        }
+
+        .btn-delete-categoria:active {
+          transform: translateY(0);
+        }
+
+        .btn-delete-categoria svg {
+          width: 14px;
+          height: 14px;
+          flex-shrink: 0;
+        }
 
         @media (max-width: 920px) {
           .modal-sheet { width: calc(100% - 20px); }

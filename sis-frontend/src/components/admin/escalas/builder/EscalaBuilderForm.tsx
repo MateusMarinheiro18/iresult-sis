@@ -599,6 +599,49 @@ export default function EscalaBuilderForm({
     };
   }, [moduleModalOpen, questionModalOpen]);
 
+  // NOVA FUNÇÃO: deletar categoria
+  async function handleDeleteCategoria(categoriaId: string) {
+    const categoria = state.categorias.find((c) => c.tempId === categoriaId);
+    if (!categoria) return;
+
+    const ok = await confirm({
+      title: 'Excluir categoria',
+      description: `Tem certeza que deseja excluir a categoria "${categoria.nome}"?\n\nTodas as perguntas vinculadas a ela serão desvinculadas.`,
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+      danger: true,
+    });
+
+    if (!ok) return;
+
+    setState((prev) => {
+      // 1. Remover a categoria
+      const newCategorias = prev.categorias.filter((c) => c.tempId !== categoriaId);
+
+      // 2. Desvincular perguntas desta categoria
+      const newPerguntas = prev.perguntas.map((p) =>
+        p.categoriaTempId === categoriaId
+          ? { ...p, categoriaTempId: '' }
+          : p
+      );
+
+      // 3. Se o draft da pergunta estava usando esta categoria, limpar também
+      if (questionDraft?.categoriaTempId === categoriaId) {
+        setQuestionDraft((prev) => 
+          prev ? { ...prev, categoriaTempId: '' } as PerguntaDraftState : prev
+        );
+      }
+
+      return {
+        ...prev,
+        categorias: newCategorias,
+        perguntas: newPerguntas,
+      };
+    });
+
+    toast.success(`Categoria "${categoria.nome}" excluída com sucesso.`);
+  }
+
   return (
     <form className="escala-form" onSubmit={handleSubmit}>
       {/* DADOS BÁSICOS */}
@@ -728,6 +771,7 @@ export default function EscalaBuilderForm({
         newCategoryName={newCategoryName}
         setNewCategoryName={setNewCategoryName}
         onConfirmCreateCategory={confirmCreateCategory}
+        onDeleteCategoria={handleDeleteCategoria} 
       />
 
       <style jsx>{`
