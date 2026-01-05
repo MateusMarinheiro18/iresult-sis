@@ -2,7 +2,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 
 export type EscalaRow = {
   id: number;
@@ -45,9 +44,9 @@ export default function EscalasTable({ items, onEdit }: Props) {
               <td className="cell id-cell">#{e.id}</td>
 
               <td className="cell name-cell">
-                <Link href={`/admin/escalas/${e.id}`} className="name-link">
+                <span className="name-link">
                   {e.nome ?? '—'}
-                </Link>
+                </span>
               </td>
 
               <td className="cell date-cell">{formatDate(e.dataVencimento)}</td>
@@ -145,14 +144,10 @@ export default function EscalasTable({ items, onEdit }: Props) {
           max-width: 320px;
         }
 
-        .name-link {
+        .name-text {
           color: #1f2a65;
           font-weight: 700;
           text-decoration: none;
-        }
-
-        .name-link:hover {
-          text-decoration: underline;
         }
 
         .date-cell {
