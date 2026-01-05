@@ -1,10 +1,8 @@
-// src/app/api/escalas/builder.ts (ou o caminho que você usa)
-// Ajuste o path/filename conforme a sua organização de rotas
+// src/app/api/escalas/builder/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyAdminToken } from '@/lib/auth/jwt';
 
-/** util: get date in Brasilia (UTC-3) */
 function getBrasiliaDate(): Date {
   const now = new Date();
   const utcMs = now.getTime();
@@ -12,21 +10,11 @@ function getBrasiliaDate(): Date {
   return new Date(utcMs + brasiliaOffsetInMs);
 }
 
-/** Detecta erro do Prisma tipo "Unknown argument" (campo inexistente no model) */
 function isPrismaUnknownArgError(err: any) {
   const m = String(err?.message ?? '').toLowerCase();
   return /unknown argument|unknown field|field does not exist/i.test(m);
 }
 
-/**
- * Helper: tenta criar usando três variações de campos de auditoria:
- * 1) camelCase: created, createdBy, updated, updatedBy
- * 2) snake_case: created, created_by, updated, updated_by
- * 3) sem audit (apenas dataPlain)
- *
- * delegate: tx.<model> (ex: tx.escala)
- * select: optional select object for the create call
- */
 async function attemptCreate(
   delegate: any,
   dataCamel: Record<string, any>,
@@ -51,7 +39,6 @@ async function attemptCreate(
   }
 }
 
-/** ---------------- types (entrada) ---------------- */
 type RespostaPayload = {
   resposta: string;
   valor: number;
@@ -62,7 +49,7 @@ type PerguntaPayload = {
   pergunta: string;
   ordem: number;
   moduloTempId: string;
-  categoriaTempId: string;
+  categoriasTempIds: string[]; // ✅ MUDOU: array de IDs
   respostas: RespostaPayload[];
 };
 
@@ -92,10 +79,8 @@ type EscalaPayload = {
   perguntas: PerguntaPayload[];
 };
 
-/** ---------------- endpoint ---------------- */
 export async function POST(req: NextRequest) {
   try {
-    // auth: exigir cookie de sessão do admin
     const token = req.cookies.get('sis_admin_sess')?.value;
     if (!token) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
@@ -111,7 +96,6 @@ export async function POST(req: NextRequest) {
 
     const body: EscalaPayload = await req.json();
 
-    // Validações básicas
     if (!body.nome?.trim()) {
       return NextResponse.json({ error: 'Nome da escala é obrigatório.' }, { status: 400 });
     }
@@ -125,7 +109,7 @@ export async function POST(req: NextRequest) {
     const now = getBrasiliaDate();
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1) criar escala (com audit via helper)
+      // 1) criar escala
       const escalaDataBase = {
         nome: String(body.nome).trim(),
         dataVencimento: body.dataVencimento ? new Date(body.dataVencimento) : null,
@@ -198,22 +182,19 @@ export async function POST(req: NextRequest) {
         categoriaMap.set(cat.tempId, categoria.id);
       }
 
-      // 4) perguntas + respostas
+      // 4) perguntas + respostas + relações com categorias
       for (const perg of body.perguntas) {
         if (!perg.tempId) throw new Error('Pergunta sem tempId');
         if (!perg.pergunta || !String(perg.pergunta).trim()) throw new Error('Pergunta sem texto');
 
         const idModulo = moduloMap.get(perg.moduloTempId);
-        const idCategoria = categoriaMap.get(perg.categoriaTempId);
-
         if (!idModulo) throw new Error(`Módulo não encontrado para pergunta: ${perg.pergunta}`);
-        if (!idCategoria) throw new Error(`Categoria não encontrada para pergunta: ${perg.pergunta}`);
 
+        // ✅ MUDOU: não precisa mais de idCategoria único
         const perguntaBase = {
           pergunta: String(perg.pergunta).trim(),
           idEscala: escala.id,
           idModulo,
-          idCategoria,
           ordem: Number(perg.ordem) || 0,
           ativo: 1,
         };
@@ -225,6 +206,52 @@ export async function POST(req: NextRequest) {
           perguntaBase,
           { id: true }
         );
+
+        // ✅ NOVO: criar relações many-to-many com categorias
+        if (perg.categoriasTempIds && perg.categoriasTempIds.length > 0) {
+          for (let i = 0; i < perg.categoriasTempIds.length; i++) {
+            const catTempId = perg.categoriasTempIds[i];
+            const categoriaIdReal = categoriaMap.get(catTempId);
+            
+            if (!categoriaIdReal) {
+              console.warn(`Categoria ${catTempId} não encontrada para pergunta ${perg.pergunta}`);
+              continue;
+            }
+
+            // Tenta diferentes nomenclaturas possíveis
+            try {
+              await (tx as any).escalaPerguntaCategoria.create({
+                data: {
+                  perguntaId: pergunta.id,
+                  categoriaId: categoriaIdReal,
+                  ordem: i + 1,
+                  created: now,
+                },
+              });
+            } catch (err) {
+              // Tenta nomenclatura alternativa
+              try {
+                await (tx as any).escala_pergunta_categoria.create({
+                  data: {
+                    pergunta_id: pergunta.id,
+                    categoria_id: categoriaIdReal,
+                    ordem: i + 1,
+                    created: now,
+                  },
+                });
+              } catch (err2) {
+                // Tenta outra variação
+                await (tx as any).EscalaPerguntaCategoria.create({
+                  data: {
+                    idPergunta: pergunta.id,
+                    idCategoria: categoriaIdReal,
+                    ordem: i + 1,
+                  },
+                });
+              }
+            }
+          }
+        }
 
         // respostas
         for (const resp of perg.respostas ?? []) {

@@ -1,3 +1,5 @@
+// types.ts
+
 export interface RespostaFormState {
   id?: number; // ID real do banco (para edição)
   tempId: string;
@@ -31,7 +33,7 @@ export interface PerguntaFormState {
   pergunta: string;
   ordem: number;
   moduloTempId: string;
-  categoriaTempId: string;
+  categoriasTempIds: string[]; // ✅ MUDOU: agora é array de IDs
   respostas: RespostaFormState[];
 }
 

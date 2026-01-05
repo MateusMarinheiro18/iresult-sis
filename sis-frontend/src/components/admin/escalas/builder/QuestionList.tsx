@@ -6,14 +6,14 @@ export type PerguntaRow = {
   pergunta: string;
   ordem: number;
   moduloTempId: string;
-  categoriaTempId: string;
+  categoriasTempIds: string[]; // ✅ MUDOU: agora é array
   respostas: { tempId: string; resposta: string; valor: number | string }[];
 };
 
 export default function QuestionList({
   perguntas,
   getModuloName,
-  getCategoriaName,
+  getCategoriasNames, // ✅ MUDOU: agora recebe função que processa array
   onEdit,
   onRemove,
   onDragStart,
@@ -24,7 +24,7 @@ export default function QuestionList({
 }: {
   perguntas: PerguntaRow[];
   getModuloName: (modTempId: string) => string;
-  getCategoriaName: (catTempId: string) => string;
+  getCategoriasNames: (catTempIds: string[]) => string; // ✅ MUDOU
   onEdit: (tempId: string) => void;
   onRemove: (tempId: string) => void;
   onDragStart: (e: React.DragEvent<HTMLDivElement>, tempId: string) => void;
@@ -62,7 +62,8 @@ export default function QuestionList({
                   </div>
                   <div className="question-meta">
                     <span className="meta-pill">{getModuloName(p.moduloTempId)}</span>
-                    <span className="meta-pill subtle">{getCategoriaName(p.categoriaTempId)}</span>
+                    {/* ✅ MUDOU: mostra múltiplas categorias separadas por vírgula */}
+                    <span className="meta-pill subtle">{getCategoriasNames(p.categoriasTempIds || [])}</span>
                   </div>
                 </div>
 
@@ -116,10 +117,10 @@ export default function QuestionList({
         }
         .empty-text {
           margin: 0;
-          color: #374151; /* visível como no modal */
+          color: #374151;
           font-size: 14px;
           line-height: 1.5;
-          opacity: 1; /* garantir visibilidade */
+          opacity: 1;
         }
 
         .questions-list { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
@@ -145,7 +146,7 @@ export default function QuestionList({
 
         .question-header { display:flex; justify-content:space-between; gap:12px; align-items:center; }
         .question-title { font-size:15px; color:#0B2527; font-weight:700; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .question-meta { display:flex; gap:8px; align-items:center; margin-left:8px; }
+        .question-meta { display:flex; gap:8px; align-items:center; margin-left:8px; flex-wrap: wrap; }
 
         .meta-pill {
           display:inline-block;
@@ -157,7 +158,16 @@ export default function QuestionList({
           color:#0B2527;
           font-weight:600;
         }
-        .meta-pill.subtle { background:#fff; color:#6b7280; border:1px solid #f0f3f4; font-weight:600; }
+        .meta-pill.subtle { 
+          background:#fff; 
+          color:#6b7280; 
+          border:1px solid #f0f3f4; 
+          font-weight:600;
+          max-width: 200px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
 
         .question-responses { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
         .response-pill {
@@ -197,6 +207,7 @@ export default function QuestionList({
         @media (max-width: 720px) {
           .question-item { padding:10px 12px; }
           .response-pill { font-size:12px; padding:6px 8px; }
+          .meta-pill.subtle { max-width: 150px; }
         }
       `}</style>
     </div>

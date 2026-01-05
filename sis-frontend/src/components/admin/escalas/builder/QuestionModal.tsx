@@ -27,7 +27,7 @@ export default function QuestionModal({
   newCategoryName,
   setNewCategoryName,
   onConfirmCreateCategory,
-  onDeleteCategoria, // <- NOVO
+  onDeleteCategoria,
 }: {
   open: boolean;
   draft: PerguntaFormState | null;
@@ -52,15 +52,26 @@ export default function QuestionModal({
   newCategoryName: string;
   setNewCategoryName: (v: string) => void;
   onConfirmCreateCategory: () => void;
-  onDeleteCategoria?: (categoriaId: string) => void; // <- NOVO
+  onDeleteCategoria?: (categoriaId: string) => void;
 }) {
   if (!open || !draft) return null;
 
   const categoriasPorModulo = (modTempId: string) =>
     categorias.filter((c) => c.moduloTempId === modTempId);
 
-  // NOVO: categoria selecionada
-  const categoriaSelecionada = categorias.find((c) => c.tempId === draft.categoriaTempId);
+  // ✅ NOVO: toggle de categoria no array
+  function toggleCategoria(catTempId: string) {
+    if (!draft) return;
+
+    const current = draft.categoriasTempIds || [];
+    const isSelected = current.includes(catTempId);
+
+    const updated = isSelected
+      ? current.filter((id) => id !== catTempId)
+      : [...current, catTempId];
+
+    onChangeDraft('categoriasTempIds', updated as any);
+  }
 
   return (
     <div className="modal-root" role="dialog" aria-modal="true" aria-labelledby="question-modal-title">
@@ -72,7 +83,7 @@ export default function QuestionModal({
             <h3 id="question-modal-title" className="modal-banner-title">
               {editingTempId ? 'Editar pergunta' : 'Nova pergunta'}
             </h3>
-            <p className="modal-banner-sub">{step === 1 ? 'Defina o texto da pergunta, o módulo e a categoria.' : 'Cadastre as respostas possíveis e seus valores (1 a 5).'}</p>
+            <p className="modal-banner-sub">{step === 1 ? 'Defina o texto da pergunta, o módulo e as categorias.' : 'Cadastre as respostas possíveis e seus valores (1 a 5).'}</p>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Fechar" title="Fechar">
             ✕
@@ -86,115 +97,125 @@ export default function QuestionModal({
                 <label className="label">Texto da pergunta <span className="required">*</span></label>
                 <textarea
                   className="textarea"
-                  value={draft.pergunta}
+                  value={draft?.pergunta ?? ''}
                   onChange={(e) => onChangeDraft('pergunta', e.target.value as any)}
                   placeholder="Ex.: Como você avalia o ambiente de trabalho?"
                 />
               </div>
 
-              <div className="field-grid-2">
-                <div className="field">
-                  <label className="label">Módulo <span className="required">*</span></label>
+              <div className="field">
+                <label className="label">Módulo <span className="required">*</span></label>
+                <select
+                  className="input select-with-caret"
+                  value={draft?.moduloTempId ?? ''}
+                  onChange={(e) => {
+                    const newModulo = e.target.value;
+                    onChangeDraft('moduloTempId', newModulo as any);
+                    onChangeDraft('categoriasTempIds', [] as any); // limpa categorias ao trocar módulo
+                  }}
+                >
+                  <option value="">Selecione...</option>
+                  {modulos.map((m) => (
+                    <option key={m.tempId} value={m.tempId}>{m.nome}</option>
+                  ))}
+                </select>
+              </div>
 
-                  {/* SELECT MÓDULO: com placeholder e seta interna */}
-                  <select
-                    className="input select-with-caret"
-                    value={draft.moduloTempId ?? ''}
-                    onChange={(e) => {
-                      const newModulo = e.target.value;
-                      onChangeDraft('moduloTempId', newModulo as any);
-                      onChangeDraft('categoriaTempId', '' as any);
-                    }}
-                  >
-                    <option value="">Selecione...</option>
-                    {modulos.map((m) => (
-                      <option key={m.tempId} value={m.tempId}>{m.nome}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* ✅ CATEGORIAS COM CHECKBOXES */}
+              <div className="field">
+                <div className="categorias-header">
+                  <label className="label">Categorias <span className="required">*</span></label>
 
-                <div className="field">
-                  <label className="label">Categoria <span className="required">*</span></label>
-                  <div className="category-row">
-                    <select
-                      className="input select-with-caret"
-                      value={draft.categoriaTempId ?? ''}
-                      onChange={(e) => onChangeDraft('categoriaTempId', e.target.value as any)}
-                    >
-                      <option value="">Selecione...</option>
-                      {categoriasPorModulo(draft.moduloTempId ?? '').map((c) => (
-                        <option key={c.tempId} value={c.tempId}>{c.nome}</option>
-                      ))}
-                    </select>
-
-                    {/* ICON: + quando não criando; X quando criando */}
-                    {!creatingCategory ? (
-                      <button
-                        type="button"
-                        className="icon-circle"
-                        onClick={onStartCreateCategory}
-                        aria-label="Criar nova categoria"
-                        title="Nova categoria"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-                          <path d="M12 5v14" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M5 12h14" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="icon-circle"
-                        onClick={onCancelCreateCategory}
-                        aria-label="Cancelar criação de categoria"
-                        title="Cancelar criação"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-                          <path d="M18 6L6 18" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M6 6l12 12" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* NOVO: Botão de deletar categoria selecionada */}
-                  {categoriaSelecionada && !creatingCategory && onDeleteCategoria && (
+                  {!creatingCategory ? (
                     <button
                       type="button"
-                      className="btn-delete-categoria"
-                      onClick={() => onDeleteCategoria(categoriaSelecionada.tempId)}
-                      title={`Excluir categoria "${categoriaSelecionada.nome}"`}
+                      className="btn-add-categoria"
+                      onClick={onStartCreateCategory}
+                      aria-label="Criar nova categoria"
+                      title="Nova categoria"
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                        <path d="M3 6h18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                        <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M10 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                        <path d="M14 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
+                        <path d="M12 5v14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                      Excluir "{categoriaSelecionada.nome}"
+                      Nova categoria
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-cancel-categoria"
+                      onClick={onCancelCreateCategory}
+                      aria-label="Cancelar"
+                      title="Cancelar"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
+                        <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Cancelar
                     </button>
                   )}
+                </div>
 
-                  {creatingCategory && (
-                    <div className="field" style={{ marginTop: 6 }}>
-                      <label className="label-mini">Nome da nova categoria</label>
-                      <div className="new-category-row">
-                        <input
-                          className="input"
-                          value={newCategoryName}
-                          onChange={(e) => setNewCategoryName(e.target.value)}
-                          placeholder="Ex.: Liderança"
-                        />
-                        <button
-                          type="button"
-                          className="btn-primary small"
-                          onClick={onConfirmCreateCategory}
-                          title="Salvar nova categoria"
-                        >
-                          Salvar
-                        </button>
-                      </div>
-                    </div>
+                {creatingCategory && (
+                  <div className="new-category-inline">
+                    <input
+                      className="input"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      placeholder="Nome da nova categoria"
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary small"
+                      onClick={onConfirmCreateCategory}
+                      title="Salvar"
+                    >
+                      Salvar
+                    </button>
+                  </div>
+                )}
+
+                {/* CHECKBOXES DAS CATEGORIAS */}
+                <div className="categorias-checkboxes">
+                  {categoriasPorModulo(draft?.moduloTempId ?? '').length === 0 ? (
+                    <p className="empty-categorias">Nenhuma categoria disponível. Crie uma categoria para este módulo.</p>
+                  ) : (
+                    categoriasPorModulo(draft?.moduloTempId ?? '').map((cat) => {
+                      const isSelected = (draft?.categoriasTempIds || []).includes(cat.tempId);
+
+                      return (
+                        <label key={cat.tempId} className="checkbox-item">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleCategoria(cat.tempId)}
+                          />
+                          <span className="checkbox-custom" />
+                          <span className="checkbox-label">{cat.nome}</span>
+
+                          {/* Botão de deletar categoria */}
+                          {onDeleteCategoria && (
+                            <button
+                              type="button"
+                              className="btn-delete-cat-inline"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                onDeleteCategoria(cat.tempId);
+                              }}
+                              title={`Excluir "${cat.nome}"`}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
+                                <path d="M3 6h18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                                <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M10 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                                <path d="M14 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                              </svg>
+                            </button>
+                          )}
+                        </label>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -203,7 +224,6 @@ export default function QuestionModal({
 
           {step === 2 && (
             <>
-              {/* Top row: back icon (left) + title (center) + add-response icon (right) */}
               <div className="responses-top-row">
                 <button
                   type="button"
@@ -213,7 +233,7 @@ export default function QuestionModal({
                   title="Voltar"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M15 18L9 12l6-6" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M15 18L9 12l6-6" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
 
@@ -231,16 +251,15 @@ export default function QuestionModal({
                     title="Adicionar resposta"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-                      <path d="M12 5v14" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M5 12h14" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 5v14" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M5 12h14" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
                 </div>
               </div>
 
-              {/* Respostas list */}
               <div className="respostas-list">
-                {draft.respostas.map((r, index) => (
+                {draft?.respostas?.map((r, index) => (
                   <div key={r.tempId} className="resposta-row">
                     <div className="field resposta-field">
                       <label className="label-mini">Resposta {index + 1}</label>
@@ -264,18 +283,17 @@ export default function QuestionModal({
                       />
                     </div>
 
-                    {draft.respostas.length > 1 && (
+                    {(draft?.respostas?.length ?? 0) > 1 && (
                       <button type="button" className="resposta-remove" onClick={() => onRemoveResposta(r.tempId)} aria-label="Remover resposta">✕</button>
                     )}
                   </div>
-                ))}
+                )) ?? null}
               </div>
             </>
           )}
         </div>
 
         <footer className="modal-footer">
-          {/* KEEP footer X cancel */}
           <button
             type="button"
             className="icon-circle-footer"
@@ -284,8 +302,8 @@ export default function QuestionModal({
             title="Cancelar"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-              <path d="M18 6L6 18" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M6 6l12 12" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M18 6L6 18" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M6 6l12 12" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
 
@@ -322,26 +340,172 @@ export default function QuestionModal({
         .input::placeholder { color:#374151; opacity:0.7; }
         select.input { appearance:none; -webkit-appearance:none; -moz-appearance:none; }
 
-        /* === novo: select com caret (seta) dentro ===
-           usamos um pequeno SVG inline como background-image e posicionamos à direita.
-        */
         .select-with-caret {
-          padding-right: 42px; /* espaço para a seta */
+          padding-right: 42px;
           background-repeat: no-repeat;
           background-position: right 12px center;
           background-size: 18px 18px;
-        }
-        /* caret SVG em data URI (preto/escuro) */
-        .select-with-caret {
           background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24'><path fill='none' stroke='%230B2527' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/></svg>");
         }
 
-        .field-grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; align-items:start; }
+        /* ✅ HEADER DAS CATEGORIAS */
+        .categorias-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 8px;
+        }
 
-        .category-row { display:flex; gap:8px; align-items:center; }
-        .new-category-row { display:flex; gap:8px; align-items:center; margin-top:6px; }
+        .btn-add-categoria,
+        .btn-cancel-categoria {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          font-size: 12px;
+          font-weight: 600;
+          border-radius: 6px;
+          border: 1px solid;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
 
-        /* ICON circle (used for "+ nova categoria" and add response) */
+        .btn-add-categoria {
+          background: #fff;
+          color: #0B2527;
+          border-color: rgba(11,37,39,0.12);
+        }
+        .btn-add-categoria:hover {
+          background: #f9fafb;
+          border-color: #0B2527;
+        }
+
+        .btn-cancel-categoria {
+          background: #fef2f2;
+          color: #dc2626;
+          border-color: #fecaca;
+        }
+        .btn-cancel-categoria:hover {
+          background: #fee2e2;
+        }
+
+        .new-category-inline {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          margin-bottom: 12px;
+          padding: 12px;
+          background: #fafafa;
+          border-radius: 8px;
+          border: 1px dashed #d1d5db;
+        }
+
+        /* ✅ CHECKBOXES CUSTOMIZADOS */
+        .categorias-checkboxes {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 12px;
+          background: #fafafa;
+          border-radius: 8px;
+          border: 1px solid #eef2f7;
+          max-height: 220px;
+          overflow-y: auto;
+        }
+
+        .empty-categorias {
+          color: #6b7280;
+          font-size: 13px;
+          text-align: center;
+          padding: 12px;
+          margin: 0;
+        }
+
+        .checkbox-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          background: #fff;
+          border-radius: 6px;
+          border: 1px solid #e5e7eb;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          position: relative;
+        }
+
+        .checkbox-item:hover {
+          border-color: #0B2527;
+          background: #f9fafb;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+          position: absolute;
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .checkbox-custom {
+          width: 18px;
+          height: 18px;
+          border: 2px solid #d1d5db;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.15s ease;
+          flex-shrink: 0;
+        }
+
+        .checkbox-item input:checked + .checkbox-custom {
+          background: #0B2527;
+          border-color: #0B2527;
+        }
+
+        .checkbox-item input:checked + .checkbox-custom::after {
+          content: "";
+          width: 5px;
+          height: 9px;
+          border: solid #fff;
+          border-width: 0 2px 2px 0;
+          transform: rotate(45deg);
+          margin-top: -2px;
+        }
+
+        .checkbox-label {
+          flex: 1;
+          font-size: 14px;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .checkbox-item:hover .checkbox-label {
+          color: #0B2527;
+        }
+
+        /* ✅ BOTÃO DE DELETAR CATEGORIA INLINE */
+        .btn-delete-cat-inline {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 6px;
+          background: transparent;
+          border: 1px solid transparent;
+          color: #dc2626;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          flex-shrink: 0;
+        }
+
+        .btn-delete-cat-inline:hover {
+          background: #fef2f2;
+          border-color: #fecaca;
+        }
+
         .icon-circle {
           display:inline-flex;
           align-items:center;
@@ -354,7 +518,6 @@ export default function QuestionModal({
           cursor:pointer;
         }
 
-        /* back icon on top-left of responses */
         .icon-circle-back {
           display:inline-flex;
           align-items:center;
@@ -392,50 +555,26 @@ export default function QuestionModal({
         .modal-footer { display:flex; justify-content:flex-end; gap:10px; padding:12px 18px 18px; align-items:center; }
         .btn-primary { background:#0B2527; color:#fff; border:none; padding:8px 14px; border-radius:999px; font-weight:700; cursor:pointer; }
         .btn-primary:hover { background:#134148; }
-        .btn-secondary { background:#fff; color:#0B2527; border:1px solid #0B2527; padding:8px 12px; border-radius:999px; font-weight:700; cursor:pointer; }
-        .btn-secondary:hover { background:#f3f7f7; }
-        .btn-tertiary { background:transparent; border:1px solid #e5e7eb; padding:8px 12px; border-radius:999px; color:#0B2527; cursor:pointer; }
-        .btn-tertiary.small, .btn-primary.small { padding:6px 10px; font-size:13px; }
+        .btn-primary.small { padding:6px 10px; font-size:13px; }
 
-        /* NOVO: estilo do botão de deletar categoria */
-        .btn-delete-categoria {
-          margin-top: 8px;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 12px;
-          font-size: 12px;
-          font-weight: 600;
-          color: #dc2626;
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          width: 100%;
-          justify-content: center;
+        .icon-circle-footer {
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          width:36px;
+          height:36px;
+          border-radius:999px;
+          background: transparent;
+          border: 1px solid #e5e7eb;
+          cursor:pointer;
+          color: #0B2527;
         }
-
-        .btn-delete-categoria:hover {
-          background: #fee2e2;
-          border-color: #fca5a5;
-          transform: translateY(-1px);
-        }
-
-        .btn-delete-categoria:active {
-          transform: translateY(0);
-        }
-
-        .btn-delete-categoria svg {
-          width: 14px;
-          height: 14px;
-          flex-shrink: 0;
+        .icon-circle-footer:hover {
+          background: #f9fafb;
         }
 
         @media (max-width: 920px) {
           .modal-sheet { width: calc(100% - 20px); }
-          .field-grid-2 { grid-template-columns: 1fr; }
-          .resposta-valor-field { width:100px; }
           .responses-top-row { flex-direction:row; gap:8px; align-items:center; }
           .responses-top-title { padding-left:8px; }
         }

@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyAdminToken } from '@/lib/auth/jwt';
 
-/** util: get date in Brasilia (UTC-3) */
 function getBrasiliaDate(): Date {
   const now = new Date();
   const utcMs = now.getTime();
@@ -11,13 +10,11 @@ function getBrasiliaDate(): Date {
   return new Date(utcMs + brasiliaOffsetInMs);
 }
 
-/** Detecta erro do Prisma tipo "Unknown argument" (campo inexistente no model) */
 function isPrismaUnknownArgError(err: any) {
   const m = String(err?.message ?? '').toLowerCase();
   return /unknown argument|unknown field|field does not exist/i.test(m);
 }
 
-/** Attempt update with camelCase -> snake_case -> plain */
 async function attemptUpdate(delegate: any, where: any, dataCamel: any, dataSnake: any, dataPlain: any) {
   try {
     return await delegate.update({ where, data: dataCamel });
@@ -36,7 +33,6 @@ async function attemptUpdate(delegate: any, where: any, dataCamel: any, dataSnak
   }
 }
 
-/** Attempt create with camelCase -> snake_case -> plain (returns created record) */
 async function attemptCreate(delegate: any, dataCamel: any, dataSnake: any, dataPlain: any, select?: any) {
   try {
     return await delegate.create({ data: dataCamel, ...(select ? { select } : {}) });
@@ -57,7 +53,6 @@ async function attemptCreate(delegate: any, dataCamel: any, dataSnake: any, data
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // auth: exigir cookie de sessão do admin
     const token = req.cookies.get('sis_admin_sess')?.value;
     if (!token) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
@@ -88,7 +83,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const now = getBrasiliaDate();
 
     await prisma.$transaction(async (tx) => {
-      // 1) Atualiza campos básicos da escala (com auditoria controlada pelo servidor)
+      // 1) Atualiza campos básicos da escala
       const escalaUpdateBase: any = {
         nome,
         dataVencimento: dataVencimento ? new Date(dataVencimento) : null,
@@ -104,7 +99,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       );
 
       // 2) Remover registros dependentes antigos
-      // Primeiro: respostas (depende de perguntas)
+      // Primeiro: buscar IDs das perguntas existentes
       const perguntasExistentes = await tx.escalaPergunta.findMany({
         where: { idEscala: escalaId },
         select: { id: true },
@@ -112,17 +107,35 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       const perguntaIds = perguntasExistentes.map((p) => p.id);
 
       if (perguntaIds.length > 0) {
+        // ✅ NOVO: deletar relações pergunta-categoria
+        try {
+          await (tx as any).escalaPerguntaCategoria.deleteMany({
+            where: { perguntaId: { in: perguntaIds } },
+          });
+        } catch (err) {
+          // Tenta nomenclatura alternativa
+          try {
+            await (tx as any).escala_pergunta_categoria.deleteMany({
+              where: { pergunta_id: { in: perguntaIds } },
+            });
+          } catch (err2) {
+            // Ignora se a tabela não existir
+            console.warn('Não foi possível deletar relações pergunta-categoria:', err2);
+          }
+        }
+
+        // deletar respostas
         await tx.escalaPerguntaResposta.deleteMany({
           where: { idPergunta: { in: perguntaIds } },
         });
       }
 
-      // Segundo: perguntas
+      // deletar perguntas
       await tx.escalaPergunta.deleteMany({
         where: { idEscala: escalaId },
       });
 
-      // Terceiro: categorias (depende de módulos)
+      // deletar categorias (não há mais FK direta de pergunta para categoria)
       const modulosExistentes = await tx.escalaModulo.findMany({
         where: { idEscala: escalaId },
         select: { id: true },
@@ -135,12 +148,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         });
       }
 
-      // Quarto: módulos
+      // deletar módulos
       await tx.escalaModulo.deleteMany({
         where: { idEscala: escalaId },
       });
 
-      // 3) Recriar módulos (map tempId -> real id)
+      // 3) Recriar módulos
       const tempModuleIdToReal: Record<string, number> = {};
       for (const m of modulos) {
         if (!m.tempId) throw new Error('Modulo sem tempId');
@@ -171,7 +184,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         tempModuleIdToReal[m.tempId] = modulo.id;
       }
 
-      // 4) Recriar categorias (map tempId -> real id)
+      // 4) Recriar categorias
       const tempCategoriaIdToReal: Record<string, number> = {};
       for (const c of categorias) {
         if (!c.tempId) throw new Error('Categoria sem tempId');
@@ -196,25 +209,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         tempCategoriaIdToReal[c.tempId] = categoria.id;
       }
 
-      // 5) Recriar perguntas e respostas
+      // 5) Recriar perguntas, respostas e relações com categorias
       for (const p of perguntas) {
         if (!p.tempId) throw new Error('Pergunta sem tempId');
         if (!p.pergunta || !String(p.pergunta).trim()) throw new Error('Pergunta sem texto');
 
         const moduloIdReal = tempModuleIdToReal[p.moduloTempId];
-        const categoriaIdReal = tempCategoriaIdToReal[p.categoriaTempId];
-
-        if (!moduloIdReal || !categoriaIdReal) {
-          // ignora pergunta mal referenciada (ou lance erro, conforme política desejada)
+        if (!moduloIdReal) {
           throw new Error(`Referência inválida em pergunta: ${p.pergunta}`);
         }
 
+        // ✅ MUDOU: não precisa mais de idCategoria único
         const perguntaBase: any = {
           idEscala: escalaId,
           pergunta: String(p.pergunta).trim(),
           ordem: Number(p.ordem) || 0,
           idModulo: moduloIdReal,
-          idCategoria: categoriaIdReal,
           ativo: 1,
         };
 
@@ -225,6 +235,52 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           perguntaBase,
           { id: true }
         );
+
+        // ✅ NOVO: criar relações many-to-many com categorias
+        if (p.categoriasTempIds && p.categoriasTempIds.length > 0) {
+          for (let i = 0; i < p.categoriasTempIds.length; i++) {
+            const catTempId = p.categoriasTempIds[i];
+            const categoriaIdReal = tempCategoriaIdToReal[catTempId];
+            
+            if (!categoriaIdReal) {
+              console.warn(`Categoria ${catTempId} não encontrada para pergunta ${p.pergunta}`);
+              continue;
+            }
+
+            // Tenta diferentes nomenclaturas possíveis
+            try {
+              await (tx as any).escalaPerguntaCategoria.create({
+                data: {
+                  perguntaId: perguntaCreated.id,
+                  categoriaId: categoriaIdReal,
+                  ordem: i + 1,
+                  created: now,
+                },
+              });
+            } catch (err) {
+              // Tenta nomenclatura alternativa
+              try {
+                await (tx as any).escala_pergunta_categoria.create({
+                  data: {
+                    pergunta_id: perguntaCreated.id,
+                    categoria_id: categoriaIdReal,
+                    ordem: i + 1,
+                    created: now,
+                  },
+                });
+              } catch (err2) {
+                // Tenta outra variação
+                await (tx as any).EscalaPerguntaCategoria.create({
+                  data: {
+                    idPergunta: perguntaCreated.id,
+                    idCategoria: categoriaIdReal,
+                    ordem: i + 1,
+                  },
+                });
+              }
+            }
+          }
+        }
 
         // respostas
         for (const r of p.respostas ?? []) {

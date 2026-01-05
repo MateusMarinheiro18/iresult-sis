@@ -70,7 +70,7 @@ export default async function EditEscalaPage({ params }: { params: Promise<{ id:
       pergunta: p.pergunta,
       ordem: p.ordem ?? 0,
       moduloTempId: p.idModulo?.toString() ?? '',
-      categoriaTempId: p.idCategoria?.toString() ?? '',
+      categoriasTempIds: p.idCategoria ? [p.idCategoria.toString()] : [],
       respostas: p.respostasPossiveis.map((r) => ({
         id: r.id,
         tempId: createTempId('resp'),

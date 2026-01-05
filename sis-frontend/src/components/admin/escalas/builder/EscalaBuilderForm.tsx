@@ -1,4 +1,5 @@
 // src/components/admin/escalas/builder/EscalaBuilderForm.tsx
+// ⚠️ PARTE 1 DE 2 - Continue com a Parte 2
 'use client';
 
 import React, { FormEvent, useState, useEffect } from 'react';
@@ -48,8 +49,6 @@ function createDefaultRespostasLikert(): RespostaFormState[] {
   return [1, 2, 3, 4, 5].map((v) => createEmptyResposta(v));
 }
 
-/* ---------- Helpers para validação de faixas de módulo ---------- */
-
 function parseNumberOrNull(v?: string | number): number | null {
   if (v === null || v === undefined || v === '') return null;
   const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
@@ -57,21 +56,9 @@ function parseNumberOrNull(v?: string | number): number | null {
   return n;
 }
 
-// epsilon para comparar floats
 const EPS = 1e-9;
-// gap mínimo solicitado
 const MIN_GAP = 0.1;
 
-/**
- * Regras implementadas:
- * - Se um par (inicial/final) está parcialmente preenchido => erro.
- * - Valores entre 1 e 5.
- * - Dentro de cada faixa: inicial <= final.
- * - Entre faixas adjacentes, exige-se que nextLower - prevUpper >= MIN_GAP.
- *   Ou seja: upper_prev + MIN_GAP <= lower_next.
- * - Isso evita: igualdade (ex.: 1-3 e 3-4) e sobreposição, e força um gap de ao menos 0.1.
- * - Se intermediário ausente e temos risco + favorável, também exigimos gap >= MIN_GAP.
- */
 function validateModuleRanges(mod: ModuloFormState): string | null {
   const ri = parseNumberOrNull(mod.valorInicialRisco);
   const rf = parseNumberOrNull(mod.valorFinalRisco);
@@ -83,12 +70,10 @@ function validateModuleRanges(mod: ModuloFormState): string | null {
   const anyFilled = [ri, rf, ii, ifv, fi, ff].some((x) => x !== null);
   if (!anyFilled) return null;
 
-  // Pares parcialmente preenchidos não são aceitos
   if ((ri === null) !== (rf === null)) return 'Preencha ambos os valores da faixa "Risco" ou deixe-os vazios.';
   if ((ii === null) !== (ifv === null)) return 'Preencha ambos os valores da faixa "Intermediário" ou deixe-os vazios.';
   if ((fi === null) !== (ff === null)) return 'Preencha ambos os valores da faixa "Favorável" ou deixe-os vazios.';
 
-  // Checar 1..5 e initial <= final
   const pairs: Array<[number | null, number | null, string]> = [
     [ri, rf, 'Risco'],
     [ii, ifv, 'Intermediário'],
@@ -103,22 +88,18 @@ function validateModuleRanges(mod: ModuloFormState): string | null {
     }
   }
 
-  // Validações de gap mínimo entre faixas adjacentes:
-  // Risco -> Intermediário: require ii - rf >= MIN_GAP (se ambos presentes)
   if (rf !== null && ii !== null) {
     if (ii - rf + EPS < MIN_GAP) {
       return `Há sobreposição ou gap insuficiente entre "Risco" (até ${rf}) e "Intermediário" (a partir de ${ii}). Deve haver pelo menos ${MIN_GAP.toFixed(1)} de distância entre o final de uma e o início da outra (ex.: risco até 2.9 e intermediário a partir de 3.0).`;
     }
   }
 
-  // Intermediário -> Favorável: require fi - ifv >= MIN_GAP (se ambos presentes)
   if (ifv !== null && fi !== null) {
     if (fi - ifv + EPS < MIN_GAP) {
       return `Há sobreposição ou gap insuficiente entre "Intermediário" (até ${ifv}) e "Favorável" (a partir de ${fi}). Deve haver pelo menos ${MIN_GAP.toFixed(1)} de distância entre as faixas.`;
     }
   }
 
-  // Caso intermediário ausente, risco e favorável presentes:
   if (rf !== null && fi !== null && ii === null && ifv === null) {
     if (fi - rf + EPS < MIN_GAP) {
       return `As faixas "Risco" e "Favorável" precisam ter pelo menos ${MIN_GAP.toFixed(1)} de distância entre elas quando não há faixa "Intermediário". Por exemplo, se Favorável começa em 3.0, Risco deve terminar em no máximo 2.9.`;
@@ -127,8 +108,6 @@ function validateModuleRanges(mod: ModuloFormState): string | null {
 
   return null;
 }
-
-/* ---------- Componente principal ---------- */
 
 export default function EscalaBuilderForm({
   mode = 'create',
@@ -150,7 +129,6 @@ export default function EscalaBuilderForm({
     perguntas: [],
   });
 
-  // Module modal
   const [moduleModalOpen, setModuleModalOpen] = useState(false);
   const [editingModuleTempId, setEditingModuleTempId] = useState<string | null>(null);
   const [moduleDraft, setModuleDraft] = useState<ModuloFormState | null>(null);
@@ -185,7 +163,6 @@ export default function EscalaBuilderForm({
       return;
     }
 
-    // Validação das faixas do módulo antes de salvar (inclui regra do gap mínimo de 0.1).
     const err = validateModuleRanges(moduleDraft);
     if (err) {
       toast.error(err);
@@ -217,8 +194,7 @@ export default function EscalaBuilderForm({
     setState((prev) => ({ ...prev, modulos: prev.modulos.filter((m) => m.tempId !== tempId), categorias: prev.categorias.filter((c) => c.moduloTempId !== tempId) }));
   }
 
-  // Question modal (we use PerguntaFormState shape for the draft so types align)
-  type PerguntaDraftState = PerguntaFormState; // alias for clarity
+  type PerguntaDraftState = PerguntaFormState;
 
   const [questionModalOpen, setQuestionModalOpen] = useState(false);
   const [questionModalStep, setQuestionModalStep] = useState<1 | 2>(1);
@@ -234,16 +210,13 @@ export default function EscalaBuilderForm({
       return;
     }
 
-    // <-- ALTERAÇÃO: não pré-selecionar o primeiro módulo — deixar em branco para mostrar placeholder -->
-    const defaultModuloTempId = ''; // anteriormente: state.modulos[0]?.tempId ?? '';
-
     setEditingQuestionTempId(null);
     setQuestionDraft({
       tempId: createTempId('perg'),
       pergunta: '',
       ordem: state.perguntas.length + 1,
-      moduloTempId: defaultModuloTempId,
-      categoriaTempId: '',
+      moduloTempId: '',
+      categoriasTempIds: [],
       respostas: createDefaultRespostasLikert(),
     });
     setQuestionModalStep(1);
@@ -261,7 +234,7 @@ export default function EscalaBuilderForm({
       pergunta: perg.pergunta,
       ordem: perg.ordem,
       moduloTempId: perg.moduloTempId,
-      categoriaTempId: perg.categoriaTempId,
+      categoriasTempIds: [...(perg.categoriasTempIds || [])],
       respostas: perg.respostas.map((r) => ({ ...r })),
     });
     setQuestionModalStep(1);
@@ -280,7 +253,6 @@ export default function EscalaBuilderForm({
   }
 
   function handleQuestionDraftChange(field: keyof PerguntaDraftState, value: PerguntaDraftState[keyof PerguntaDraftState]) {
-    // usar updater funcional para evitar sobrescrita em chamadas sequenciais
     setQuestionDraft((prev) => {
       if (!prev) return prev as PerguntaDraftState | null;
       return { ...prev, [field]: value } as PerguntaDraftState;
@@ -298,8 +270,8 @@ export default function EscalaBuilderForm({
       toast.error('Selecione um módulo para a pergunta.');
       return;
     }
-    if (!questionDraft.categoriaTempId) {
-      toast.error('Selecione uma categoria para a pergunta.');
+    if (!questionDraft.categoriasTempIds || questionDraft.categoriasTempIds.length === 0) {
+      toast.error('Selecione pelo menos uma categoria para a pergunta.');
       return;
     }
     setQuestionModalStep(2);
@@ -329,7 +301,6 @@ export default function EscalaBuilderForm({
   }
 
   async function handleRemoveRespostaInDraft(respTempId: string) {
-    // usa confirmação como antes, depois aplica alteração de forma funcional
     if (!questionDraft) return;
     if (questionDraft.respostas.length <= 1) {
       toast.error('A pergunta deve ter pelo menos uma resposta possível.');
@@ -378,7 +349,7 @@ export default function EscalaBuilderForm({
             ...perguntas[idx],
             pergunta: questionDraft.pergunta.trim(),
             moduloTempId: questionDraft.moduloTempId,
-            categoriaTempId: questionDraft.categoriaTempId,
+            categoriasTempIds: [...questionDraft.categoriasTempIds],
             ordem: questionDraft.ordem,
             respostas: questionDraft.respostas.map((r) => ({ ...r, resposta: r.resposta.trim() })),
           };
@@ -390,7 +361,7 @@ export default function EscalaBuilderForm({
           pergunta: questionDraft.pergunta.trim(),
           ordem,
           moduloTempId: questionDraft.moduloTempId,
-          categoriaTempId: questionDraft.categoriaTempId,
+          categoriasTempIds: [...questionDraft.categoriasTempIds],
           respostas: questionDraft.respostas.map((r) => ({ ...r, resposta: r.resposta.trim() })),
         });
       }
@@ -400,546 +371,504 @@ export default function EscalaBuilderForm({
     closeQuestionModal();
   }
 
-  // create category inline
-  function startCreateCategory() { setCreatingCategory(true); setNewCategoryName(''); }
-  function cancelCreateCategory() { setCreatingCategory(false); setNewCategoryName(''); }
-  function confirmCreateCategory() {
-    if (!questionDraft) return;
-    const nome = newCategoryName.trim();
-    if (!nome) {
-      toast.error('Informe o nome da categoria.');
+
+// ⚠️ CONTINUAÇÃO DA PARTE 1 - Cole após a Parte 1
+
+function startCreateCategory() { setCreatingCategory(true); setNewCategoryName(''); }
+function cancelCreateCategory() { setCreatingCategory(false); setNewCategoryName(''); }
+function confirmCreateCategory() {
+  if (!questionDraft) return;
+  const nome = newCategoryName.trim();
+  if (!nome) {
+    toast.error('Informe o nome da categoria.');
+    return;
+  }
+  const moduloTempId = questionDraft.moduloTempId;
+  if (!moduloTempId) {
+    toast.error('Selecione um módulo antes de criar a categoria.');
+    return;
+  }
+  const newCat: CategoriaFormState = { tempId: createTempId('cat'), nome, moduloTempId };
+
+  setState((prev) => ({ ...prev, categorias: [...prev.categorias, newCat] }));
+
+  setQuestionDraft((prev) => {
+    if (!prev) return prev;
+    return { 
+      ...prev, 
+      categoriasTempIds: [...prev.categoriasTempIds, newCat.tempId] 
+    } as PerguntaDraftState;
+  });
+
+  setCreatingCategory(false);
+  setNewCategoryName('');
+}
+
+const [draggingQuestionId, setDraggingQuestionId] = useState<string | null>(null);
+
+function handleDragStart(e: React.DragEvent<HTMLDivElement>, tempId: string) {
+  setDraggingQuestionId(tempId);
+  e.dataTransfer.effectAllowed = 'move';
+}
+function handleDragOver(e: React.DragEvent<HTMLDivElement>, tempId: string) {
+  e.preventDefault();
+  if (!draggingQuestionId || draggingQuestionId === tempId) return;
+  e.dataTransfer.dropEffect = 'move';
+}
+function handleDrop(e: React.DragEvent<HTMLDivElement>, targetId: string) {
+  e.preventDefault();
+  if (!draggingQuestionId || draggingQuestionId === targetId) return;
+  setState((prev) => {
+    const perguntas = [...prev.perguntas];
+    const fromIdx = perguntas.findIndex((p) => p.tempId === draggingQuestionId);
+    const toIdx = perguntas.findIndex((p) => p.tempId === targetId);
+    if (fromIdx === -1 || toIdx === -1) return prev;
+    const [moved] = perguntas.splice(fromIdx, 1);
+    perguntas.splice(toIdx, 0, moved);
+    const perguntasComOrdem = perguntas.map((p, index) => ({ ...p, ordem: index + 1 }));
+    return { ...prev, perguntas: perguntasComOrdem };
+  });
+  setDraggingQuestionId(null);
+}
+function handleDragEnd() { setDraggingQuestionId(null); }
+
+async function handleRemovePergunta(tempId: string) {
+  const ok = await confirm({
+    title: 'Remover pergunta',
+    description: 'Tem certeza que deseja remover esta pergunta?',
+    confirmLabel: 'Remover',
+    cancelLabel: 'Cancelar',
+    danger: true,
+  });
+  if (!ok) return;
+  setState((prev) => {
+    const perguntas = prev.perguntas.filter((p) => p.tempId !== tempId);
+    const perguntasComOrdem = perguntas.map((p, index) => ({ ...p, ordem: index + 1 }));
+    return { ...prev, perguntas: perguntasComOrdem };
+  });
+}
+
+function getModuloName(moduloTempId: string) {
+  return state.modulos.find((m) => m.tempId === moduloTempId)?.nome ?? '—';
+}
+
+function getCategoriasNames(categoriasTempIds: string[]) {
+  if (!categoriasTempIds || categoriasTempIds.length === 0) return '—';
+  const names = categoriasTempIds
+    .map(id => state.categorias.find((c) => c.tempId === id)?.nome)
+    .filter(Boolean);
+  return names.length > 0 ? names.join(', ') : '—';
+}
+
+function updateCampoEscala<K extends keyof EscalaFormState>(field: K, value: EscalaFormState[K]) {
+  setState((prev) => ({ ...prev, [field]: value }));
+}
+
+async function handleSubmit(e: FormEvent) {
+  e.preventDefault();
+  if (saving) return;
+
+  const nome = state.nome.trim();
+  if (!nome) { toast.error('Informe o nome da escala.'); return; }
+  if (!state.modulos.length) { toast.error('Adicione pelo menos um módulo à escala.'); return; }
+  if (!state.perguntas.length) { toast.error('Adicione pelo menos uma pergunta.'); return; }
+
+  for (let i = 0; i < state.modulos.length; i++) {
+    const m = state.modulos[i];
+    const err = validateModuleRanges(m);
+    if (err) {
+      toast.error(`Módulo "${m.nome || `#${i+1}`}": ${err}`);
       return;
     }
-    const moduloTempId = questionDraft.moduloTempId;
-    if (!moduloTempId) {
-      toast.error('Selecione um módulo antes de criar a categoria.');
-      return;
+  }
+
+  for (let i = 0; i < state.perguntas.length; i++) {
+    const p = state.perguntas[i];
+    if (!p.pergunta.trim()) { toast.error(`Pergunta ${i + 1}: texto é obrigatório.`); return; }
+    if (!p.moduloTempId) { toast.error(`Pergunta ${i + 1}: selecione um módulo.`); return; }
+    if (!p.categoriasTempIds || p.categoriasTempIds.length === 0) { 
+      toast.error(`Pergunta ${i + 1}: selecione pelo menos uma categoria.`); 
+      return; 
     }
-    const newCat: CategoriaFormState = { tempId: createTempId('cat'), nome, moduloTempId };
-
-    // atualiza categorias da escala
-    setState((prev) => ({ ...prev, categorias: [...prev.categorias, newCat] }));
-
-    // seleciona a nova categoria no draft (usando updater funcional)
-    setQuestionDraft((prev) => (prev ? { ...prev, categoriaTempId: newCat.tempId } as PerguntaDraftState : prev));
-
-    // limpa UI de criação inline
-    setCreatingCategory(false);
-    setNewCategoryName('');
-  }
-
-  // drag & drop questions
-  const [draggingQuestionId, setDraggingQuestionId] = useState<string | null>(null);
-
-  function handleDragStart(e: React.DragEvent<HTMLDivElement>, tempId: string) {
-    setDraggingQuestionId(tempId);
-    e.dataTransfer.effectAllowed = 'move';
-  }
-  function handleDragOver(e: React.DragEvent<HTMLDivElement>, tempId: string) {
-    e.preventDefault();
-    if (!draggingQuestionId || draggingQuestionId === tempId) return;
-    e.dataTransfer.dropEffect = 'move';
-  }
-  function handleDrop(e: React.DragEvent<HTMLDivElement>, targetId: string) {
-    e.preventDefault();
-    if (!draggingQuestionId || draggingQuestionId === targetId) return;
-    setState((prev) => {
-      const perguntas = [...prev.perguntas];
-      const fromIdx = perguntas.findIndex((p) => p.tempId === draggingQuestionId);
-      const toIdx = perguntas.findIndex((p) => p.tempId === targetId);
-      if (fromIdx === -1 || toIdx === -1) return prev;
-      const [moved] = perguntas.splice(fromIdx, 1);
-      perguntas.splice(toIdx, 0, moved);
-      const perguntasComOrdem = perguntas.map((p, index) => ({ ...p, ordem: index + 1 }));
-      return { ...prev, perguntas: perguntasComOrdem };
-    });
-    setDraggingQuestionId(null);
-  }
-  function handleDragEnd() { setDraggingQuestionId(null); }
-
-  async function handleRemovePergunta(tempId: string) {
-    const ok = await confirm({
-      title: 'Remover pergunta',
-      description: 'Tem certeza que deseja remover esta pergunta?',
-      confirmLabel: 'Remover',
-      cancelLabel: 'Cancelar',
-      danger: true,
-    });
-    if (!ok) return;
-    setState((prev) => {
-      const perguntas = prev.perguntas.filter((p) => p.tempId !== tempId);
-      const perguntasComOrdem = perguntas.map((p, index) => ({ ...p, ordem: index + 1 }));
-      return { ...prev, perguntas: perguntasComOrdem };
-    });
-  }
-
-  // helpers
-  function getModuloName(moduloTempId: string) {
-    return state.modulos.find((m) => m.tempId === moduloTempId)?.nome ?? '—';
-  }
-
-  function getCategoriaName(catTempId: string) {
-    return state.categorias.find((c) => c.tempId === catTempId)?.nome ?? '—';
-  }
-
-  function updateCampoEscala<K extends keyof EscalaFormState>(field: K, value: EscalaFormState[K]) {
-    setState((prev) => ({ ...prev, [field]: value }));
-  }
-
-  // submit
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (saving) return;
-
-    const nome = state.nome.trim();
-    if (!nome) { toast.error('Informe o nome da escala.'); return; }
-    if (!state.modulos.length) { toast.error('Adicione pelo menos um módulo à escala.'); return; }
-    if (!state.perguntas.length) { toast.error('Adicione pelo menos uma pergunta.'); return; }
-
-    // validação das faixas de todos os módulos antes de enviar
-    for (let i = 0; i < state.modulos.length; i++) {
-      const m = state.modulos[i];
-      const err = validateModuleRanges(m);
-      if (err) {
-        toast.error(`Módulo "${m.nome || `#${i+1}`}": ${err}`);
+    if (!p.respostas.length) { toast.error(`Pergunta ${i + 1}: adicione pelo menos uma resposta.`); return; }
+    for (let j = 0; j < p.respostas.length; j++) {
+      const r = p.respostas[j];
+      if (!r.resposta.trim()) { toast.error(`Pergunta ${i + 1}, resposta ${j + 1}: texto é obrigatório.`); return; }
+      if (r.valor === '' || Number.isNaN(Number(r.valor)) || Number(r.valor) < 1 || Number(r.valor) > 5) {
+        toast.error(`Pergunta ${i + 1}, resposta ${j + 1}: informe um valor entre 1 e 5.`);
         return;
       }
     }
-
-    // validate perguntas
-    for (let i = 0; i < state.perguntas.length; i++) {
-      const p = state.perguntas[i];
-      if (!p.pergunta.trim()) { toast.error(`Pergunta ${i + 1}: texto é obrigatório.`); return; }
-      if (!p.moduloTempId) { toast.error(`Pergunta ${i + 1}: selecione um módulo.`); return; }
-      if (!p.categoriaTempId) { toast.error(`Pergunta ${i + 1}: selecione uma categoria.`); return; }
-      if (!p.respostas.length) { toast.error(`Pergunta ${i + 1}: adicione pelo menos uma resposta.`); return; }
-      for (let j = 0; j < p.respostas.length; j++) {
-        const r = p.respostas[j];
-        if (!r.resposta.trim()) { toast.error(`Pergunta ${i + 1}, resposta ${j + 1}: texto é obrigatório.`); return; }
-        if (r.valor === '' || Number.isNaN(Number(r.valor)) || Number(r.valor) < 1 || Number(r.valor) > 5) {
-          toast.error(`Pergunta ${i + 1}, resposta ${j + 1}: informe um valor entre 1 e 5.`);
-          return;
-        }
-      }
-    }
-
-    const payload = {
-      nome,
-      dataVencimento: state.dataVencimento || null,
-      ativo: state.ativo ? 1 : 0,
-      modulos: state.modulos.map((m) => (({
-        tempId: m.tempId,
-        nome: m.nome.trim(),
-        valorInicialFavoravel: m.valorInicialFavoravel || null,
-        valorFinalFavoravel: m.valorFinalFavoravel || null,
-        valorInicialIntermediario: m.valorInicialIntermediario || null,
-        valorFinalIntermediario: m.valorFinalIntermediario || null,
-        valorInicialRisco: m.valorInicialRisco || null,
-        valorFinalRisco: m.valorFinalRisco || null,
-        id: (m as any).id ?? null,
-      }))),
-      categorias: state.categorias.map((c) => (({
-        tempId: c.tempId,
-        nome: c.nome.trim(),
-        moduloTempId: c.moduloTempId,
-        id: (c as any).id ?? null,
-      }))),
-      perguntas: state.perguntas.map((p) => (({
-        tempId: p.tempId,
-        pergunta: p.pergunta.trim(),
-        ordem: p.ordem,
-        moduloTempId: p.moduloTempId,
-        categoriaTempId: p.categoriaTempId,
-        id: (p as any).id ?? null,
-        respostas: p.respostas.map((r) => ({ resposta: r.resposta.trim(), valor: Number(r.valor), id: (r as any).id ?? null })),
-      }))),
-
-      };
-
-    setSaving(true);
-    try {
-      let res;
-      if (mode === 'create') {
-        res = await fetch('/api/escalas/builder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      } else {
-        const escalaId = (initialData && (initialData as any).id) ? (initialData as any).id : null;
-        if (!escalaId) {
-          throw new Error('ID da escala ausente para edição.');
-        }
-        res = await fetch(`/api/escalas/${escalaId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      }
-
-      const data = await res!.json().catch(() => ({}));
-      if (!res!.ok) throw new Error(data?.error || 'Erro ao salvar escala.');
-      toast.success(mode === 'create' ? 'Escala criada com sucesso!' : 'Escala atualizada com sucesso!');
-      router.push('/admin/escalas');
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || 'Erro ao salvar escala.');
-    } finally {
-      setSaving(false);
-    }
   }
 
-  // Close modals with Escape key
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' || e.key === 'Esc') {
-        if (moduleModalOpen) {
-          closeModuleModal();
-        }
-        if (questionModalOpen) {
-          closeQuestionModal();
-        }
+  const payload = {
+    nome,
+    dataVencimento: state.dataVencimento || null,
+    ativo: state.ativo ? 1 : 0,
+    modulos: state.modulos.map((m) => (({
+      tempId: m.tempId,
+      nome: m.nome.trim(),
+      valorInicialFavoravel: m.valorInicialFavoravel || null,
+      valorFinalFavoravel: m.valorFinalFavoravel || null,
+      valorInicialIntermediario: m.valorInicialIntermediario || null,
+      valorFinalIntermediario: m.valorFinalIntermediario || null,
+      valorInicialRisco: m.valorInicialRisco || null,
+      valorFinalRisco: m.valorFinalRisco || null,
+      id: (m as any).id ?? null,
+    }))),
+    categorias: state.categorias.map((c) => (({
+      tempId: c.tempId,
+      nome: c.nome.trim(),
+      moduloTempId: c.moduloTempId,
+      id: (c as any).id ?? null,
+    }))),
+    perguntas: state.perguntas.map((p) => (({
+      tempId: p.tempId,
+      pergunta: p.pergunta.trim(),
+      ordem: p.ordem,
+      moduloTempId: p.moduloTempId,
+      categoriasTempIds: p.categoriasTempIds,
+      id: (p as any).id ?? null,
+      respostas: p.respostas.map((r) => ({ resposta: r.resposta.trim(), valor: Number(r.valor), id: (r as any).id ?? null })),
+    }))),
+  };
+
+  setSaving(true);
+  try {
+    let res;
+    if (mode === 'create') {
+      res = await fetch('/api/escalas/builder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    } else {
+      const escalaId = (initialData && (initialData as any).id) ? (initialData as any).id : null;
+      if (!escalaId) {
+        throw new Error('ID da escala ausente para edição.');
+      }
+      res = await fetch(`/api/escalas/${escalaId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    }
+
+    const data = await res!.json().catch(() => ({}));
+    if (!res!.ok) throw new Error(data?.error || 'Erro ao salvar escala.');
+    toast.success(mode === 'create' ? 'Escala criada com sucesso!' : 'Escala atualizada com sucesso!');
+    router.push('/admin/escalas');
+  } catch (err: any) {
+    console.error(err);
+    toast.error(err?.message || 'Erro ao salvar escala.');
+  } finally {
+    setSaving(false);
+  }
+}
+
+useEffect(() => {
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      if (moduleModalOpen) {
+        closeModuleModal();
+      }
+      if (questionModalOpen) {
+        closeQuestionModal();
       }
     }
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, [moduleModalOpen, questionModalOpen]);
+  }
+  window.addEventListener('keydown', onKeyDown);
+  return () => {
+    window.removeEventListener('keydown', onKeyDown);
+  };
+}, [moduleModalOpen, questionModalOpen]);
 
-  // NOVA FUNÇÃO: deletar categoria
-  async function handleDeleteCategoria(categoriaId: string) {
-    const categoria = state.categorias.find((c) => c.tempId === categoriaId);
-    if (!categoria) return;
+async function handleDeleteCategoria(categoriaId: string) {
+  const categoria = state.categorias.find((c) => c.tempId === categoriaId);
+  if (!categoria) return;
 
-    const ok = await confirm({
-      title: 'Excluir categoria',
-      description: `Tem certeza que deseja excluir a categoria "${categoria.nome}"?\n\nTodas as perguntas vinculadas a ela serão desvinculadas.`,
-      confirmLabel: 'Excluir',
-      cancelLabel: 'Cancelar',
-      danger: true,
-    });
+  const ok = await confirm({
+    title: 'Excluir categoria',
+    description: `Tem certeza que deseja excluir a categoria "${categoria.nome}"?\n\nTodas as perguntas vinculadas a ela serão desvinculadas.`,
+    confirmLabel: 'Excluir',
+    cancelLabel: 'Cancelar',
+    danger: true,
+  });
 
-    if (!ok) return;
+  if (!ok) return;
 
-    setState((prev) => {
-      // 1. Remover a categoria
-      const newCategorias = prev.categorias.filter((c) => c.tempId !== categoriaId);
+  setState((prev) => {
+    const newCategorias = prev.categorias.filter((c) => c.tempId !== categoriaId);
+    const newPerguntas = prev.perguntas.map((p) => ({
+      ...p,
+      categoriasTempIds: p.categoriasTempIds.filter(id => id !== categoriaId)
+    }));
 
-      // 2. Desvincular perguntas desta categoria
-      const newPerguntas = prev.perguntas.map((p) =>
-        p.categoriaTempId === categoriaId
-          ? { ...p, categoriaTempId: '' }
-          : p
+    if (questionDraft?.categoriasTempIds.includes(categoriaId)) {
+      setQuestionDraft((prev) => 
+        prev ? { 
+          ...prev, 
+          categoriasTempIds: prev.categoriasTempIds.filter(id => id !== categoriaId) 
+        } as PerguntaDraftState : prev
       );
+    }
 
-      // 3. Se o draft da pergunta estava usando esta categoria, limpar também
-      if (questionDraft?.categoriaTempId === categoriaId) {
-        setQuestionDraft((prev) => 
-          prev ? { ...prev, categoriaTempId: '' } as PerguntaDraftState : prev
-        );
-      }
+    return {
+      ...prev,
+      categorias: newCategorias,
+      perguntas: newPerguntas,
+    };
+  });
 
-      return {
-        ...prev,
-        categorias: newCategorias,
-        perguntas: newPerguntas,
-      };
-    });
+  toast.success(`Categoria "${categoria.nome}" excluída com sucesso.`);
+}
 
-    toast.success(`Categoria "${categoria.nome}" excluída com sucesso.`);
-  }
-
-  return (
-    <form className="escala-form" onSubmit={handleSubmit}>
-      {/* DADOS BÁSICOS */}
-      <section className="card data-card">
-        <div className="card-banner">
-          <div>
-            <h2 className="card-banner-title">Dados da escala</h2>
-            <p className="card-banner-sub">Informe o nome e a data de vencimento da escala.</p>
-          </div>
+return (
+  <form className="escala-form" onSubmit={handleSubmit}>
+    <section className="card data-card">
+      <div className="card-banner">
+        <div>
+          <h2 className="card-banner-title">Dados da escala</h2>
+          <p className="card-banner-sub">Informe o nome e a data de vencimento da escala.</p>
         </div>
-
-        <div className="card-body">
-          <div className="field-grid">
-            <div className="field">
-              <label className="label">Nome da escala <span className="required">*</span></label>
-              <input
-                type="text"
-                className="input"
-                value={state.nome}
-                onChange={(e) => updateCampoEscala('nome', e.target.value)}
-                placeholder="Ex.: Escala de Clima Organizacional 2025"
-              />
-            </div>
-
-            <div className="field">
-              <label className="label">Data de vencimento</label>
-              <input
-                type="date"
-                className="input"
-                value={state.dataVencimento}
-                onChange={(e) => updateCampoEscala('dataVencimento', e.target.value)}
-                placeholder="dd/mm/aaaa"
-              />
-            </div>
-
-            <div className="field switch-field">
-              <label className="label">Ativa</label>
-              <label className="switch new-switch" aria-label="Ativa">
-                <input
-                  type="checkbox"
-                  checked={state.ativo}
-                  onChange={(e) => updateCampoEscala('ativo', e.target.checked)}
-                  aria-checked={state.ativo}
-                />
-                <span className="slider" />
-              </label>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* MÓDULOS */}
-      <section className="card">
-        <div className="card-header-row">
-          <div>
-            <h2 className="card-title">Módulos da escala</h2>
-            <p className="card-subtitle">Cadastre os módulos e defina as faixas de Favorável / Intermediário / Risco para a média de respostas (1 a 5).</p>
-          </div>
-          <div>
-            <button type="button" className="btn-secondary" onClick={openNewModuleModal}>+ Adicionar módulo</button>
-          </div>
-        </div>
-
-        <ModuleList modulos={state.modulos} onEdit={openEditModuleModal} onRemove={handleRemoveModule} />
-      </section>
-
-      {/* PERGUNTAS */}
-      <section className="card">
-        <div className="card-header-row">
-          <div>
-            <h2 className="card-title">Perguntas da escala</h2>
-            <p className="card-subtitle">Crie as perguntas, vincule a um módulo e categoria, e defina as respostas possíveis com valores de 1 a 5.</p>
-          </div>
-          <div>
-            <button type="button" className="btn-secondary" onClick={openNewQuestionModal}>+ Adicionar pergunta</button>
-          </div>
-        </div>
-
-        <QuestionList
-          perguntas={state.perguntas}
-          getModuloName={getModuloName}
-          getCategoriaName={getCategoriaName}
-          onEdit={openEditQuestionModal}
-          onRemove={handleRemovePergunta}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          onDragEnd={handleDragEnd}
-          draggingQuestionId={draggingQuestionId}
-        />
-      </section>
-
-      {/* FOOTER */}
-      <div className="footer-actions">
-        <button type="button" className="btn-secondary" onClick={() => router.push('/admin/escalas')} disabled={saving}>Cancelar</button>
-        <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : (mode === 'create' ? 'Salvar escala' : 'Atualizar escala')}</button>
       </div>
 
-      {/* Modals */}
-      <ModuleModal
-        open={moduleModalOpen}
-        draft={moduleDraft}
-        editingTempId={editingModuleTempId}
-        onClose={closeModuleModal}
-        onChange={handleModuleDraftChange}
-        onSave={handleSaveModule}
+      <div className="card-body">
+        <div className="field-grid">
+          <div className="field">
+            <label className="label">Nome da escala <span className="required">*</span></label>
+            <input
+              type="text"
+              className="input"
+              value={state.nome}
+              onChange={(e) => updateCampoEscala('nome', e.target.value)}
+              placeholder="Ex.: Escala de Clima Organizacional 2025"
+            />
+          </div>
+
+          <div className="field">
+            <label className="label">Data de vencimento</label>
+            <input
+              type="date"
+              className="input"
+              value={state.dataVencimento}
+              onChange={(e) => updateCampoEscala('dataVencimento', e.target.value)}
+              placeholder="dd/mm/aaaa"
+            />
+          </div>
+
+          <div className="field switch-field">
+            <label className="label">Ativa</label>
+            <label className="switch new-switch" aria-label="Ativa">
+              <input
+                type="checkbox"
+                checked={state.ativo}
+                onChange={(e) => updateCampoEscala('ativo', e.target.checked)}
+                aria-checked={state.ativo}
+              />
+              <span className="slider" />
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section className="card">
+      <div className="card-header-row">
+        <div>
+          <h2 className="card-title">Módulos da escala</h2>
+          <p className="card-subtitle">Cadastre os módulos e defina as faixas de Favorável / Intermediário / Risco para a média de respostas (1 a 5).</p>
+        </div>
+        <div>
+          <button type="button" className="btn-secondary" onClick={openNewModuleModal}>+ Adicionar módulo</button>
+        </div>
+      </div>
+
+      <ModuleList modulos={state.modulos} onEdit={openEditModuleModal} onRemove={handleRemoveModule} />
+    </section>
+
+    <section className="card">
+      <div className="card-header-row">
+        <div>
+          <h2 className="card-title">Perguntas da escala</h2>
+          <p className="card-subtitle">Crie as perguntas, vincule a um módulo e categoria, e defina as respostas possíveis com valores de 1 a 5.</p>
+        </div>
+        <div>
+          <button type="button" className="btn-secondary" onClick={openNewQuestionModal}>+ Adicionar pergunta</button>
+        </div>
+      </div>
+
+      <QuestionList
+        perguntas={state.perguntas}
+        getModuloName={getModuloName}
+        getCategoriasNames={getCategoriasNames}
+        onEdit={openEditQuestionModal}
+        onRemove={handleRemovePergunta}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onDragEnd={handleDragEnd}
+        draggingQuestionId={draggingQuestionId}
       />
+    </section>
 
-      <QuestionModal
-        open={questionModalOpen}
-        draft={questionDraft}
-        step={questionModalStep}
-        editingTempId={editingQuestionTempId}
-        modulos={state.modulos.map((m) => ({ tempId: m.tempId, nome: m.nome }))}
-        categorias={state.categorias}
-        onClose={closeQuestionModal}
-        onChangeDraft={handleQuestionDraftChange}
-        onNext={handleQuestionStep1Next}
-        onBack={() => setQuestionModalStep(1)}
-        onAddResposta={handleAddRespostaToDraft}
-        onUpdateResposta={handleUpdateRespostaInDraft}
-        onRemoveResposta={handleRemoveRespostaInDraft}
-        onSave={handleQuestionStep2Save}
-        creatingCategory={creatingCategory}
-        onStartCreateCategory={startCreateCategory}
-        onCancelCreateCategory={cancelCreateCategory}
-        newCategoryName={newCategoryName}
-        setNewCategoryName={setNewCategoryName}
-        onConfirmCreateCategory={confirmCreateCategory}
-        onDeleteCategoria={handleDeleteCategoria} 
-      />
+    <div className="footer-actions">
+      <button type="button" className="btn-secondary" onClick={() => router.push('/admin/escalas')} disabled={saving}>Cancelar</button>
+      <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : (mode === 'create' ? 'Salvar escala' : 'Atualizar escala')}</button>
+    </div>
 
-      <style jsx>{`
-        /* layout */
-        .escala-form { display:flex; flex-direction:column; gap:20px; }
-        .card { background:#fff; border-radius:12px; padding:18px; box-shadow:0 6px 18px rgba(11,37,39,0.06); }
-        .card-title{font-size:18px;font-weight:700;margin:0 0 4px;color:#111827}
-        .card-subtitle{font-size:13px;color:#6b7280;margin:0 0 12px}
-        .card-header-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+    <ModuleModal
+      open={moduleModalOpen}
+      draft={moduleDraft}
+      editingTempId={editingModuleTempId}
+      onClose={closeModuleModal}
+      onChange={handleModuleDraftChange}
+      onSave={handleSaveModule}
+    />
 
-        /* ---------- custom data-card banner ---------- */
-        .data-card { padding: 0; overflow: visible; }
-        .card-banner {
-          background: #0B2527;
-          padding: 18px;
-          border-top-left-radius: 12px;
-          border-top-right-radius: 12px;
-        }
-        .card-banner-title {
-          margin: 0;
-          font-size: 18px;
-          font-weight: 700;
-          color: #F3F4FF; /* título branco-azulado */
-        }
-        .card-banner-sub {
-          margin: 6px 0 0;
-          font-size: 13px;
-          color: rgba(243,244,255,0.9); /* subtítulo levemente mais claro */
-        }
-        .card-body { padding: 18px; } /* espaçamento interno para os campos */
+    <QuestionModal
+      open={questionModalOpen}
+      draft={questionDraft}
+      step={questionModalStep}
+      editingTempId={editingQuestionTempId}
+      modulos={state.modulos.map((m) => ({ tempId: m.tempId, nome: m.nome }))}
+      categorias={state.categorias}
+      onClose={closeQuestionModal}
+      onChangeDraft={handleQuestionDraftChange}
+      onNext={handleQuestionStep1Next}
+      onBack={() => setQuestionModalStep(1)}
+      onAddResposta={handleAddRespostaToDraft}
+      onUpdateResposta={handleUpdateRespostaInDraft}
+      onRemoveResposta={handleRemoveRespostaInDraft}
+      onSave={handleQuestionStep2Save}
+      creatingCategory={creatingCategory}
+      onStartCreateCategory={startCreateCategory}
+      onCancelCreateCategory={cancelCreateCategory}
+      newCategoryName={newCategoryName}
+      setNewCategoryName={setNewCategoryName}
+      onConfirmCreateCategory={confirmCreateCategory}
+      onDeleteCategoria={handleDeleteCategoria} 
+    />
 
-        .field-grid {
-          display: grid;
-          grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
-          gap: 16px;
-          align-items: center;
-        }
-
-        .field{display:flex;flex-direction:column;gap:6px}
-        .label{font-size:13px;font-weight:600;color:#374151}
-        .required{color:#b91c1c;margin-left:2px}
-
-        /* inputs e placeholder */
-        .input,
-        .textarea,
-        select.input {
-          width:100%;
-          border-radius:8px;
-          border:1px solid #e5e7eb;
-          padding:8px 10px;
-          font-size:14px;
-          color:#111827;
-          outline:none;
-          transition: border-color .15s ease, box-shadow .15s ease;
-        }
-
-        .input::placeholder,
-        select.input::placeholder {
-          color: #374151; /* placeholder conforme pedido */
-          opacity: 0.7;
-        }
-
-        /* Date inputs don't always respect ::placeholder; ensure text color visible */
-        input[type="date"] {
-          color: #374151;
-        }
-
-        .input:focus { border-color:#0B2527; box-shadow:0 0 0 2px rgba(11,37,39,0.06); }
-
-        /* switch (novo estilo) */
-        .switch-field { align-items:flex-start; display:flex; flex-direction:column; gap:8px; }
-        .new-switch {
-          position: relative;
-          display: inline-block;
-          width: 56px;
-          height: 32px;
-        }
-        .new-switch input { opacity:0; width:0; height:0; position:absolute; left:0; top:0; }
-        .new-switch .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: #e5e7eb;
-          transition: .18s;
-          border-radius: 999px;
-          box-shadow: inset 0 1px 0 rgba(11,37,39,0.03);
-        }
-        .new-switch .slider::before {
-          content: "";
-          position: absolute;
-          height: 26px;
-          width: 26px;
-          left: 3px;
-          top: 3px;
-          background: #ffffff;
-          border-radius: 50%;
-          transition: transform .18s;
-          box-shadow: 0 4px 10px rgba(2,6,23,0.12);
-        }
-        .new-switch input:checked + .slider {
-          background: #0B2527; /* cor primária */
-        }
-        .new-switch input:checked + .slider::before {
-          transform: translateX(24px);
-        }
-        .new-switch input:focus-visible + .slider {
-          outline: 3px solid rgba(11,37,39,0.12);
-          outline-offset: 2px;
-        }
-
-        /* outras classes utilizadas nos subcomponentes */
-        .faixas-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:6px; }
-        .faixa-col { background:#fafafa; border-radius:8px; border:1px solid #eef2ff; padding:10px; }
-        .faixa-title { font-size:13px; font-weight:700; color:#0B2527; display:flex; align-items:center; gap:8px; margin:0 0 8px; }
-        .faixa-dot { width:10px;height:10px;border-radius:999px; display:inline-block; }
-        .faixa-dot-risco { background:#dc2626 }
-        .faixa-dot-intermediario { background:#facc15 }
-        .faixa-dot-favoravel { background:#16a34a }
-
-        .respostas-header { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
-        .respostas-title{font-size:13px;font-weight:700;color:#111827}
-
-        .btn-primary,
-        .btn-secondary,
-        .btn-tertiary {
-          border-radius: 999px;
-          padding: 8px 16px;
-          font-size: 13px;
-          font-weight: 700;
-          cursor: pointer;
-          border: 1px solid transparent;
-          transition: all .15s ease;
-          white-space: nowrap;
-        }
-
-        .btn-primary {
-          background: #0B2527;
-          color: #ffffff;
-          border-color: #0B2527;
-        }
-        .btn-primary:hover { background: #134148; border-color:#134148; }
-
-        .btn-secondary {
-          background: #ffffff;
-          color:#0B2527;
-          border: 1px solid #0B2527;
-        }
-        .btn-secondary:hover { background:#f3f7f7; }
-
-        .btn-tertiary {
-          background: transparent;
-          color: #0B2527;
-          border-color: #d1d5db;
-          padding-inline: 12px;
-        }
-        .btn-tertiary:hover { background:#f9fafb; }
-
-        .footer-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
-
-        @media (max-width: 960px) {
-          .field-grid { grid-template-columns: 1fr; }
-          .faixas-grid { grid-template-columns: 1fr; }
-          .footer-actions { flex-direction: column-reverse; align-items: stretch; }
-        }
-      `}</style>
-    </form>
-  );
+    <style jsx>{`
+      .escala-form { display:flex; flex-direction:column; gap:20px; }
+      .card { background:#fff; border-radius:12px; padding:18px; box-shadow:0 6px 18px rgba(11,37,39,0.06); }
+      .card-title{font-size:18px;font-weight:700;margin:0 0 4px;color:#111827}
+      .card-subtitle{font-size:13px;color:#6b7280;margin:0 0 12px}
+      .card-header-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+      .data-card { padding: 0; overflow: visible; }
+      .card-banner {
+        background: #0B2527;
+        padding: 18px;
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+      }
+      .card-banner-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: #F3F4FF;
+      }
+      .card-banner-sub {
+        margin: 6px 0 0;
+        font-size: 13px;
+        color: rgba(243,244,255,0.9);
+      }
+      .card-body { padding: 18px; }
+      .field-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: center;
+      }
+      .field{display:flex;flex-direction:column;gap:6px}
+      .label{font-size:13px;font-weight:600;color:#374151}
+      .required{color:#b91c1c;margin-left:2px}
+      .input,
+      .textarea,
+      select.input {
+        width:100%;
+        border-radius:8px;
+        border:1px solid #e5e7eb;
+        padding:8px 10px;
+        font-size:14px;
+        color:#111827;
+        outline:none;
+        transition: border-color .15s ease, box-shadow .15s ease;
+      }
+      .input::placeholder,
+      select.input::placeholder {
+        color: #374151;
+        opacity: 0.7;
+      }
+      input[type="date"] {
+        color: #374151;
+      }
+      .input:focus { border-color:#0B2527; box-shadow:0 0 0 2px rgba(11,37,39,0.06); }
+      .switch-field { align-items:flex-start; display:flex; flex-direction:column; gap:8px; }
+      .new-switch {
+        position: relative;
+        display: inline-block;
+        width: 56px;
+        height: 32px;
+      }
+      .new-switch input { opacity:0; width:0; height:0; position:absolute; left:0; top:0; }
+      .new-switch .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #e5e7eb;
+        transition: .18s;
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 rgba(11,37,39,0.03);
+      }
+      .new-switch .slider::before {
+        content: "";
+        position: absolute;
+        height: 26px;
+        width: 26px;
+        left: 3px;
+        top: 3px;
+        background: #ffffff;
+        border-radius: 50%;
+        transition: transform .18s;
+        box-shadow: 0 4px 10px rgba(2,6,23,0.12);
+      }
+      .new-switch input:checked + .slider {
+        background: #0B2527;
+      }
+      .new-switch input:checked + .slider::before {
+        transform: translateX(24px);
+      }
+      .new-switch input:focus-visible + .slider {
+        outline: 3px solid rgba(11,37,39,0.12);
+        outline-offset: 2px;
+      }
+      .btn-primary,
+      .btn-secondary,
+      .btn-tertiary {
+        border-radius: 999px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all .15s ease;
+        white-space: nowrap;
+      }
+      .btn-primary {
+        background: #0B2527;
+        color: #ffffff;
+        border-color: #0B2527;
+      }
+      .btn-primary:hover { background: #134148; border-color:#134148; }
+      .btn-secondary {
+        background: #ffffff;
+        color:#0B2527;
+        border: 1px solid #0B2527;
+      }
+      .btn-secondary:hover { background:#f3f7f7; }
+      .footer-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
+      @media (max-width: 960px) {
+        .field-grid { grid-template-columns: 1fr; }
+        .footer-actions { flex-direction: column-reverse; align-items: stretch; }
+      }
+    `}</style>
+  </form>
+);
 }
