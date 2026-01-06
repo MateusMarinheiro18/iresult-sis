@@ -19,9 +19,9 @@ function formatDate(d?: string | Date | null) {
   const date = typeof d === 'string' ? new Date(d) : d;
   if (Number.isNaN(date.getTime())) return '—';
 
-  const dia = String(date.getDate()).padStart(2, '0');
-  const mes = String(date.getMonth() + 1).padStart(2, '0');
-  const ano = date.getFullYear();
+  const dia = String(date.getUTCDate()).padStart(2, '0');
+  const mes = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const ano = date.getUTCFullYear();
   return `${dia}/${mes}/${ano}`;
 }
 

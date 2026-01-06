@@ -1,4 +1,3 @@
-// src/app/api/escalas/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyAdminToken } from '@/lib/auth/jwt';
@@ -10,6 +9,19 @@ function getBrasiliaDate(): Date {
   const utcMs = now.getTime();
   const brasiliaOffsetInMs = -3 * 3600000;
   return new Date(utcMs + brasiliaOffsetInMs);
+}
+
+/** formata uma Date para dd/mm/yyyy usando getters UTC (evita deslocamento por timezone) */
+function pad2(n: number) {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+function formatDateToDDMMYYYY(d: Date | null): string | null {
+  if (!d) return null;
+  const dt = new Date(d);
+  const day = dt.getUTCDate();
+  const month = dt.getUTCMonth() + 1;
+  const year = dt.getUTCFullYear();
+  return `${pad2(day)}/${pad2(month)}/${year}`;
 }
 
 /** Detecta erro do Prisma tipo "Unknown argument" (campo inexistente no model) */
@@ -117,7 +129,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // format dates to ISO to avoid transporting Date objects
+    // format dates to ISO - exatamente como na API de trilhas
     const items = (escalas || []).map((e: any) => ({
       ...e,
       dataVencimento: e.dataVencimento ? e.dataVencimento.toISOString() : null,
@@ -134,7 +146,6 @@ export async function GET(request: NextRequest) {
 
 /** ---------------- POST /api/escalas ----------------
  * Cria nova escala — auditoria é preenchida pelo servidor
- * (mantive seu POST existente sem mudanças)
  */
 export async function POST(request: NextRequest) {
   // auth
