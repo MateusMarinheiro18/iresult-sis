@@ -1,5 +1,6 @@
+// src/components/admin/escalas/builder/ModuleModal.tsx
 'use client';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ModuloFormState } from './types';
 
 export default function ModuleModal({
@@ -17,6 +18,26 @@ export default function ModuleModal({
   onChange: <K extends keyof ModuloFormState>(field: K, value: ModuloFormState[K]) => void;
   onSave: () => void;
 }) {
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        onClose();
+      }
+      // prevent Enter from submitting parent form accidentally
+      if (e.key === 'Enter') {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && sheetRef.current && sheetRef.current.contains(active)) {
+          e.preventDefault();
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
   if (!open || !draft) return null;
 
   // Normalize string for saving:
@@ -40,9 +61,10 @@ export default function ModuleModal({
 
     // if original had a decimal separator (and wasn't just trailing dot), keep original decimals
     if (withoutTrailingDot.includes('.')) {
-      // keep as typed but remove unnecessary leading zeros and keep decimal as typed
-      // normalize to remove trailing zeroes? keep as-is to respect user's input (requirement: only integers -> X.0)
-      return withoutTrailingDot;
+      // remove unnecessary leading zeros, but keep decimals as typed (trim trailing zeros not done to respect user)
+      // also remove stray leading '+' sign
+      const signed = withoutTrailingDot.replace(/^\+/, '');
+      return signed;
     }
     // integer -> format to X.0
     return n.toFixed(1);
@@ -73,11 +95,27 @@ export default function ModuleModal({
     onSave();
   }
 
-  return (
-    <div className="modal-root" role="dialog" aria-modal="true" aria-labelledby="module-modal-title">
-      <div className="modal-backdrop" onClick={onClose} />
+  // prevent clicks inside sheet closing the modal (backdrop should close)
+  function handleSheetClick(e: React.MouseEvent) {
+    e.stopPropagation();
+  }
 
-      <div className="modal-sheet" role="document">
+  return (
+    <div
+      className="modal-root"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="module-modal-title"
+      onClick={onClose}
+    >
+      <div className="modal-backdrop" aria-hidden />
+
+      <div
+        ref={sheetRef}
+        className="modal-sheet"
+        role="document"
+        onClick={handleSheetClick}
+      >
         <div className="modal-banner">
           <div>
             <h3 id="module-modal-title" className="modal-banner-title">
@@ -96,12 +134,13 @@ export default function ModuleModal({
               value={draft.nome}
               onChange={(e) => onChange('nome', e.target.value)}
               placeholder="Ex.: Clima Organizacional"
+              aria-label="Nome do módulo"
             />
           </div>
 
-          <div className="faixas-grid">
+          <div className="faixas-grid" role="group" aria-label="Faixas de classificação">
             <div className="faixa-col">
-              <h4 className="faixa-title"><span className="faixa-dot faixa-dot-risco" />Risco</h4>
+              <h4 className="faixa-title"><span className="faixa-dot faixa-dot-risco" aria-hidden />Risco</h4>
               <div className="faixa-row">
                 <div className="field compact">
                   <label className="label-mini">De</label>
@@ -111,6 +150,8 @@ export default function ModuleModal({
                     value={draft.valorInicialRisco ?? ''}
                     onChange={(e) => onChange('valorInicialRisco', e.target.value)}
                     placeholder="Ex.: 1.0"
+                    aria-label="Risco - valor inicial"
+                    inputMode="decimal"
                   />
                 </div>
                 <div className="field compact">
@@ -120,13 +161,15 @@ export default function ModuleModal({
                     value={draft.valorFinalRisco ?? ''}
                     onChange={(e) => onChange('valorFinalRisco', e.target.value)}
                     placeholder="Ex.: 2.9"
+                    aria-label="Risco - valor final"
+                    inputMode="decimal"
                   />
                 </div>
               </div>
             </div>
 
             <div className="faixa-col">
-              <h4 className="faixa-title"><span className="faixa-dot faixa-dot-intermediario" />Intermediário</h4>
+              <h4 className="faixa-title"><span className="faixa-dot faixa-dot-intermediario" aria-hidden />Intermediário</h4>
               <div className="faixa-row">
                 <div className="field compact">
                   <label className="label-mini">De</label>
@@ -135,6 +178,8 @@ export default function ModuleModal({
                     value={draft.valorInicialIntermediario ?? ''}
                     onChange={(e) => onChange('valorInicialIntermediario', e.target.value)}
                     placeholder="Ex.: 3.0"
+                    aria-label="Intermediário - valor inicial"
+                    inputMode="decimal"
                   />
                 </div>
                 <div className="field compact">
@@ -144,13 +189,15 @@ export default function ModuleModal({
                     value={draft.valorFinalIntermediario ?? ''}
                     onChange={(e) => onChange('valorFinalIntermediario', e.target.value)}
                     placeholder="Ex.: 3.9"
+                    aria-label="Intermediário - valor final"
+                    inputMode="decimal"
                   />
                 </div>
               </div>
             </div>
 
             <div className="faixa-col">
-              <h4 className="faixa-title"><span className="faixa-dot faixa-dot-favoravel" />Favorável</h4>
+              <h4 className="faixa-title"><span className="faixa-dot faixa-dot-favoravel" aria-hidden />Favorável</h4>
               <div className="faixa-row">
                 <div className="field compact">
                   <label className="label-mini">De</label>
@@ -159,6 +206,8 @@ export default function ModuleModal({
                     value={draft.valorInicialFavoravel ?? ''}
                     onChange={(e) => onChange('valorInicialFavoravel', e.target.value)}
                     placeholder="Ex.: 4.0"
+                    aria-label="Favorável - valor inicial"
+                    inputMode="decimal"
                   />
                 </div>
                 <div className="field compact">
@@ -168,6 +217,8 @@ export default function ModuleModal({
                     value={draft.valorFinalFavoravel ?? ''}
                     onChange={(e) => onChange('valorFinalFavoravel', e.target.value)}
                     placeholder="Ex.: 5.0"
+                    aria-label="Favorável - valor final"
+                    inputMode="decimal"
                   />
                 </div>
               </div>

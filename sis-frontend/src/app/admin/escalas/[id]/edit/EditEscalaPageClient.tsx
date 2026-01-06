@@ -10,14 +10,14 @@ export default function EditEscalaPageClient({
   escalaNome,
   escalaId,
 }: {
-  initialData: EscalaFormState & { id?: number };
+  initialData?: EscalaFormState & { id?: number };
   escalaNome?: string | null;
   escalaId?: number | null;
 }) {
   return (
-    <div className="page-root">
+    <div className="page-root" aria-label="Página de edição de escala">
       <main className="container">
-        <header className="header-row">
+        <header className="header-row" role="banner">
           <div>
             <h1 className="page-title">
               Editar Escala{escalaNome ? ` — ${escalaNome}` : ''}
@@ -28,25 +28,30 @@ export default function EditEscalaPageClient({
           </div>
         </header>
 
-        <EscalaBuilderForm mode="edit" initialData={initialData} />
+        {/* Mantemos apenas as props esperadas pelo EscalaBuilderForm */}
+        <EscalaBuilderForm mode="edit" initialData={initialData ?? undefined} />
       </main>
 
       <style jsx>{`
         .page-root {
           width: 100%;
+          display: block;
         }
 
         .container {
           max-width: 1120px;
           margin: 0 auto;
           padding: 24px 16px 40px;
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
         }
 
         .header-row {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 20px;
+          margin-bottom: 12px;
         }
 
         .page-title {
@@ -60,6 +65,16 @@ export default function EditEscalaPageClient({
           font-size: 14px;
           color: #6b7280;
           margin: 0;
+        }
+
+        @media (max-width: 768px) {
+          .header-row {
+            flex-direction: column;
+            gap: 8px;
+          }
+          .page-title {
+            font-size: 18px;
+          }
         }
       `}</style>
     </div>

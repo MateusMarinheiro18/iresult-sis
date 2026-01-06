@@ -2,17 +2,28 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import EditEscalaPageClient from './EditEscalaPageClient'; // ajuste relativo dependendo da sua estrutura
+import EditEscalaPageClient from './EditEscalaPageClient';
 import type { EscalaFormState } from '@/components/admin/escalas/builder/types';
 
 function makeTempId(prefix: string, id: number) {
   return `${prefix}-${id}`;
 }
 
+function safeToISODateOnly(d: unknown): string {
+  if (!d) return '';
+  try {
+    const dt = d instanceof Date ? d : new Date(d as any);
+    if (Number.isNaN(dt.getTime())) return '';
+    return dt.toISOString().split('T')[0];
+  } catch {
+    return '';
+  }
+}
+
 export default async function EditEscalaPage({ params }: { params: any }) {
-  // Tornar robusto: params pode ser objeto ou Promise (defensivo)
+  // Defender contra params sendo Promise ou função (algumas chamadas do Next podem variar)
   let resolvedParams: any = params;
-  if (typeof params === 'function' || (params && typeof params.then === 'function')) {
+  if (params && typeof (params as any).then === 'function') {
     try {
       resolvedParams = await params;
     } catch {
@@ -24,11 +35,10 @@ export default async function EditEscalaPage({ params }: { params: any }) {
   const escalaId = Number.isFinite(Number(idRaw)) ? parseInt(String(idRaw), 10) : NaN;
 
   if (isNaN(escalaId) || escalaId <= 0) {
-    // Força 404 para ids inválidos
     notFound();
   }
 
-  // Buscar escala completa do banco (inclui modulos -> categorias, e perguntas -> respostas e join categoriasRel)
+  // Buscar escala com relações necessárias
   const escala = await prisma.escala.findUnique({
     where: { id: escalaId },
     include: {
@@ -43,8 +53,8 @@ export default async function EditEscalaPage({ params }: { params: any }) {
         where: { ativo: 1 },
         include: {
           respostasPossiveis: { where: { ativo: 1 }, orderBy: { id: 'asc' } },
-          // O nome exato do include depende do seu Prisma Client gerado.
-          // Se seu client reclama aqui, veja a alternativa no comentário abaixo.
+          // nome do relacionamento de join pode variar conforme seu schema/prisma client gerado.
+          // Se o seu client gerar outro nome, substitua "categoriasRel" pelo nome correto.
           categoriasRel: { include: { categoria: true } },
         },
         orderBy: { ordem: 'asc' },
@@ -56,7 +66,7 @@ export default async function EditEscalaPage({ params }: { params: any }) {
     notFound();
   }
 
-  // Construir módulos com tempIds previsíveis (mod-<id>)
+  // Montar modulos com tempIds previsíveis
   const modulosForForm = escala.modulos.map((m) => ({
     id: m.id,
     tempId: makeTempId('mod', m.id),
@@ -69,26 +79,28 @@ export default async function EditEscalaPage({ params }: { params: any }) {
     valorFinalRisco: m.valorFinalRisco?.toString() ?? '',
   }));
 
-  // mapa id real -> tempId
   const moduloIdToTempId = new Map<number, string>();
   modulosForForm.forEach((m: any) => moduloIdToTempId.set(m.id, m.tempId));
 
-  // categorias (usando tempId previsível cat-<id>)
+  // Categorias com tempIds previsíveis (cat-<id>)
   const categoriasForForm = escala.modulos.flatMap((m) =>
-    m.categorias.map((c) => ({
+    (m.categorias || []).map((c: any) => ({
       id: c.id,
       tempId: makeTempId('cat', c.id),
       nome: c.nome ?? '',
       moduloTempId: moduloIdToTempId.get(m.id) ?? '',
     }))
   );
+
   const categoriaIdToTempId = new Map<number, string>();
   categoriasForForm.forEach((c: any) => categoriaIdToTempId.set(c.id, c.tempId));
 
-  // perguntas: extrair categorias via join (categoriasRel -> categoria)
-  const perguntasForForm = escala.perguntas.map((p: any) => {
+  // Perguntas (extrai categorias via join table) e respostas
+  const perguntasForForm = (escala.perguntas || []).map((p: any) => {
     const categoriasTempIds: string[] = (p?.categoriasRel || [])
-      .map((cr: any) => (cr?.categoria && typeof cr.categoria.id === 'number' ? categoriaIdToTempId.get(cr.categoria.id) : null))
+      .map((cr: any) =>
+        cr?.categoria && typeof cr.categoria.id === 'number' ? categoriaIdToTempId.get(cr.categoria.id) ?? null : null
+      )
       .filter((x: string | null): x is string => !!x);
 
     const moduloTempId = p.idModulo ? (moduloIdToTempId.get(p.idModulo) ?? '') : '';
@@ -112,7 +124,7 @@ export default async function EditEscalaPage({ params }: { params: any }) {
   const initialData: EscalaFormState & { id: number } = {
     id: escala.id,
     nome: escala.nome ?? '',
-    dataVencimento: escala.dataVencimento ? new Date(escala.dataVencimento).toISOString().split('T')[0] : '',
+    dataVencimento: safeToISODateOnly(escala.dataVencimento),
     ativo: escala.ativo === 1,
     modulos: modulosForForm,
     categorias: categoriasForForm,

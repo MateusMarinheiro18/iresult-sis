@@ -42,7 +42,7 @@ export default function QuestionList({
           </p>
         </div>
       ) : (
-        <div className="questions-list" role="list">
+        <div className="questions-list" role="list" aria-label="Lista de perguntas">
           {perguntas.map((p) => (
             <div
               key={p.tempId}
@@ -54,29 +54,38 @@ export default function QuestionList({
               onDragEnd={onDragEnd}
               role="listitem"
               aria-roledescription="pergunta"
+              tabIndex={0}
             >
               <div className="question-main">
                 <div className="question-header">
-                  <div className="question-title">
-                    <strong>#{p.ordem}</strong>&nbsp; — &nbsp;<span>{p.pergunta || '—'}</span>
+                  <div className="question-title" title={p.pergunta || ''}>
+                    <strong aria-hidden>#{p.ordem}</strong>&nbsp; — &nbsp;<span>{p.pergunta || '—'}</span>
                   </div>
-                  <div className="question-meta">
-                    <span className="meta-pill">{getModuloName(p.moduloTempId)}</span>
+                  <div className="question-meta" aria-hidden={false}>
+                    <span className="meta-pill" title={getModuloName(p.moduloTempId)}>
+                      {getModuloName(p.moduloTempId)}
+                    </span>
                     {/* ✅ MUDOU: mostra múltiplas categorias separadas por vírgula */}
-                    <span className="meta-pill subtle">{getCategoriasNames(p.categoriasTempIds || [])}</span>
+                    <span
+                      className="meta-pill subtle"
+                      title={getCategoriasNames(p.categoriasTempIds || [])}
+                      aria-label={`Categorias: ${getCategoriasNames(p.categoriasTempIds || [])}`}
+                    >
+                      {getCategoriasNames(p.categoriasTempIds || [])}
+                    </span>
                   </div>
                 </div>
 
-                <div className="question-responses" aria-hidden>
-                  {p.respostas.map((r) => (
-                    <span key={r.tempId} className="response-pill">
-                      {r.resposta} <small>({r.valor})</small>
+                <div className="question-responses" aria-hidden={p.respostas.length === 0}>
+                  {p.respostas.map((r, idx) => (
+                    <span key={r.tempId ?? `r-${p.tempId}-${idx}`} className="response-pill" title={`${r.resposta} (${r.valor})`}>
+                      {r.resposta} <small aria-hidden>({r.valor})</small>
                     </span>
                   ))}
                 </div>
               </div>
 
-              <div className="question-actions">
+              <div className="question-actions" role="group" aria-label={`Ações da pergunta ${p.pergunta || p.tempId}`}>
                 <button
                   type="button"
                   className="icon-btn edit"

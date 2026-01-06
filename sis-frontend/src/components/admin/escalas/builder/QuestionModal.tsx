@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   PerguntaFormState,
   RespostaFormState,
@@ -59,6 +59,54 @@ export default function QuestionModal({
   const categoriasPorModulo = (modTempId: string) =>
     categorias.filter((c) => c.moduloTempId === modTempId);
 
+  // DEFAULTS que serão usados para preencher respostas vazias/ausentes
+  const DEFAULT_RESPONSE_TEXTS = [
+    'Nunca / Quase nunca',
+    'Raramente',
+    'Às vezes',
+    'Frequentemente',
+    'Sempre',
+  ];
+
+  // Ao abrir o modal para uma pergunta nova (ou quando draft mudar),
+  // garantir que existam 5 respostas preenchidas por padrão — sem sobrescrever valores do usuário.
+  useEffect(() => {
+    if (!open || !draft) return;
+
+    const curr = Array.isArray(draft.respostas) ? draft.respostas : [];
+    // se já tem 5 ou mais e todas têm texto, não fazemos nada
+    const allFiveHaveText = curr.length >= 5 && curr.slice(0, 5).every(r => typeof r.resposta === 'string' && String(r.resposta).trim() !== '');
+    if (allFiveHaveText) return;
+
+    const now = Date.now();
+    const newRespostas: RespostaFormState[] = [];
+    for (let i = 0; i < 5; i++) {
+      const existing = curr[i];
+      const tempId = existing?.tempId ?? `${draft.tempId}-resp-${i}-${now}`;
+      const respostaText = (existing && typeof existing.resposta === 'string' && existing.resposta.trim() !== '')
+        ? existing.resposta
+        : DEFAULT_RESPONSE_TEXTS[i];
+      const valor = (existing && (existing.valor !== undefined && existing.valor !== null))
+        ? existing.valor
+        : (i + 1);
+      newRespostas.push({
+        tempId,
+        resposta: respostaText,
+        valor,
+      });
+    }
+
+    // Se havia mais de 5 respostas (caso de edição), preserve as extras também:
+    if (curr.length > 5) {
+      for (let j = 5; j < curr.length; j++) {
+        newRespostas.push(curr[j]);
+      }
+    }
+
+    onChangeDraft('respostas', newRespostas as any);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, draft?.tempId]);
+
   // ✅ NOVO: toggle de categoria no array
   function toggleCategoria(catTempId: string) {
     if (!draft) return;
@@ -73,8 +121,11 @@ export default function QuestionModal({
     onChangeDraft('categoriasTempIds', updated as any);
   }
 
+  const textareaId = `q-txt-${draft.tempId}`;
+  const selectId = `q-mod-${draft.tempId}`;
+
   return (
-    <div className="modal-root" role="dialog" aria-modal="true" aria-labelledby="question-modal-title">
+    <div className="modal-root" role="dialog" aria-modal="true" aria-labelledby="question-modal-title" aria-describedby={`question-modal-sub-${draft.tempId}`}>
       <div className="modal-backdrop" onClick={onClose} />
 
       <div className="modal-sheet" role="document">
@@ -83,7 +134,7 @@ export default function QuestionModal({
             <h3 id="question-modal-title" className="modal-banner-title">
               {editingTempId ? 'Editar pergunta' : 'Nova pergunta'}
             </h3>
-            <p className="modal-banner-sub">{step === 1 ? 'Defina o texto da pergunta, o módulo e as categorias.' : 'Cadastre as respostas possíveis e seus valores (1 a 5).'}</p>
+            <p id={`question-modal-sub-${draft.tempId}`} className="modal-banner-sub">{step === 1 ? 'Defina o texto da pergunta, o módulo e as categorias.' : 'Cadastre as respostas possíveis e seus valores (1 a 5).'}</p>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Fechar" title="Fechar">
             ✕
@@ -94,18 +145,21 @@ export default function QuestionModal({
           {step === 1 && (
             <>
               <div className="field">
-                <label className="label">Texto da pergunta <span className="required">*</span></label>
+                <label className="label" htmlFor={textareaId}>Texto da pergunta <span className="required">*</span></label>
                 <textarea
+                  id={textareaId}
                   className="textarea"
                   value={draft?.pergunta ?? ''}
                   onChange={(e) => onChangeDraft('pergunta', e.target.value as any)}
                   placeholder="Ex.: Como você avalia o ambiente de trabalho?"
+                  aria-required
                 />
               </div>
 
               <div className="field">
-                <label className="label">Módulo <span className="required">*</span></label>
+                <label className="label" htmlFor={selectId}>Módulo <span className="required">*</span></label>
                 <select
+                  id={selectId}
                   className="input select-with-caret"
                   value={draft?.moduloTempId ?? ''}
                   onChange={(e) => {
@@ -164,6 +218,7 @@ export default function QuestionModal({
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value)}
                       placeholder="Nome da nova categoria"
+                      aria-label="Nome da nova categoria"
                     />
                     <button
                       type="button"
@@ -177,21 +232,24 @@ export default function QuestionModal({
                 )}
 
                 {/* CHECKBOXES DAS CATEGORIAS */}
-                <div className="categorias-checkboxes">
+                <div className="categorias-checkboxes" role="list" aria-label="Categorias disponíveis">
                   {categoriasPorModulo(draft?.moduloTempId ?? '').length === 0 ? (
                     <p className="empty-categorias">Nenhuma categoria disponível. Crie uma categoria para este módulo.</p>
                   ) : (
                     categoriasPorModulo(draft?.moduloTempId ?? '').map((cat) => {
                       const isSelected = (draft?.categoriasTempIds || []).includes(cat.tempId);
+                      const inputId = `cat-${cat.tempId}`;
 
                       return (
-                        <label key={cat.tempId} className="checkbox-item">
+                        <label key={cat.tempId} className="checkbox-item" htmlFor={inputId} role="listitem">
                           <input
+                            id={inputId}
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleCategoria(cat.tempId)}
+                            aria-checked={isSelected}
                           />
-                          <span className="checkbox-custom" />
+                          <span className="checkbox-custom" aria-hidden />
                           <span className="checkbox-label">{cat.nome}</span>
 
                           {/* Botão de deletar categoria */}
@@ -204,6 +262,7 @@ export default function QuestionModal({
                                 onDeleteCategoria(cat.tempId);
                               }}
                               title={`Excluir "${cat.nome}"`}
+                              aria-label={`Excluir categoria ${cat.nome}`}
                             >
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden>
                                 <path d="M3 6h18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -258,16 +317,16 @@ export default function QuestionModal({
                 </div>
               </div>
 
-              <div className="respostas-list">
+              <div className="respostas-list" role="list" aria-label="Respostas da pergunta">
                 {draft?.respostas?.map((r, index) => (
-                  <div key={r.tempId} className="resposta-row">
+                  <div key={r.tempId} className="resposta-row" role="listitem" aria-label={`Resposta ${index + 1}`}>
                     <div className="field resposta-field">
                       <label className="label-mini">Resposta {index + 1}</label>
                       <input
                         className="input"
                         value={r.resposta}
                         onChange={(e) => onUpdateResposta(r.tempId, 'resposta', e.target.value)}
-                        placeholder="Ex.: Concordo totalmente"
+                        aria-label={`Texto da resposta ${index + 1}`}
                       />
                     </div>
 
@@ -280,6 +339,7 @@ export default function QuestionModal({
                         className="input"
                         value={String(r.valor ?? '')}
                         onChange={(e) => onUpdateResposta(r.tempId, 'valor', e.target.value)}
+                        aria-label={`Valor da resposta ${index + 1}`}
                       />
                     </div>
 

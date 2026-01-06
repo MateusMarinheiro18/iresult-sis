@@ -1,3 +1,4 @@
+// src/components/admin/escalas/builder/ModuleList.tsx
 'use client';
 import React from 'react';
 import { ModuloFormState } from './types';
@@ -6,76 +7,98 @@ export default function ModuleList({
   modulos,
   onEdit,
   onRemove,
+  lockedModuleTempIds = [],
 }: {
   modulos: ModuloFormState[];
   onEdit: (tempId: string) => void;
   onRemove: (tempId: string) => void;
+  lockedModuleTempIds?: string[]; // optional: lista de tempIds que não podem ser removidos
 }) {
   return (
     <div>
       {modulos.length === 0 ? (
         <p className="empty-text">Nenhum módulo cadastrado. Clique em "Adicionar módulo" para começar.</p>
       ) : (
-        <div className="modulos-list">
-          {modulos.map((m) => (
-            <div className="modulo-item" key={m.tempId}>
-              <div className="modulo-main">
-                <div className="modulo-title-row">
-                  <div className="modulo-name">{m.nome || '—'}</div>
+        <div className="modulos-list" role="list" aria-label="Lista de módulos">
+          {modulos.map((m) => {
+            const isLocked = lockedModuleTempIds.includes(m.tempId);
+            return (
+              <div className="modulo-item" key={m.tempId} role="listitem" aria-roledescription="módulo">
+                <div className="modulo-main">
+                  <div className="modulo-title-row">
+                    <div className="modulo-name" title={m.nome || '—'}>{m.nome || '—'}</div>
+                    {isLocked && (
+                      <span className="locked-badge" title="Módulo bloqueado: possui perguntas vinculadas" aria-hidden>
+                        🔒
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="modulo-ranges" aria-hidden>
+                    <span className="range-pill" title={`Risco: ${m.valorInicialRisco || '—'} — ${m.valorFinalRisco || '—'}`}>
+                      <span className="dot dot-risco" aria-hidden />
+                      <span className="range-label">Risco:</span>
+                      <strong>{m.valorInicialRisco || '—'} — {m.valorFinalRisco || '—'}</strong>
+                    </span>
+
+                    <span className="range-pill" title={`Intermediário: ${m.valorInicialIntermediario || '—'} — ${m.valorFinalIntermediario || '—'}`}>
+                      <span className="dot dot-intermediario" aria-hidden />
+                      <span className="range-label">Interm.:</span>
+                      <strong>{m.valorInicialIntermediario || '—'} — {m.valorFinalIntermediario || '—'}</strong>
+                    </span>
+
+                    <span className="range-pill" title={`Favorável: ${m.valorInicialFavoravel || '—'} — ${m.valorFinalFavoravel || '—'}`}>
+                      <span className="dot dot-favoravel" aria-hidden />
+                      <span className="range-label">Favorável:</span>
+                      <strong>{m.valorInicialFavoravel || '—'} — {m.valorFinalFavoravel || '—'}</strong>
+                    </span>
+                  </div>
                 </div>
 
-                <div className="modulo-ranges" aria-hidden>
-                  <span className="range-pill">
-                    <span className="dot dot-risco" />
-                    Risco: <strong>{m.valorInicialRisco || '—'} — {m.valorFinalRisco || '—'}</strong>
-                  </span>
+                <div className="modulo-actions" role="group" aria-label={`Ações do módulo ${m.nome ?? ''}`}>
+                  <button
+                    type="button"
+                    className="icon-btn edit"
+                    onClick={() => onEdit(m.tempId)}
+                    aria-label={`Editar módulo ${m.nome ?? ''}`}
+                    title="Editar"
+                  >
+                    {/* pencil icon */}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
+                      <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
 
-                  <span className="range-pill">
-                    <span className="dot dot-intermediario" />
-                    Interm.: <strong>{m.valorInicialIntermediario || '—'} — {m.valorFinalIntermediario || '—'}</strong>
-                  </span>
-
-                  <span className="range-pill">
-                    <span className="dot dot-favoravel" />
-                    Favorável: <strong>{m.valorInicialFavoravel || '—'} — {m.valorFinalFavoravel || '—'}</strong>
-                  </span>
+                  <button
+                    type="button"
+                    className="icon-btn remove"
+                    onClick={() => { if (!isLocked) onRemove(m.tempId); }}
+                    aria-label={isLocked ? `Remoção bloqueada para ${m.nome ?? ''}` : `Remover módulo ${m.nome ?? ''}`}
+                    title={isLocked ? 'Remoção bloqueada' : 'Remover'}
+                    disabled={isLocked}
+                  >
+                    {isLocked ? (
+                      // lock icon
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
+                        <rect x="3" y="11" width="18" height="10" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+                        <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    ) : (
+                      // trash icon
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
+                        <path d="M3 6h18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M10 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                        <path d="M14 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                        <path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
-
-              <div className="modulo-actions">
-                <button
-                  type="button"
-                  className="icon-btn edit"
-                  onClick={() => onEdit(m.tempId)}
-                  aria-label={`Editar módulo ${m.nome ?? ''}`}
-                  title="Editar"
-                >
-                  {/* pencil icon */}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  className="icon-btn remove"
-                  onClick={() => onRemove(m.tempId)}
-                  aria-label={`Remover módulo ${m.nome ?? ''}`}
-                  title="Remover"
-                >
-                  {/* trash icon */}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-                    <path d="M3 6h18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                    <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M10 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                    <path d="M14 11v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                    <path d="M9 6V4h6v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -126,6 +149,12 @@ export default function ModuleList({
           text-overflow: ellipsis;
         }
 
+        .locked-badge {
+          font-size: 13px;
+          color: #6b7280;
+          margin-left: 6px;
+        }
+
         .modulo-ranges {
           display:flex;
           gap:8px;
@@ -146,6 +175,7 @@ export default function ModuleList({
         }
 
         .range-pill strong { color: #0B2527; font-weight:700; margin-left:4px; }
+        .range-label { color: #6b7280; font-weight:600; margin-left:2px; }
 
         .dot {
           width:10px;
@@ -153,6 +183,7 @@ export default function ModuleList({
           border-radius:999px;
           display:inline-block;
           box-shadow: 0 0 0 4px rgba(0,0,0,0.01) inset;
+          flex-shrink: 0;
         }
         .dot-risco { background: #dc2626; }
         .dot-intermediario { background: #facc15; }
@@ -190,6 +221,13 @@ export default function ModuleList({
         .icon-btn.remove {
           color: #dc2626;
           border-color: rgba(220,38,38,0.08);
+        }
+
+        .icon-btn[disabled] {
+          opacity: 0.5;
+          cursor: not-allowed;
+          border-color: rgba(11,37,39,0.03);
+          color: #6b7280;
         }
 
         @media (max-width: 720px) {
