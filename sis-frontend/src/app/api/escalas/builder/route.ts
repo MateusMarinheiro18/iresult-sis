@@ -141,7 +141,6 @@ export async function POST(req: NextRequest) {
           valorInicialIntermediario: parseNullable(mod.valorInicialIntermediario),
           valorFinalIntermediario: parseNullable(mod.valorFinalIntermediario),
           valorInicialRisco: parseNullable(mod.valorInicialRisco),
-          valorFinalRisco: parseNullable(mod.valorFinalRisco),
           ativo: 1,
         };
 
@@ -209,8 +208,7 @@ export async function POST(req: NextRequest) {
 
         // ✅ NOVO: criar relações many-to-many com categorias
         if (perg.categoriasTempIds && perg.categoriasTempIds.length > 0) {
-          for (let i = 0; i < perg.categoriasTempIds.length; i++) {
-            const catTempId = perg.categoriasTempIds[i];
+          for (const catTempId of perg.categoriasTempIds) {
             const categoriaIdReal = categoriaMap.get(catTempId);
             
             if (!categoriaIdReal) {
@@ -218,38 +216,13 @@ export async function POST(req: NextRequest) {
               continue;
             }
 
-            // Tenta diferentes nomenclaturas possíveis
-            try {
-              await (tx as any).escalaPerguntaCategoria.create({
-                data: {
-                  perguntaId: pergunta.id,
-                  categoriaId: categoriaIdReal,
-                  ordem: i + 1,
-                  created: now,
-                },
-              });
-            } catch (err) {
-              // Tenta nomenclatura alternativa
-              try {
-                await (tx as any).escala_pergunta_categoria.create({
-                  data: {
-                    pergunta_id: pergunta.id,
-                    categoria_id: categoriaIdReal,
-                    ordem: i + 1,
-                    created: now,
-                  },
-                });
-              } catch (err2) {
-                // Tenta outra variação
-                await (tx as any).EscalaPerguntaCategoria.create({
-                  data: {
-                    idPergunta: pergunta.id,
-                    idCategoria: categoriaIdReal,
-                    ordem: i + 1,
-                  },
-                });
-              }
-            }
+            // Cria na tabela tab_escala_pergunta_has_categoria
+            await (tx as any).escalaPerguntaHasCategoria.create({
+              data: {
+                pergunta: { connect: { id: pergunta.id } },
+                categoria: { connect: { id: categoriaIdReal } },
+              },
+            });
           }
         }
 

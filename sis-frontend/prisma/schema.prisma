@@ -229,7 +229,7 @@ model EscalaCategoria {
   modulo EscalaModulo @relation("ModuloCategorias", fields: [idModulo], references: [id], onDelete: Cascade)
 
   // NOVA relação: associações (join) entre categoria <-> pergunta
-  categoriasRel EscalaPerguntaCategoria[] @relation("CategoriaPerguntasJoin")
+  categoriasRel EscalaPerguntaHasCategoria[] @relation("CategoriaPerguntasJoin")
 
   // OBS: removido o campo direto perguntas EscalaPergunta[] (antes usado para FK única).
   // Se você quiser exposer perguntas diretamente (por conveniência), pode obter via join: categoriasRel -> categoria
@@ -318,7 +318,7 @@ model EscalaPergunta {
   modulo EscalaModulo? @relation("ModuloPerguntas", fields: [idModulo], references: [id])
 
   // NOVA relação -> join table (pergunta <-> categorias)
-  categoriasRel EscalaPerguntaCategoria[] @relation("PerguntaCategorias")
+  categoriasRel EscalaPerguntaHasCategoria[] @relation("PerguntaCategorias")
 
   respostasPossiveis    EscalaPerguntaResposta[] @relation("PerguntaRespostas")
   respostasFuncionarios RespostaFuncionario[]    @relation("PerguntaRespostasFuncionario")
@@ -328,25 +328,19 @@ model EscalaPergunta {
   @@map("tab_escala_pergunta")
 }
 
-// ---- tab_escala_pergunta_categoria.prisma ----
-model EscalaPerguntaCategoria {
+// ---- tab_escala_pergunta_has_categoria.prisma ----
+model EscalaPerguntaHasCategoria {
   // FK para pergunta
-  pergunta   EscalaPergunta @relation("PerguntaCategorias", fields: [perguntaId], references: [id], onDelete: Cascade)
-  perguntaId Int            @map("id_pergunta")
+  pergunta   EscalaPergunta @relation("PerguntaCategorias", fields: [idPergunta], references: [id], onDelete: Cascade)
+  idPergunta Int            @map("id_pergunta")
 
   // FK para categoria
-  categoria   EscalaCategoria @relation("CategoriaPerguntasJoin", fields: [categoriaId], references: [id], onDelete: Restrict)
-  categoriaId Int             @map("id_categoria")
+  categoria   EscalaCategoria @relation("CategoriaPerguntasJoin", fields: [idCategoria], references: [id], onDelete: Restrict)
+  idCategoria Int             @map("id_categoria")
 
-  // opcional: ordem das categorias associadas à pergunta
-  ordem Int? @map("ordem")
-
-  // metadata
-  created DateTime? @map("created")
-
-  @@id([perguntaId, categoriaId])
-  @@index([categoriaId], map: "idx_escala_pergunta_categoria_categoria")
-  @@map("tab_escala_pergunta_categoria")
+  @@id([idPergunta, idCategoria])
+  @@index([idCategoria], map: "idx_escala_pergunta_has_categoria_categoria")
+  @@map("tab_escala_pergunta_has_categoria")
 }
 
 // ---- tab_escala_pergunta_resposta.prisma ----
