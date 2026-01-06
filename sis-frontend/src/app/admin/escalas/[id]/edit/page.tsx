@@ -1,34 +1,51 @@
-// src/app/admin/escalas/new/page.tsx
+// src/app/admin/escalas/[id]/edit/page.tsx
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import EditEscalaPageClient from './EditEscalaPageClient';
+import EditEscalaPageClient from './EditEscalaPageClient'; // ajuste relativo dependendo da sua estrutura
 import type { EscalaFormState } from '@/components/admin/escalas/builder/types';
 
-function createTempId(prefix = 'id') {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function makeTempId(prefix: string, id: number) {
+  return `${prefix}-${id}`;
 }
 
-export default async function EditEscalaPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params; // await params primeiro
-  const escalaId = parseInt(id, 10);
-  
+export default async function EditEscalaPage({ params }: { params: any }) {
+  // Tornar robusto: params pode ser objeto ou Promise (defensivo)
+  let resolvedParams: any = params;
+  if (typeof params === 'function' || (params && typeof params.then === 'function')) {
+    try {
+      resolvedParams = await params;
+    } catch {
+      resolvedParams = params;
+    }
+  }
+
+  const idRaw = resolvedParams?.id ?? (params && (params.id ?? null));
+  const escalaId = Number.isFinite(Number(idRaw)) ? parseInt(String(idRaw), 10) : NaN;
+
   if (isNaN(escalaId) || escalaId <= 0) {
+    // Força 404 para ids inválidos
     notFound();
   }
 
-  // Buscar escala completa do banco
+  // Buscar escala completa do banco (inclui modulos -> categorias, e perguntas -> respostas e join categoriasRel)
   const escala = await prisma.escala.findUnique({
     where: { id: escalaId },
     include: {
       modulos: {
+        where: { ativo: 1 },
         include: {
-          categorias: true,
+          categorias: { where: { ativo: 1 }, orderBy: { id: 'asc' } },
         },
+        orderBy: { id: 'asc' },
       },
       perguntas: {
+        where: { ativo: 1 },
         include: {
-          respostasPossiveis: true,
+          respostasPossiveis: { where: { ativo: 1 }, orderBy: { id: 'asc' } },
+          // O nome exato do include depende do seu Prisma Client gerado.
+          // Se seu client reclama aqui, veja a alternativa no comentário abaixo.
+          categoriasRel: { include: { categoria: true } },
         },
         orderBy: { ordem: 'asc' },
       },
@@ -39,81 +56,73 @@ export default async function EditEscalaPage({ params }: { params: Promise<{ id:
     notFound();
   }
 
-  // Converter para formato do formulário (serializable)
-  const initialData: EscalaFormState & { id: number } = {
-    id: escala.id,
-    nome: escala.nome,
-    dataVencimento: escala.dataVencimento?.toISOString().split('T')[0] ?? '',
-    ativo: escala.ativo === 1,
-    modulos: escala.modulos.map((m) => ({
-      id: m.id,
-      tempId: createTempId('mod'),
-      nome: m.nome,
-      valorInicialFavoravel: m.valorInicialFavoravel?.toString() ?? '',
-      valorFinalFavoravel: m.valorFinalFavoravel?.toString() ?? '',
-      valorInicialIntermediario: m.valorInicialIntermediario?.toString() ?? '',
-      valorFinalIntermediario: m.valorFinalIntermediario?.toString() ?? '',
-      valorInicialRisco: m.valorInicialRisco?.toString() ?? '',
-      valorFinalRisco: m.valorFinalRisco?.toString() ?? '',
-    })),
-    categorias: escala.modulos.flatMap((m) =>
-      m.categorias.map((c) => ({
-        id: c.id,
-        tempId: createTempId('cat'),
-        nome: c.nome,
-        moduloTempId: escala.modulos.find((mod) => mod.id === m.id)?.id?.toString() ?? '',
-      }))
-    ),
-    perguntas: escala.perguntas.map((p) => ({
+  // Construir módulos com tempIds previsíveis (mod-<id>)
+  const modulosForForm = escala.modulos.map((m) => ({
+    id: m.id,
+    tempId: makeTempId('mod', m.id),
+    nome: m.nome ?? '',
+    valorInicialFavoravel: m.valorInicialFavoravel?.toString() ?? '',
+    valorFinalFavoravel: m.valorFinalFavoravel?.toString() ?? '',
+    valorInicialIntermediario: m.valorInicialIntermediario?.toString() ?? '',
+    valorFinalIntermediario: m.valorFinalIntermediario?.toString() ?? '',
+    valorInicialRisco: m.valorInicialRisco?.toString() ?? '',
+    valorFinalRisco: m.valorFinalRisco?.toString() ?? '',
+  }));
+
+  // mapa id real -> tempId
+  const moduloIdToTempId = new Map<number, string>();
+  modulosForForm.forEach((m: any) => moduloIdToTempId.set(m.id, m.tempId));
+
+  // categorias (usando tempId previsível cat-<id>)
+  const categoriasForForm = escala.modulos.flatMap((m) =>
+    m.categorias.map((c) => ({
+      id: c.id,
+      tempId: makeTempId('cat', c.id),
+      nome: c.nome ?? '',
+      moduloTempId: moduloIdToTempId.get(m.id) ?? '',
+    }))
+  );
+  const categoriaIdToTempId = new Map<number, string>();
+  categoriasForForm.forEach((c: any) => categoriaIdToTempId.set(c.id, c.tempId));
+
+  // perguntas: extrair categorias via join (categoriasRel -> categoria)
+  const perguntasForForm = escala.perguntas.map((p: any) => {
+    const categoriasTempIds: string[] = (p?.categoriasRel || [])
+      .map((cr: any) => (cr?.categoria && typeof cr.categoria.id === 'number' ? categoriaIdToTempId.get(cr.categoria.id) : null))
+      .filter((x: string | null): x is string => !!x);
+
+    const moduloTempId = p.idModulo ? (moduloIdToTempId.get(p.idModulo) ?? '') : '';
+
+    return {
       id: p.id,
-      tempId: createTempId('perg'),
-      pergunta: p.pergunta,
+      tempId: makeTempId('perg', p.id),
+      pergunta: p.pergunta ?? '',
       ordem: p.ordem ?? 0,
-      moduloTempId: p.idModulo?.toString() ?? '',
-      categoriasTempIds: p.idCategoria ? [p.idCategoria.toString()] : [],
-      respostas: p.respostasPossiveis.map((r) => ({
+      moduloTempId,
+      categoriasTempIds,
+      respostas: (p.respostasPossiveis || []).map((r: any) => ({
         id: r.id,
-        tempId: createTempId('resp'),
-        resposta: r.resposta,
+        tempId: makeTempId('resp', r.id),
+        resposta: r.resposta ?? '',
         valor: r.valor ?? 1,
       })),
-    })),
+    };
+  });
+
+  const initialData: EscalaFormState & { id: number } = {
+    id: escala.id,
+    nome: escala.nome ?? '',
+    dataVencimento: escala.dataVencimento ? new Date(escala.dataVencimento).toISOString().split('T')[0] : '',
+    ativo: escala.ativo === 1,
+    modulos: modulosForForm,
+    categorias: categoriasForForm,
+    perguntas: perguntasForForm,
   };
-
-  // Criar mapeamento de IDs reais para tempIds
-  const moduloIdToTempId = new Map<number, string>();
-  initialData.modulos.forEach((m: any) => {
-    if (m.id) moduloIdToTempId.set(m.id, m.tempId);
-  });
-
-  const categoriaIdToTempId = new Map<number, string>();
-  initialData.categorias.forEach((c: any) => {
-    if (c.id) categoriaIdToTempId.set(c.id, c.tempId);
-  });
-
-  // Atualizar referências para usar tempIds
-  initialData.categorias.forEach((c: any) => {
-    const moduloId = escala.modulos
-      .flatMap((m) => m.categorias)
-      .find((cat) => cat.id === c.id)?.idModulo;
-    if (moduloId) {
-      c.moduloTempId = moduloIdToTempId.get(moduloId) ?? '';
-    }
-  });
-
-  initialData.perguntas.forEach((p: any) => {
-    if (p.moduloTempId && !isNaN(Number(p.moduloTempId))) {
-      p.moduloTempId = moduloIdToTempId.get(Number(p.moduloTempId)) ?? '';
-    }
-    if (p.categoriaTempId && !isNaN(Number(p.categoriaTempId))) {
-      p.categoriaTempId = categoriaIdToTempId.get(Number(p.categoriaTempId)) ?? '';
-    }
-  });
 
   return (
     <EditEscalaPageClient
       initialData={initialData}
-      escalaNome={escala.nome}
+      escalaNome={escala.nome ?? ''}
       escalaId={escala.id}
     />
   );
