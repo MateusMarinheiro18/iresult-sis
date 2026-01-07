@@ -121,7 +121,6 @@ export default function EscalaBuilderForm({
   const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
 
-  // --- ✅ MUDANÇA: Estado do formulário inicializado diretamente com initialData ---
   const [state, setState] = useState<EscalaFormState>(
     () =>
       initialData ?? {
@@ -134,20 +133,16 @@ export default function EscalaBuilderForm({
       }
   );
 
-  // Autosave metadata
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const saveTimerRef = useRef<number | null>(null);
   const isMountedRef = useRef(false);
 
-  // local draft key: include escala id if editing, else "new"
   const escalaId = (initialData && (initialData as any).id) ? (initialData as any).id : null;
   const draftKey = `${DRAFT_KEY_PREFIX}${escalaId ?? 'new'}`;
 
-  // ✅ MUDANÇA: Lógica de rascunho refatorada para evitar erro de hidratação
   useEffect(() => {
     isMountedRef.current = true;
 
-    // Carrega o rascunho do localStorage e pergunta ao usuário se deseja restaurar
     const rawDraft = localStorage.getItem(draftKey);
     if (rawDraft) {
       try {
@@ -167,12 +162,10 @@ export default function EscalaBuilderForm({
               setState(parsed.data);
               toast.success('Rascunho restaurado.');
             }
-            // Limpa o rascunho se o usuário ignorar, para não perguntar de novo
             if (!ok) {
               localStorage.removeItem(draftKey);
             }
           };
-          // Atraso mínimo para garantir que a UI inicial esteja estável
           setTimeout(loadDraft, 100);
         }
       } catch (err) {
@@ -187,10 +180,8 @@ export default function EscalaBuilderForm({
         window.clearTimeout(saveTimerRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey]); // Executa apenas uma vez na montagem
+  }, [draftKey]);
 
-  // Autosave on state change (debounced)
   useEffect(() => {
     if (!isMountedRef.current) return;
 
@@ -200,7 +191,6 @@ export default function EscalaBuilderForm({
 
     saveTimerRef.current = window.setTimeout(() => {
       try {
-        // ✅ MUDANÇA: Salva o estado completo com um timestamp
         const now = new Date();
         const toSave = {
           timestamp: now.toISOString(),
@@ -221,7 +211,6 @@ export default function EscalaBuilderForm({
     };
   }, [state, draftKey]);
 
-  // helper to clear draft on successful save
   function clearLocalDraft() {
     try {
       localStorage.removeItem(draftKey);
@@ -257,7 +246,6 @@ export default function EscalaBuilderForm({
     setModuleDraft({ ...moduleDraft, [field]: value });
   }
 
-  // ---------- handleSaveModule: persist in edit mode, fallback local ----------
   async function handleSaveModule() {
     if (!moduleDraft) return;
     const nome = String(moduleDraft.nome ?? '').trim();
@@ -272,13 +260,11 @@ export default function EscalaBuilderForm({
       return;
     }
 
-    // Normalized object to use in UI/update and send to server
     const normalizedModule: Partial<ModuloFormState> = {
       ...moduleDraft,
       nome,
     };
 
-    // If editing an existing escala (edit mode + initialData.id) -> try to persist immediately
     const escalaIdForServer = escalaId;
     if (mode === 'edit' && escalaIdForServer) {
       try {
@@ -287,7 +273,6 @@ export default function EscalaBuilderForm({
         const isUpdate = !!(moduleDraft as any).id && Number((moduleDraft as any).id) > 0;
 
         if (isUpdate) {
-          // update existing modulo - usar /api/modulos/[id] ao invés de /api/escalas/[id]/modulos/[moduloId]
           const modId = (moduleDraft as any).id;
           const res = await fetch(`/api/modulos/${modId}`, {
             method: 'PUT',
@@ -305,13 +290,11 @@ export default function EscalaBuilderForm({
           const data = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(data?.error || 'Erro ao atualizar módulo.');
 
-          // update local state (keep tempId)
           setState((prev) => ({
             ...prev,
             modulos: prev.modulos.map((m) => (m.tempId === editingModuleTempId ? { ...(m as any), ...normalizedModule } : m)),
           }));
         } else {
-          // create module on server
           const res = await fetch(`/api/escalas/${escalaIdForServer}/modulos`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -351,7 +334,6 @@ export default function EscalaBuilderForm({
         console.error('Erro ao salvar módulo', err);
         toast.error(err?.message || 'Erro ao salvar módulo no servidor. Foi salvo localmente.');
 
-        // fallback to local update so UX is not broken
         if (editingModuleTempId) {
           setState((prev) => ({ ...prev, modulos: prev.modulos.map((m) => (m.tempId === editingModuleTempId ? { ...moduleDraft, nome } : m)) }));
         } else {
@@ -365,7 +347,6 @@ export default function EscalaBuilderForm({
       return;
     }
 
-    // Fallback for create mode (or no escalaId): local only
     if (editingModuleTempId) {
       setState((prev) => ({ ...prev, modulos: prev.modulos.map((m) => (m.tempId === editingModuleTempId ? { ...moduleDraft, nome } : m)) }));
     } else {
@@ -373,7 +354,6 @@ export default function EscalaBuilderForm({
     }
     closeModuleModal();
   }
-  // ---------- end handleSaveModule ----------
 
   async function handleRemoveModule(tempId: string) {
     const hasQuestions = state.perguntas.some((p) => p.moduloTempId === tempId);
@@ -410,7 +390,6 @@ export default function EscalaBuilderForm({
 
     setEditingQuestionTempId(null);
 
-    // ✅ LÓGICA MOVIDA PARA CÁ: Preenche as respostas padrão ao criar uma nova pergunta.
     const defaultRespostas = [
       { texto: 'Nunca / Quase nunca', valor: 1 },
       { texto: 'Raramente', valor: 2 },
@@ -442,14 +421,14 @@ export default function EscalaBuilderForm({
     if (!perg) return;
     setEditingQuestionTempId(tempId);
     setQuestionDraft({
+      ...(perg as any),
       tempId: perg.tempId,
       pergunta: perg.pergunta,
       ordem: perg.ordem,
       moduloTempId: perg.moduloTempId,
       categoriasTempIds: [...(perg.categoriasTempIds || [])],
-      // ✅ LÓGICA MOVIDA PARA CÁ: Garante que as respostas existem ao editar.
       respostas: (perg.respostas && perg.respostas.length > 0)
-        ? perg.respostas.map((r) => ({ ...r }))
+        ? perg.respostas.map((r) => ({ ...(r as any) }))
         : createDefaultRespostasLikert(),
     });
     setQuestionModalStep(1);
@@ -536,47 +515,121 @@ export default function EscalaBuilderForm({
     });
   }
 
-  function handleQuestionStep2Save() {
+  async function handleQuestionStep2Save() {
     if (!questionDraft) return;
 
+    // Validações
     for (let i = 0; i < questionDraft.respostas.length; i++) {
       const r = questionDraft.respostas[i];
       if (!r.resposta.trim()) {
         toast.error(`Resposta ${i + 1}: texto é obrigatório.`);
         return;
       }
-      if (r.valor === '' || Number.isNaN(Number(r.valor))) {
-        toast.error(`Resposta ${i + 1}: informe um valor entre 1 e 5.`);
-        return;
-      }
-      if (Number(r.valor) < 1 || Number(r.valor) > 5) {
+      if (r.valor === '' || Number.isNaN(Number(r.valor)) || Number(r.valor) < 1 || Number(r.valor) > 5) {
         toast.error(`Resposta ${i + 1}: valor deve ser entre 1 e 5.`);
         return;
       }
     }
 
+    // Se for modo de edição de uma escala já existente, salva a pergunta na API imediatamente
+    if (mode === 'edit' && escalaId) {
+      try {
+        setSaving(true);
+        const isUpdate = !!(questionDraft as any).id;
+
+        const moduloId = state.modulos.find(m => m.tempId === questionDraft.moduloTempId)?.id;
+        const categoriasIds = state.categorias
+          .filter(c => questionDraft.categoriasTempIds.includes(c.tempId))
+          .map(c => c.id)
+          .filter(Boolean);
+
+        const payload = {
+          pergunta: questionDraft.pergunta.trim(),
+          ordem: questionDraft.ordem,
+          moduloId,
+          categoriasIds,
+          respostas: questionDraft.respostas.map(r => ({
+            id: (r as any).id ?? null,
+            resposta: r.resposta.trim(),
+            valor: Number(r.valor),
+          })),
+        };
+
+        let res;
+        let savedData;
+
+        if (isUpdate) {
+          const perguntaId = (questionDraft as any).id;
+          res = await fetch(`/api/perguntas/${perguntaId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          savedData = { id: perguntaId, ...payload };
+        } else {
+          res = await fetch(`/api/escalas/${escalaId}/perguntas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          savedData = await res.json();
+        }
+
+        const data = res.ok ? savedData : await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || 'Erro ao salvar pergunta.');
+
+        // Atualiza o estado local com os dados salvos (incluindo novos IDs)
+        setState(prev => {
+          const newPerguntas = [...prev.perguntas];
+          const idx = newPerguntas.findIndex(p => p.tempId === questionDraft.tempId);
+
+          const finalQuestion = {
+            ...questionDraft,
+            id: data.id,
+            pergunta: data.pergunta,
+            respostas: data.respostas.map((r: any, i: number) => ({
+              ...questionDraft.respostas[i],
+              id: r.id,
+              resposta: r.resposta,
+              valor: r.valor,
+            })),
+          };
+
+          if (idx > -1) {
+            newPerguntas[idx] = finalQuestion;
+          } else {
+            newPerguntas.push(finalQuestion);
+          }
+          return { ...prev, perguntas: newPerguntas };
+        });
+
+        toast.success('Pergunta salva com sucesso!');
+        closeQuestionModal();
+      } catch (err: any) {
+        toast.error(err.message || 'Falha ao salvar pergunta.');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    // Fallback: Salvar apenas no estado local (para criação de nova escala)
     setState((prev) => {
       const perguntas = [...prev.perguntas];
       if (editingQuestionTempId) {
         const idx = perguntas.findIndex((p) => p.tempId === editingQuestionTempId);
         if (idx >= 0) {
           perguntas[idx] = {
-            ...perguntas[idx],
+            ...(perguntas[idx] as any),
+            ...questionDraft,
             pergunta: questionDraft.pergunta.trim(),
-            moduloTempId: questionDraft.moduloTempId,
-            categoriasTempIds: [...questionDraft.categoriasTempIds],
-            ordem: questionDraft.ordem,
-            respostas: questionDraft.respostas.map((r) => ({ ...r, resposta: r.resposta.trim() })),
+            respostas: questionDraft.respostas.map((r) => ({ ...(r as any), resposta: r.resposta.trim() })),
           };
         }
       } else {
-        const ordem = perguntas.length + 1;
         perguntas.push({
-          tempId: questionDraft.tempId,
+          ...questionDraft,
           pergunta: questionDraft.pergunta.trim(),
-          ordem,
-          moduloTempId: questionDraft.moduloTempId,
-          categoriasTempIds: [...questionDraft.categoriasTempIds],
           respostas: questionDraft.respostas.map((r) => ({ ...r, resposta: r.resposta.trim() })),
         });
       }
@@ -716,32 +769,31 @@ export default function EscalaBuilderForm({
       nome,
       dataVencimento: state.dataVencimento || null,
       ativo: state.ativo ? 1 : 0,
-      modulos: state.modulos.map((m) => (({
-        tempId: m.tempId,
-        nome: m.nome.trim(),
-        valorInicialFavoravel: m.valorInicialFavoravel || null,
-        valorFinalFavoravel: m.valorFinalFavoravel || null,
-        valorInicialIntermediario: m.valorInicialIntermediario || null,
-        valorFinalIntermediario: m.valorFinalIntermediario || null,
-        valorInicialRisco: m.valorInicialRisco || null,
-        valorFinalRisco: m.valorFinalRisco || null,
-        id: (m as any).id ?? null,
-      }))),
-      categorias: state.categorias.map((c) => (({
-        tempId: c.tempId,
-        nome: c.nome.trim(),
-        moduloTempId: c.moduloTempId,
-        id: (c as any).id ?? null,
-      }))),
-      perguntas: state.perguntas.map((p) => (({
-        tempId: p.tempId,
-        pergunta: p.pergunta.trim(),
-        ordem: p.ordem,
-        moduloTempId: p.moduloTempId,
-        categoriasTempIds: p.categoriasTempIds,
-        id: (p as any).id ?? null,
-        respostas: p.respostas.map((r) => ({ resposta: r.resposta.trim(), valor: Number(r.valor), id: (r as any).id ?? null })),
-      }))),
+      ...(mode === 'create' ? {
+        modulos: state.modulos.map((m) => (({
+          tempId: m.tempId,
+          nome: m.nome.trim(),
+          valorInicialFavoravel: m.valorInicialFavoravel || null,
+          valorFinalFavoravel: m.valorFinalFavoravel || null,
+          valorInicialIntermediario: m.valorInicialIntermediario || null,
+          valorFinalIntermediario: m.valorFinalIntermediario || null,
+          valorInicialRisco: m.valorInicialRisco || null,
+          valorFinalRisco: m.valorFinalRisco || null,
+        }))),
+        categorias: state.categorias.map((c) => (({
+          tempId: c.tempId,
+          nome: c.nome.trim(),
+          moduloTempId: c.moduloTempId,
+        }))),
+        perguntas: state.perguntas.map((p) => (({
+          tempId: p.tempId,
+          pergunta: p.pergunta.trim(),
+          ordem: p.ordem,
+          moduloTempId: p.moduloTempId,
+          categoriasTempIds: p.categoriasTempIds,
+          respostas: p.respostas.map((r) => ({ resposta: r.resposta.trim(), valor: Number(r.valor) })),
+        }))),
+      } : {})
     };
 
     setSaving(true);
@@ -760,7 +812,6 @@ export default function EscalaBuilderForm({
       const data = await res!.json().catch(() => ({}));
       if (!res!.ok) throw new Error(data?.error || 'Erro ao salvar escala.');
 
-      // clear local draft after successful save
       clearLocalDraft();
 
       toast.success(mode === 'create' ? 'Escala criada com sucesso!' : 'Escala atualizada com sucesso!');
@@ -830,7 +881,6 @@ export default function EscalaBuilderForm({
     toast.success(`Categoria "${categoria.nome}" excluída com sucesso.`);
   }
 
-  // small helper to format timestamp for display
   function formatTimestamp(ts: Date | null) {
     if (!ts) return '';
     return ts.toLocaleString();
@@ -845,7 +895,6 @@ export default function EscalaBuilderForm({
             <p className="card-banner-sub">Informe o nome e a data de vencimento da escala.</p>
           </div>
 
-          {/* Draft indicator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {lastSavedAt ? (
               <div style={{ color: '#d1d5db', fontSize: 12 }}>

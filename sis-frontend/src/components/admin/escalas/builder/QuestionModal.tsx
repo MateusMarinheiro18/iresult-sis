@@ -117,7 +117,6 @@ export default function QuestionModal({
                   onChange={(e) => {
                     const newModulo = e.target.value;
                     onChangeDraft('moduloTempId', newModulo as any);
-                    onChangeDraft('categoriasTempIds', [] as any); // limpa categorias ao trocar módulo
                   }}
                 >
                   <option value="">Selecione...</option>

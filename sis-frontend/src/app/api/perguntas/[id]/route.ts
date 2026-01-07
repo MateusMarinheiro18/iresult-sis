@@ -101,22 +101,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         perguntaBase
       );
 
-      await (tx as any).escalaPerguntaHasCategoria.deleteMany({
+      await tx.escalaPerguntaHasCategoria.deleteMany({
         where: { idPergunta: perguntaId },
       });
 
-      for (const catId of categoriasIds) {
-        await (tx as any).escalaPerguntaHasCategoria.create({
-          data: {
-            pergunta: { connect: { id: perguntaId } },
-            categoria: { connect: { id: Number(catId) } },
-          },
+      if (categoriasIds.length > 0) {
+        await tx.escalaPerguntaHasCategoria.createMany({
+          data: categoriasIds.map((catId: number) => ({
+            idPergunta: perguntaId,
+            idCategoria: Number(catId),
+          })),
         });
       }
 
-      await tx.escalaPerguntaResposta.deleteMany({
-        where: { idPergunta: perguntaId },
-      });
+      const incomingRespostaIds: number[] = [];
 
       for (const r of respostas ?? []) {
         if (!r.resposta?.trim()) continue;
@@ -126,13 +124,42 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           valor: Number(r.valor) || 0,
           ativo: 1,
         };
-        await attemptCreate(
-          tx.escalaPerguntaResposta,
-          { ...respBase, created: now, createdBy: adminId },
-          { ...respBase, created: now, created_by: adminId },
-          respBase
-        );
+
+        let savedResposta;
+        if (r.id) {
+          // Atualiza resposta existente
+          savedResposta = await attemptUpdate(
+            tx.escalaPerguntaResposta,
+            { id: r.id },
+            { ...respBase, updated: now, updatedBy: adminId },
+            { ...respBase, updated: now, updated_by: adminId },
+            respBase
+          );
+          incomingRespostaIds.push(r.id);
+        } else {
+          // Cria nova resposta
+          savedResposta = await attemptCreate(
+            tx.escalaPerguntaResposta,
+            { ...respBase, created: now, createdBy: adminId },
+            { ...respBase, created: now, created_by: adminId },
+            respBase
+          );
+          incomingRespostaIds.push(savedResposta.id);
+        }
       }
+
+      // Desativa respostas que não vieram no payload
+      await tx.escalaPerguntaResposta.updateMany({
+        where: {
+          idPergunta: perguntaId,
+          id: { notIn: incomingRespostaIds },
+        },
+        data: {
+          ativo: 0,
+          updated: now,
+          updatedBy: adminId,
+        },
+      });
     });
 
     return NextResponse.json({ ok: true });
