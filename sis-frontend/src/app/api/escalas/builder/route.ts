@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         if (!mod.nome || !String(mod.nome).trim()) throw new Error('Módulo sem nome');
 
         const parseNullable = (v: string | null) =>
-          v != null && String(v).trim() !== '' ? parseFloat(String(v).trim()) : null;
+          v != null && String(v).trim() !== '' ? parseFloat(String(v).trim().replace(',', '.')) : null;
 
         const modBase = {
           nome: String(mod.nome).trim(),
@@ -141,6 +141,7 @@ export async function POST(req: NextRequest) {
           valorInicialIntermediario: parseNullable(mod.valorInicialIntermediario),
           valorFinalIntermediario: parseNullable(mod.valorFinalIntermediario),
           valorInicialRisco: parseNullable(mod.valorInicialRisco),
+          valorFinalRisco: parseNullable(mod.valorFinalRisco), // Adicionado para consistência
           ativo: 1,
         };
 

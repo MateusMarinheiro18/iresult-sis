@@ -67,7 +67,7 @@ export default function ModuleModal({
       return signed;
     }
     // integer -> format to X.0
-    return n.toFixed(1);
+    return String(n.toFixed(1));
   }
 
   // onSave click: format numeric fields (if necessary) then call parent onSave
