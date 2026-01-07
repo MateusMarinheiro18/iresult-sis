@@ -13,12 +13,19 @@ export async function GET(request: NextRequest) {
     const moduloId = Number(moduloIdStr), empresaId = Number(empresaIdStr);
     if (Number.isNaN(moduloId) || Number.isNaN(empresaId)) return NextResponse.json({ error: 'IDs inválidos' }, { status: 400 });
 
-    const modulo = await prisma.escalaModulo.findUnique({ where: { id: moduloId }, select: {
-      valorInicialFavoravel: true, valorFinalFavoravel: true,
-      valorInicialIntermediario: true, valorFinalIntermediario: true,
-      valorInicialRisco: true, valorFinalRisco: true,
-      idEscala: true
-    }});
+    const modulo = await prisma.escalaModulo.findUnique({ 
+      where: { id: moduloId }, 
+      select: {
+        valorInicialFavoravel: true, 
+        valorFinalFavoravel: true,
+        valorInicialIntermediario: true, 
+        valorFinalIntermediario: true,
+        valorInicialRisco: true, 
+        valorFinalRisco: true,
+        idEscala: true
+      }
+    });
+    
     if (!modulo) return NextResponse.json({ error: 'Módulo não encontrado' }, { status: 404 });
 
     // pegar dataEnvio do vínculo escala-empresa (se houver)
@@ -35,7 +42,20 @@ export async function GET(request: NextRequest) {
     });
 
     const categoriasPromises = categoriasRaw.map(async (cat: any) => {
-      const whereRes: any = { ativo: 1, pergunta: { ativo: 1, idCategoria: cat.id }, idEmpresa: empresaId };
+      // CORREÇÃO: usar relacionamento many-to-many
+      const whereRes: any = { 
+        ativo: 1, 
+        pergunta: { 
+          ativo: 1, 
+          categoriasRel: {
+            some: {
+              idCategoria: cat.id
+            }
+          }
+        }, 
+        idEmpresa: empresaId 
+      };
+      
       if (dataEnvio) whereRes.dataResposta = { gte: dataEnvio };
 
       const respostas = await prisma.respostaFuncionario.findMany({

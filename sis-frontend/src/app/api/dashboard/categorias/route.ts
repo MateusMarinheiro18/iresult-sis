@@ -5,23 +5,6 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-interface RespostaFuncionario {
-  respostaPossivel: {
-    valor: number | null;
-  } | null;
-}
-
-interface Pergunta {
-  id: number;
-  respostasFuncionarios: RespostaFuncionario[];
-}
-
-interface CategoriaRaw {
-  id: number;
-  nome: string;
-  perguntas: Pergunta[];
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -46,7 +29,8 @@ export async function GET(request: NextRequest) {
         valorInicialIntermediario: true,
         valorFinalIntermediario: true,
         valorInicialRisco: true,
-        valorFinalRisco: true
+        valorFinalRisco: true,
+        idEscala: true
       }
     });
 
@@ -57,19 +41,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // NOVO: buscar dataEnvio SOMENTE se houver filtro de empresa
+    // ========================================================================
+    // 2. BUSCAR dataEnvio SE HOUVER FILTRO DE EMPRESA
+    // ========================================================================
     let dataEnvioCategorias: Date | null = null;
     
-    const moduloInfo = await prisma.escalaModulo.findUnique({
-      where: { id: Number(moduloId) },
-      select: { idEscala: true }
-    });
-
-    if (moduloInfo && empresaId) {
+    if (empresaId) {
       const vinculoCategorias = await prisma.escalaHasEmpresa.findUnique({
         where: {
           idEscala_idEmpresa: {
-            idEscala: moduloInfo.idEscala,
+            idEscala: modulo.idEscala,
             idEmpresa: Number(empresaId)
           }
         },
@@ -80,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ========================================================================
-    // 2. BUSCAR CATEGORIAS DO MÓDULO
+    // 3. BUSCAR CATEGORIAS DO MÓDULO
     // ========================================================================
     const categoriasRaw = await prisma.escalaCategoria.findMany({
       where: {
@@ -95,14 +76,19 @@ export async function GET(request: NextRequest) {
     });
 
     // ========================================================================
-    // 3. CALCULAR MÉDIA E CLASSIFICAÇÃO DE CADA CATEGORIA
+    // 4. CALCULAR MÉDIA E CLASSIFICAÇÃO DE CADA CATEGORIA
     // ========================================================================
     const categoriasPromises = categoriasRaw.map(async (categoria: any) => {
+      // CORREÇÃO: usar o relacionamento many-to-many correto
       const whereRespostas: any = {
         ativo: 1,
         pergunta: {
           ativo: 1,
-          idCategoria: categoria.id
+          categoriasRel: {
+            some: {
+              idCategoria: categoria.id
+            }
+          }
         }
       };
       
