@@ -191,3 +191,69 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: err?.message || 'Erro ao atualizar escala.' }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const token = req.cookies.get('sis_admin_sess')?.value;
+    if (!token) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
+    const { ok, payload } = verifyAdminToken(token);
+    if (!ok || !payload) return NextResponse.json({ error: 'Token inválido ou expirado' }, { status: 401 });
+
+    const adminId = Number(payload.sub);
+    if (!adminId || Number.isNaN(adminId)) return NextResponse.json({ error: 'ID do administrador inválido' }, { status: 401 });
+
+    const { id: idStr } = await params;
+    const escalaId = Number(idStr);
+    if (!escalaId || Number.isNaN(escalaId) || escalaId <= 0) {
+      return NextResponse.json({ error: 'ID inválido.' }, { status: 400 });
+    }
+
+    const escala = await prisma.escala.findUnique({ where: { id: escalaId }, select: { id: true } });
+    if (!escala) {
+      return NextResponse.json({ error: 'Escala não encontrada.' }, { status: 404 });
+    }
+
+    const now = getBrasiliaDate();
+    const softDeleteData = { ativo: 0, deleted: now, updated: now, deletedBy: adminId, updatedBy: adminId };
+
+    await prisma.$transaction(async (tx) => {
+      const modulos = await tx.escalaModulo.findMany({ where: { idEscala: escalaId }, select: { id: true } });
+      const moduloIds = modulos.map((m) => m.id);
+
+      if (moduloIds.length > 0) {
+        const perguntas = await tx.escalaPergunta.findMany({ where: { idModulo: { in: moduloIds } }, select: { id: true } });
+        const perguntaIds = perguntas.map((p) => p.id);
+
+        if (perguntaIds.length > 0) {
+          // Soft delete Respostas Possíveis
+          await tx.escalaPerguntaResposta.updateMany({ where: { idPergunta: { in: perguntaIds } }, data: softDeleteData });
+        }
+
+        // Soft delete Perguntas
+        await tx.escalaPergunta.updateMany({ where: { id: { in: perguntaIds } }, data: softDeleteData });
+
+        // Soft delete Categorias
+        await tx.escalaCategoria.updateMany({ where: { idModulo: { in: moduloIds } }, data: softDeleteData });
+      }
+
+      // Soft delete Módulos
+      await tx.escalaModulo.updateMany({ where: { idEscala: escalaId }, data: softDeleteData });
+
+      // Soft delete Escala
+      await tx.escala.update({ where: { id: escalaId }, data: softDeleteData });
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    console.error('Erro ao excluir escala:', err);
+    // Trata erro de chave estrangeira, caso a escala esteja em uso
+    if (err?.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'Não é possível excluir a escala pois ela está sendo utilizada.' },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: err?.message || 'Erro ao excluir escala.' }, { status: 500 });
+  }
+}

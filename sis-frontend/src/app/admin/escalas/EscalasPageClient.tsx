@@ -4,13 +4,17 @@
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import EscalasTable, { EscalaRow } from '@/components/admin/escalas/EscalasTable';
+import { ConfirmProvider, useConfirm } from '@/components/ui/ConfirmProvider';
+import toast from 'react-hot-toast';
+
 
 const ITEMS_PER_PAGE = 5;
 
-export default function EscalasPageClient({ initialData }: { initialData: EscalaRow[] }) {
+function EscalasPageContent({ initialData }: { initialData: EscalaRow[] }) {
   const [query, setQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
+  const confirm = useConfirm();
 
   // filtra por nome - case insensitive
   const filtered = useMemo(() => {
@@ -51,6 +55,32 @@ export default function EscalasPageClient({ initialData }: { initialData: Escala
 
   function handleEdit(id: number) {
     router.push(`/admin/escalas/${id}/edit`);
+  }
+
+  async function handleDelete(id: number) {
+    const confirmed = await confirm({
+      title: 'Confirmar Exclusão',
+      description: 'Tem certeza que deseja excluir esta escala? Esta ação não pode ser desfeita.',
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+      danger: true,
+    });
+
+    if (confirmed) {
+      const promise = fetch(`/api/escalas/${id}`, { method: 'DELETE' });
+
+      toast.promise(promise, {
+        loading: 'Excluindo escala...',
+        success: (res: Response) => {
+          if (!res.ok) {
+            throw new Error('Falha ao excluir');
+          }
+          router.refresh();
+          return 'Escala excluída com sucesso!';
+        },
+        error: 'Erro ao excluir escala.',
+      });
+    }
   }
 
   return (
@@ -110,7 +140,7 @@ export default function EscalasPageClient({ initialData }: { initialData: Escala
           </div>
 
           {/* Tabela */}
-          <EscalasTable items={currentItems} onEdit={handleEdit} />
+          <EscalasTable items={currentItems} onEdit={handleEdit} onDelete={handleDelete} />
 
           {/* Paginação */}
           {totalItems > 0 && (
@@ -389,5 +419,13 @@ export default function EscalasPageClient({ initialData }: { initialData: Escala
         }
       `}</style>
     </div>
+  );
+}
+
+export default function EscalasPageClient({ initialData }: { initialData: EscalaRow[] }) {
+  return (
+    <ConfirmProvider>
+      <EscalasPageContent initialData={initialData} />
+    </ConfirmProvider>
   );
 }
