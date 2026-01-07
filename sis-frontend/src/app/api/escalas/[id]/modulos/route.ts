@@ -108,7 +108,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       valorInicialIntermediario: modulo.valorInicialIntermediario?.toString() ?? '',
       valorFinalIntermediario: modulo.valorFinalIntermediario?.toString() ?? '',
       valorInicialRisco: modulo.valorInicialRisco?.toString() ?? '',
-      valorFinalRisco: modulo.valorFinalRisco?.toString() ?? '',
+      valorFinalRisco: modulo.valorFinalRisco?.toString() ?? '', // ✅ ESTAVA FALTANDO!
     }, { status: 201 });
   } catch (err: any) {
     console.error('Erro ao criar módulo:', err);

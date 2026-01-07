@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   PerguntaFormState,
   RespostaFormState,
@@ -58,54 +58,6 @@ export default function QuestionModal({
 
   const categoriasPorModulo = (modTempId: string) =>
     categorias.filter((c) => c.moduloTempId === modTempId);
-
-  // DEFAULTS que serão usados para preencher respostas vazias/ausentes
-  const DEFAULT_RESPONSE_TEXTS = [
-    'Nunca / Quase nunca',
-    'Raramente',
-    'Às vezes',
-    'Frequentemente',
-    'Sempre',
-  ];
-
-  // Ao abrir o modal para uma pergunta nova (ou quando draft mudar),
-  // garantir que existam 5 respostas preenchidas por padrão — sem sobrescrever valores do usuário.
-  useEffect(() => {
-    if (!open || !draft) return;
-
-    const curr = Array.isArray(draft.respostas) ? draft.respostas : [];
-    // se já tem 5 ou mais e todas têm texto, não fazemos nada
-    const allFiveHaveText = curr.length >= 5 && curr.slice(0, 5).every(r => typeof r.resposta === 'string' && String(r.resposta).trim() !== '');
-    if (allFiveHaveText) return;
-
-    const now = Date.now();
-    const newRespostas: RespostaFormState[] = [];
-    for (let i = 0; i < 5; i++) {
-      const existing = curr[i];
-      const tempId = existing?.tempId ?? `${draft.tempId}-resp-${i}-${now}`;
-      const respostaText = (existing && typeof existing.resposta === 'string' && existing.resposta.trim() !== '')
-        ? existing.resposta
-        : DEFAULT_RESPONSE_TEXTS[i];
-      const valor = (existing && (existing.valor !== undefined && existing.valor !== null))
-        ? existing.valor
-        : (i + 1);
-      newRespostas.push({
-        tempId,
-        resposta: respostaText,
-        valor,
-      });
-    }
-
-    // Se havia mais de 5 respostas (caso de edição), preserve as extras também:
-    if (curr.length > 5) {
-      for (let j = 5; j < curr.length; j++) {
-        newRespostas.push(curr[j]);
-      }
-    }
-
-    onChangeDraft('respostas', newRespostas as any);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, draft?.tempId]);
 
   // ✅ NOVO: toggle de categoria no array
   function toggleCategoria(catTempId: string) {

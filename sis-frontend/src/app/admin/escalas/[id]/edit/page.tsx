@@ -20,6 +20,16 @@ function safeToISODateOnly(d: unknown): string {
   }
 }
 
+// ✅ NOVA FUNÇÃO: converte Decimal/número para string
+function toSafeString(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  // Se for um objeto Decimal do Prisma, chamar toString()
+  if (typeof value === 'object' && 'toString' in value) {
+    return String(value);
+  }
+  return String(value);
+}
+
 export default async function EditEscalaPage({ params }: { params: any }) {
   // Defender contra params sendo Promise ou função (algumas chamadas do Next podem variar)
   let resolvedParams: any = params;
@@ -71,12 +81,12 @@ export default async function EditEscalaPage({ params }: { params: any }) {
     id: m.id,
     tempId: makeTempId('mod', m.id),
     nome: m.nome ?? '',
-    valorInicialFavoravel: m.valorInicialFavoravel?.toString() ?? '',
-    valorFinalFavoravel: m.valorFinalFavoravel?.toString() ?? '',
-    valorInicialIntermediario: m.valorInicialIntermediario?.toString() ?? '',
-    valorFinalIntermediario: m.valorFinalIntermediario?.toString() ?? '',
-    valorInicialRisco: m.valorInicialRisco?.toString() ?? '',
-    valorFinalRisco: m.valorFinalRisco?.toString() ?? '',
+    valorInicialFavoravel: toSafeString(m.valorInicialFavoravel),
+    valorFinalFavoravel: toSafeString(m.valorFinalFavoravel),
+    valorInicialIntermediario: toSafeString(m.valorInicialIntermediario),
+    valorFinalIntermediario: toSafeString(m.valorFinalIntermediario),
+    valorInicialRisco: toSafeString(m.valorInicialRisco),
+    valorFinalRisco: toSafeString(m.valorFinalRisco),
   }));
 
   const moduloIdToTempId = new Map<number, string>();
@@ -131,11 +141,9 @@ export default async function EditEscalaPage({ params }: { params: any }) {
     perguntas: perguntasForForm,
   };
 
-  return (
-    <EditEscalaPageClient
-      initialData={initialData}
-      escalaNome={escala.nome ?? ''}
-      escalaId={escala.id}
-    />
-  );
+  // ✅ Serializar completamente os dados antes de passar para o Client Component
+  // Isso garante que não há referências circulares ou valores não-serializáveis
+  const serializedData = JSON.parse(JSON.stringify(initialData)) as EscalaFormState & { id: number };
+
+  return <EditEscalaPageClient initialData={serializedData} />;
 }

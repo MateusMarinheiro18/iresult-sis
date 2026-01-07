@@ -121,20 +121,21 @@ export default function EscalaBuilderForm({
   const confirm = useConfirm();
   const [saving, setSaving] = useState(false);
 
-  // --- initial state: if initialData present use it, otherwise defaults ---
-  const initialState: EscalaFormState = initialData ?? {
-    nome: '',
-    dataVencimento: '',
-    ativo: true,
-    modulos: [],
-    categorias: [],
-    perguntas: [],
-  };
-
-  const [state, setState] = useState<EscalaFormState>(() => initialState);
+  // --- ✅ MUDANÇA: Estado do formulário inicializado diretamente com initialData ---
+  const [state, setState] = useState<EscalaFormState>(
+    () =>
+      initialData ?? {
+        nome: '',
+        dataVencimento: '',
+        ativo: true,
+        modulos: [],
+        categorias: [],
+        perguntas: [],
+      }
+  );
 
   // Autosave metadata
-  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const saveTimerRef = useRef<number | null>(null);
   const isMountedRef = useRef(false);
 
@@ -142,67 +143,55 @@ export default function EscalaBuilderForm({
   const escalaId = (initialData && (initialData as any).id) ? (initialData as any).id : null;
   const draftKey = `${DRAFT_KEY_PREFIX}${escalaId ?? 'new'}`;
 
-  // Load draft from localStorage on mount and merge with initialData
+  // ✅ MUDANÇA: Lógica de rascunho refatorada para evitar erro de hidratação
   useEffect(() => {
     isMountedRef.current = true;
 
-    try {
-      const raw = localStorage.getItem(draftKey);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<EscalaFormState>;
-        // Merge strategy:
-        // - If initialData exists (editing an existing escala), prefer initialData for persisted ids,
-        //   but allow client-edits (names, dates, new tempIds) to override.
-        // - For create mode, use the draft entirely.
-        if (initialData) {
-          // Merge carefully to avoid losing server ids already present in initialData.
-          setState((prev) => {
-            // prefer initialData values for top-level fields that come from server (id, nome, dataVencimento)
-            const merged: EscalaFormState = {
-              nome: (parsed.nome ?? initialData.nome) ?? '',
-              dataVencimento: (parsed.dataVencimento ?? initialData.dataVencimento) ?? '',
-              ativo: typeof parsed.ativo === 'boolean' ? parsed.ativo : initialData.ativo ?? true,
-              modulos: (parsed.modulos && parsed.modulos.length > 0) ? parsed.modulos : initialData.modulos ?? [],
-              categorias: (parsed.categorias && parsed.categorias.length > 0) ? parsed.categorias : initialData.categorias ?? [],
-              perguntas: (parsed.perguntas && parsed.perguntas.length > 0) ? parsed.perguntas : initialData.perguntas ?? [],
-            };
-            return merged;
-          });
-        } else {
-          // create mode — take draft if any
-          setState((prev) => {
-            const merged: EscalaFormState = {
-              nome: parsed.nome ?? prev.nome,
-              dataVencimento: parsed.dataVencimento ?? prev.dataVencimento,
-              ativo: typeof parsed.ativo === 'boolean' ? parsed.ativo : prev.ativo,
-              modulos: parsed.modulos ?? prev.modulos,
-              categorias: parsed.categorias ?? prev.categorias,
-              perguntas: parsed.perguntas ?? prev.perguntas,
-            };
-            return merged;
-          });
+    // Carrega o rascunho do localStorage e pergunta ao usuário se deseja restaurar
+    const rawDraft = localStorage.getItem(draftKey);
+    if (rawDraft) {
+      try {
+        const parsed = JSON.parse(rawDraft);
+        const draftTimestamp = parsed.timestamp ? new Date(parsed.timestamp) : null;
+
+        if (draftTimestamp) {
+          const loadDraft = async () => {
+            const ok = await confirm({
+              title: 'Rascunho encontrado',
+              description: `Encontramos um rascunho salvo localmente em ${draftTimestamp.toLocaleString()}. Deseja restaurá-lo?`,
+              confirmLabel: 'Restaurar Rascunho',
+              cancelLabel: 'Ignorar',
+            });
+
+            if (ok && isMountedRef.current) {
+              setState(parsed.data);
+              toast.success('Rascunho restaurado.');
+            }
+            // Limpa o rascunho se o usuário ignorar, para não perguntar de novo
+            if (!ok) {
+              localStorage.removeItem(draftKey);
+            }
+          };
+          // Atraso mínimo para garantir que a UI inicial esteja estável
+          setTimeout(loadDraft, 100);
         }
-        setLastSavedAt(Date.now());
-      } else {
-        setState(initialState);
+      } catch (err) {
+        console.warn('Erro ao processar rascunho local:', err);
+        localStorage.removeItem(draftKey);
       }
-    } catch (err) {
-      console.warn('Erro ao carregar rascunho local:', err);
     }
 
     return () => {
       isMountedRef.current = false;
       if (saveTimerRef.current) {
         window.clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftKey]); // re-run if draftKey changes (escalaId changes)
+  }, [draftKey]); // Executa apenas uma vez na montagem
 
   // Autosave on state change (debounced)
   useEffect(() => {
-    // don't autosave until mounted and after first render
     if (!isMountedRef.current) return;
 
     if (saveTimerRef.current) {
@@ -211,26 +200,23 @@ export default function EscalaBuilderForm({
 
     saveTimerRef.current = window.setTimeout(() => {
       try {
-        const toSave: Partial<EscalaFormState> = {
-          nome: state.nome,
-          dataVencimento: state.dataVencimento,
-          ativo: state.ativo,
-          modulos: state.modulos,
-          categorias: state.categorias,
-          perguntas: state.perguntas,
+        // ✅ MUDANÇA: Salva o estado completo com um timestamp
+        const now = new Date();
+        const toSave = {
+          timestamp: now.toISOString(),
+          data: state,
         };
         localStorage.setItem(draftKey, JSON.stringify(toSave));
-        setLastSavedAt(Date.now());
+        setLastSavedAt(now);
       } catch (err) {
         console.warn('Erro ao salvar rascunho local:', err);
       }
       saveTimerRef.current = null;
-    }, 800); // debounce: 800ms
+    }, 800);
 
     return () => {
       if (saveTimerRef.current) {
         window.clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = null;
       }
     };
   }, [state, draftKey]);
@@ -301,9 +287,9 @@ export default function EscalaBuilderForm({
         const isUpdate = !!(moduleDraft as any).id && Number((moduleDraft as any).id) > 0;
 
         if (isUpdate) {
-          // update existing modulo
+          // update existing modulo - usar /api/modulos/[id] ao invés de /api/escalas/[id]/modulos/[moduloId]
           const modId = (moduleDraft as any).id;
-          const res = await fetch(`/api/escalas/${escalaIdForServer}/modulos/${modId}`, {
+          const res = await fetch(`/api/modulos/${modId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -423,13 +409,27 @@ export default function EscalaBuilderForm({
     }
 
     setEditingQuestionTempId(null);
+
+    // ✅ LÓGICA MOVIDA PARA CÁ: Preenche as respostas padrão ao criar uma nova pergunta.
+    const defaultRespostas = [
+      { texto: 'Nunca / Quase nunca', valor: 1 },
+      { texto: 'Raramente', valor: 2 },
+      { texto: 'Às vezes', valor: 3 },
+      { texto: 'Frequentemente', valor: 4 },
+      { texto: 'Sempre', valor: 5 },
+    ].map(r => ({
+      tempId: createTempId('resp'),
+      resposta: r.texto,
+      valor: r.valor,
+    }));
+
     setQuestionDraft({
       tempId: createTempId('perg'),
       pergunta: '',
       ordem: state.perguntas.length + 1,
       moduloTempId: '',
       categoriasTempIds: [],
-      respostas: createDefaultRespostasLikert(),
+      respostas: defaultRespostas,
     });
     setQuestionModalStep(1);
     setCreatingCategory(false);
@@ -447,7 +447,10 @@ export default function EscalaBuilderForm({
       ordem: perg.ordem,
       moduloTempId: perg.moduloTempId,
       categoriasTempIds: [...(perg.categoriasTempIds || [])],
-      respostas: perg.respostas.map((r) => ({ ...r })),
+      // ✅ LÓGICA MOVIDA PARA CÁ: Garante que as respostas existem ao editar.
+      respostas: (perg.respostas && perg.respostas.length > 0)
+        ? perg.respostas.map((r) => ({ ...r }))
+        : createDefaultRespostasLikert(),
     });
     setQuestionModalStep(1);
     setCreatingCategory(false);
@@ -828,10 +831,9 @@ export default function EscalaBuilderForm({
   }
 
   // small helper to format timestamp for display
-  function formatTimestamp(ts: number | null) {
+  function formatTimestamp(ts: Date | null) {
     if (!ts) return '';
-    const d = new Date(ts);
-    return d.toLocaleString();
+    return ts.toLocaleString();
   }
 
   return (

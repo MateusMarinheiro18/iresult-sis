@@ -7,13 +7,11 @@ import type { EscalaFormState } from '@/components/admin/escalas/builder/types';
 
 export default function EditEscalaPageClient({
   initialData,
-  escalaNome,
-  escalaId,
 }: {
-  initialData?: EscalaFormState & { id?: number };
-  escalaNome?: string | null;
-  escalaId?: number | null;
+  initialData: EscalaFormState & { id?: number };
 }) {
+  const escalaNome = initialData?.nome || '';
+
   return (
     <div className="page-root" aria-label="Página de edição de escala">
       <main className="container">
@@ -28,8 +26,7 @@ export default function EditEscalaPageClient({
           </div>
         </header>
 
-        {/* Mantemos apenas as props esperadas pelo EscalaBuilderForm */}
-        <EscalaBuilderForm mode="edit" initialData={initialData ?? undefined} />
+        <EscalaBuilderForm mode="edit" initialData={initialData} />
       </main>
 
       <style jsx>{`
