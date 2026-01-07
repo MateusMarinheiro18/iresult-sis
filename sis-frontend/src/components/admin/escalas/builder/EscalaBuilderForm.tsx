@@ -829,6 +829,77 @@ export default function EscalaBuilderForm({
     return names.length > 0 ? names.join(', ') : '—';
   }
 
+  async function handleDeleteCategoria(categoriaId: string) {
+    const categoria = state.categorias.find((c) => c.tempId === categoriaId);
+    if (!categoria) return;
+
+    const ok = await confirm({
+      title: 'Excluir categoria',
+      description: `Tem certeza que deseja excluir a categoria "${categoria.nome}"?\n\nTodas as perguntas vinculadas a ela serão desvinculadas.`,
+      confirmLabel: 'Excluir',
+      cancelLabel: 'Cancelar',
+      danger: true,
+    });
+
+    if (!ok) return;
+
+    // ✅ NOVO: Se estiver em modo de edição e a categoria tiver ID do servidor, deleta da API
+    if (mode === 'edit' && categoria.id) {
+      try {
+        setSaving(true);
+        
+        console.log('🗑️ [handleDeleteCategoria] Deletando categoria do servidor');
+        console.log('🆔 categoria.id:', categoria.id);
+        
+        const res = await fetch(`/api/categorias/${categoria.id}`, {
+          method: 'DELETE',
+        });
+
+        console.log('📥 Resposta do servidor - Status:', res.status);
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data?.error || 'Erro ao excluir categoria do servidor.');
+        }
+
+        console.log('✅ Categoria deletada do servidor com sucesso');
+      } catch (err: any) {
+        console.error('❌ Erro ao deletar categoria:', err);
+        toast.error(err?.message || 'Erro ao excluir categoria do servidor.');
+        return; // ❌ Não remove do estado local se falhou no servidor
+      } finally {
+        setSaving(false);
+      }
+    }
+
+    // Remove do estado local
+    setState((prev) => {
+      const newCategorias = prev.categorias.filter((c) => c.tempId !== categoriaId);
+      const newPerguntas = prev.perguntas.map((p) => ({
+        ...p,
+        categoriasTempIds: p.categoriasTempIds.filter(id => id !== categoriaId)
+      }));
+
+      // Remove do draft da pergunta se estiver aberto
+      if (questionDraft?.categoriasTempIds.includes(categoriaId)) {
+        setQuestionDraft((prev) =>
+          prev ? {
+            ...prev,
+            categoriasTempIds: prev.categoriasTempIds.filter(id => id !== categoriaId)
+          } as PerguntaDraftState : prev
+        );
+      }
+
+      return {
+        ...prev,
+        categorias: newCategorias,
+        perguntas: newPerguntas,
+      };
+    });
+
+    toast.success(`Categoria "${categoria.nome}" excluída com sucesso.`);
+  }
+
   function updateCampoEscala<K extends keyof EscalaFormState>(field: K, value: EscalaFormState[K]) {
     setState((prev) => ({ ...prev, [field]: value }));
   }
@@ -944,46 +1015,6 @@ export default function EscalaBuilderForm({
       window.removeEventListener('keydown', onKeyDown);
     };
   }, [moduleModalOpen, questionModalOpen]);
-
-  async function handleDeleteCategoria(categoriaId: string) {
-    const categoria = state.categorias.find((c) => c.tempId === categoriaId);
-    if (!categoria) return;
-
-    const ok = await confirm({
-      title: 'Excluir categoria',
-      description: `Tem certeza que deseja excluir a categoria "${categoria.nome}"?\n\nTodas as perguntas vinculadas a ela serão desvinculadas.`,
-      confirmLabel: 'Excluir',
-      cancelLabel: 'Cancelar',
-      danger: true,
-    });
-
-    if (!ok) return;
-
-    setState((prev) => {
-      const newCategorias = prev.categorias.filter((c) => c.tempId !== categoriaId);
-      const newPerguntas = prev.perguntas.map((p) => ({
-        ...p,
-        categoriasTempIds: p.categoriasTempIds.filter(id => id !== categoriaId)
-      }));
-
-      if (questionDraft?.categoriasTempIds.includes(categoriaId)) {
-        setQuestionDraft((prev) =>
-          prev ? {
-            ...prev,
-            categoriasTempIds: prev.categoriasTempIds.filter(id => id !== categoriaId)
-          } as PerguntaDraftState : prev
-        );
-      }
-
-      return {
-        ...prev,
-        categorias: newCategorias,
-        perguntas: newPerguntas,
-      };
-    });
-
-    toast.success(`Categoria "${categoria.nome}" excluída com sucesso.`);
-  }
 
   function formatTimestamp(ts: Date | null) {
     if (!ts) return '';
