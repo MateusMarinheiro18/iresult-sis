@@ -537,11 +537,24 @@ export default function EscalaBuilderForm({
         setSaving(true);
         const isUpdate = !!(questionDraft as any).id;
 
+        console.log('🔍 [handleQuestionStep2Save] Iniciando salvamento');
+        console.log('📝 Modo:', isUpdate ? 'UPDATE' : 'CREATE');
+        console.log('🆔 escalaId:', escalaId);
+        console.log('📋 questionDraft:', JSON.stringify(questionDraft, null, 2));
+
         const moduloId = state.modulos.find(m => m.tempId === questionDraft.moduloTempId)?.id;
+        console.log('🔗 moduloId encontrado:', moduloId);
+        console.log('🔗 moduloTempId buscado:', questionDraft.moduloTempId);
+        console.log('📦 state.modulos:', JSON.stringify(state.modulos, null, 2));
+
         const categoriasIds = state.categorias
           .filter(c => questionDraft.categoriasTempIds.includes(c.tempId))
           .map(c => c.id)
           .filter(Boolean);
+
+        console.log('🏷️ categoriasTempIds:', questionDraft.categoriasTempIds);
+        console.log('🏷️ categoriasIds encontrados:', categoriasIds);
+        console.log('📦 state.categorias:', JSON.stringify(state.categorias, null, 2));
 
         const payload = {
           pergunta: questionDraft.pergunta.trim(),
@@ -555,11 +568,14 @@ export default function EscalaBuilderForm({
           })),
         };
 
+        console.log('📤 Payload a ser enviado:', JSON.stringify(payload, null, 2));
+
         let res;
         let savedData;
 
         if (isUpdate) {
           const perguntaId = (questionDraft as any).id;
+          console.log(`🔄 Fazendo PUT para /api/perguntas/${perguntaId}`);
           res = await fetch(`/api/perguntas/${perguntaId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -567,6 +583,7 @@ export default function EscalaBuilderForm({
           });
           savedData = { id: perguntaId, ...payload };
         } else {
+          console.log(`➕ Fazendo POST para /api/escalas/${escalaId}/perguntas`);
           res = await fetch(`/api/escalas/${escalaId}/perguntas`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -575,8 +592,16 @@ export default function EscalaBuilderForm({
           savedData = await res.json();
         }
 
+        console.log('📥 Resposta do servidor - Status:', res.status);
+        console.log('📥 Resposta do servidor - OK:', res.ok);
+
         const data = res.ok ? savedData : await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.error || 'Erro ao salvar pergunta.');
+        console.log('📥 Data recebida:', JSON.stringify(data, null, 2));
+
+        if (!res.ok) {
+          console.error('❌ Erro na resposta do servidor:', data);
+          throw new Error(data?.error || 'Erro ao salvar pergunta.');
+        }
 
         // Atualiza o estado local com os dados salvos (incluindo novos IDs)
         setState(prev => {
@@ -603,9 +628,12 @@ export default function EscalaBuilderForm({
           return { ...prev, perguntas: newPerguntas };
         });
 
+        console.log('✅ Pergunta salva com sucesso!');
         toast.success('Pergunta salva com sucesso!');
         closeQuestionModal();
       } catch (err: any) {
+        console.error('❌ [handleQuestionStep2Save] Erro capturado:', err);
+        console.error('❌ Stack trace:', err.stack);
         toast.error(err.message || 'Falha ao salvar pergunta.');
       } finally {
         setSaving(false);
@@ -641,7 +669,8 @@ export default function EscalaBuilderForm({
 
   function startCreateCategory() { setCreatingCategory(true); setNewCategoryName(''); }
   function cancelCreateCategory() { setCreatingCategory(false); setNewCategoryName(''); }
-  function confirmCreateCategory() {
+  
+  async function confirmCreateCategory() {
     if (!questionDraft) return;
     const nome = newCategoryName.trim();
     if (!nome) {
@@ -653,6 +682,81 @@ export default function EscalaBuilderForm({
       toast.error('Selecione um módulo antes de criar a categoria.');
       return;
     }
+
+    console.log('🏗️ [confirmCreateCategory] Iniciando criação de categoria');
+    console.log('📝 Nome:', nome);
+    console.log('🔗 moduloTempId:', moduloTempId);
+    console.log('🔍 Modo:', mode);
+    console.log('🆔 escalaId:', escalaId);
+
+    // ✅ NOVO: Se estiver em modo de edição, salva a categoria no servidor primeiro
+    if (mode === 'edit' && escalaId) {
+      try {
+        setSaving(true);
+        
+        const modulo = state.modulos.find(m => m.tempId === moduloTempId);
+        const moduloId = modulo?.id;
+
+        console.log('🔗 Módulo encontrado:', modulo);
+        console.log('🆔 moduloId:', moduloId);
+
+        if (!moduloId) {
+          throw new Error('Módulo não encontrado ou ainda não foi salvo no servidor.');
+        }
+
+        console.log(`📤 Fazendo POST para /api/modulos/${moduloId}/categorias`);
+
+        const res = await fetch(`/api/modulos/${moduloId}/categorias`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        console.log('📥 Resposta do servidor - Status:', res.status);
+        console.log('📥 Data recebida:', JSON.stringify(data, null, 2));
+
+        if (!res.ok) {
+          throw new Error(data?.error || 'Erro ao criar categoria no servidor.');
+        }
+
+        const createdCategoriaId = data?.id;
+        
+        console.log('✅ Categoria criada no servidor - ID:', createdCategoriaId);
+
+        const newCat: CategoriaFormState = { 
+          tempId: createTempId('cat'), 
+          nome, 
+          moduloTempId,
+          id: createdCategoriaId  // ✅ Adiciona o ID do servidor
+        };
+
+        setState((prev) => ({ ...prev, categorias: [...prev.categorias, newCat] }));
+
+        setQuestionDraft((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            categoriasTempIds: [...prev.categoriasTempIds, newCat.tempId],
+          } as PerguntaDraftState;
+        });
+
+        console.log('✅ Categoria adicionada ao estado local com ID do servidor');
+        toast.success('Categoria criada com sucesso!');
+        setCreatingCategory(false);
+        setNewCategoryName('');
+      } catch (err: any) {
+        console.error('❌ Erro ao criar categoria:', err);
+        toast.error(err?.message || 'Erro ao criar categoria no servidor.');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    // Fallback: modo de criação (salva apenas localmente)
+    console.log('💾 Salvando categoria apenas localmente (modo create)');
     const newCat: CategoriaFormState = { tempId: createTempId('cat'), nome, moduloTempId };
 
     setState((prev) => ({ ...prev, categorias: [...prev.categorias, newCat] }));
