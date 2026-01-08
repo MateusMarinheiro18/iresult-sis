@@ -18,7 +18,7 @@ import classnames from 'classnames'
 function LogoDesktop() {
   return (
     <div className="w-72">
-      <img src="/logos/LogoGreen.png" alt="logo" className="w-full h-auto" />
+      <img src="/logos/sis_blue.png" alt="logo" className="w-full h-auto" />
     </div>
   )
 }
@@ -30,7 +30,7 @@ function LogoDesktop() {
 function LogoMobile() {
   return (
     <div className="w-28">
-      <img src="/logos/LogoWhite.png" alt="logo white" className="w-full h-auto" />
+      <img src="/logos/sis_white.png" alt="logo white" className="w-full h-auto" />
     </div>
   )
 }
@@ -102,7 +102,7 @@ export default function ClientForgotPasswordPage() {
       >
         <div className="flex flex-col items-start justify-center max-w-[420px] text-left">
           <header className="mb-8">
-            <Typography variant="h4" className="text-[#0B2527] mb-2" sx={{ fontWeight: 700 }}>
+            <Typography variant="h4" className="text-[#120336] mb-2" sx={{ fontWeight: 700 }}>
               Recuperar acesso
             </Typography>
             <Typography className="text-slate-700">
@@ -119,7 +119,7 @@ export default function ClientForgotPasswordPage() {
       {/* RIGHT - form column */}
       <main
         className={classnames('flex items-center justify-center flex-1 p-6 md:p-12')}
-        style={{ background: '#0B2527', color: '#ffffff' }}
+        style={{ background: '#421E97', color: '#ffffff' }}
       >
         <div className="w-full max-w-md pt-20 md:pt-0">
           <div className="mb-6 text-center">
@@ -165,9 +165,9 @@ export default function ClientForgotPasswordPage() {
               sx={{
                 py: 1.5,
                 borderRadius: '999px',
-                backgroundColor: '#0B2527',
+                backgroundColor: '#120336',
                 border: '2px solid #F6F7FB',
-                '&:hover': { backgroundColor: '#233A3C' }
+                '&:hover': { backgroundColor: '#15043B' }
               }}
             >
               {sending ? 'Enviando…' : 'Enviar link de redefinição'}
