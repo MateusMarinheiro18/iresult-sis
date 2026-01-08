@@ -141,14 +141,11 @@ export default function SurveyPageClient({
       {/* LADO ESQUERDO */}
       <aside className={styles.leftPanel}>
         <div className={styles.brand}>
-          <div className={styles.logoCircle}>
-            <img
-              src="/logos/LogoWhite.png"
-              alt="SIS"
-              className={styles.logoImage}
-            />
-          </div>
-          <span className={styles.brandText}>SIS</span>
+          <img
+            src="/logos/sis_white.png"
+            alt="SIS"
+            className={styles.logoImage}
+          />
         </div>
 
         <div className={styles.leftContent}>

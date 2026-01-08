@@ -10,7 +10,7 @@
   
   .leftPanel {
     width: 35%;
-    background-color: #0b2527;
+    background-color: #421E97;
     color: #f3f4ff;
     padding: 48px 56px;
     display: flex;
@@ -22,23 +22,14 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 48px;
+    margin-bottom: 4px;
   }
   
-  .logoCircle {
-    width: 40px;
-    height: 40px;
-    border-radius: 999px;
-    border: 2px solid #f3f4ff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
+
   
   .logoImage {
-    max-width: 100%;
-    max-height: 100%;
+    max-width: 60%;
+    max-height: 60%;
     object-fit: contain;
   }
   
@@ -95,7 +86,7 @@
   .startTitle {
     font-size: 28px;
     margin-bottom: 16px;
-    color: #1b1f3a;
+    color: #2c1465;
   }
   
   .startSubtitle {
@@ -110,7 +101,7 @@
     padding: 14px 32px;
     border-radius: 999px;
     border: none;
-    background-color: #0b2527;
+    background-color: #421E97;
     color: #ffffff;
     font-size: 16px;
     font-weight: 500;
@@ -166,8 +157,8 @@
   }
   
   .optionSelected {
-    background-color: #6ee7b7;
-    border-color: #34d399;
+    background-color: #5f2addab;
+    border-color: #421E97;
   }
   
   .optionIndex {
@@ -185,9 +176,9 @@
   }
   
   .optionIndexSelected {
-    border-color: #10b981;
+    border-color: #421E97;
     background-color: #ffffff;
-    color: #047857;
+    color: #421E97;
   }
   
   .optionLabel {
