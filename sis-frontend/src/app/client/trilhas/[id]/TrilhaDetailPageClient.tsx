@@ -224,9 +224,9 @@ export default function TrilhaDetailPageClient({ trilhaId }: { trilhaId: number 
         }
 
         .title {
-          font-size: 20px;
-          font-weight: 700;
-          color: #421E97;
+          font-size: 1.6rem;
+          font-weight: 600;
+          color: #111827;
           margin: 0;
         }
 

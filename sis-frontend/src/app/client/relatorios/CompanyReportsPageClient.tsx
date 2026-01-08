@@ -72,7 +72,7 @@ export default function CompanyReportsPageClient() {
   return (
     <div className="page-root">
       <main className="container">
-        <CompanyReportsHeader title="RELATÓRIOS" onBack={() => router.push('/client')} />
+        <CompanyReportsHeader title="Relatórios" onBack={() => router.push('/client')} />
 
         <div className="card-body">
           {reports.length === 0 ? (

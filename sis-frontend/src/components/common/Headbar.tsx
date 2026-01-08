@@ -206,7 +206,7 @@ export default function Headbar({
               <button
                 onClick={(e) => setCompanyAnchor(e.currentTarget)}
                 className="inline-flex items-center gap-2 rounded-full border px-4 py-2 font-semibold text-sm leading-none
-                           border-[#0F3B3E] text-[#0F3B3E] bg-white shadow-sm"
+                           border-[#130438] text-[#130438] bg-white shadow-sm"
                 aria-haspopup="true"
                 aria-expanded={companyOpen ? "true" : undefined}
                 aria-label="Selecionar Empresa"

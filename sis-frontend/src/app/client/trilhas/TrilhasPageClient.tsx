@@ -134,7 +134,7 @@ export default function TrilhasPageClient() {
       <main className="container">
         <header className="header-row">
           <div>
-            <h1 className="page-title">TRILHAS</h1>
+            <h1 className="page-title">Trilhas</h1>
             <p className="page-subtitle">Visualize as trilhas disponíveis para a sua empresa.</p>
           </div>
         </header>
@@ -226,7 +226,7 @@ export default function TrilhasPageClient() {
         .page-root { width: 100%; }
         .container { max-width: 1120px; margin: 0 auto; padding: 24px 16px 40px; }
         .header-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; }
-        .page-title { font-size:20px; font-weight:700; color:#111827; margin:0 0 4px; }
+        .page-title { font-size:1.6rem; font-weight:600; color:#111827; margin:0 0 4px; }
         .page-subtitle { font-size:14px; color:#6b7280; margin:0; }
         .wrapper { display:block; gap:12px; }
         .controls-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; gap:12px; }
