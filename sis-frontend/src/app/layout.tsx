@@ -8,7 +8,7 @@ export const metadata = {
   title: 'SIS',
   description: 'Sistema de Informação de Saúde',
   icons: {
-    icon: '/logos/LogoWhite.png', // ✅ caminho correto relativo à pasta /public
+    icon: '/logos/sis_white.png', // ✅ caminho correto relativo à pasta /public
   },
 }
 
@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css"
           rel="stylesheet"
         />
-        <link rel="icon" href="/logos/LogoWhite.png" sizes="any" />
+        <link rel="icon" href="/logos/sis_white.png" sizes="any" />
       </head>
       <body>
         <ConfirmProvider>
