@@ -27,7 +27,7 @@
   .admin-calendar-page h1 {
     font-size: 1.6rem;
     font-weight: 600;
-    color: #421E97;
+    color: #111827;
     margin: 0;
   }
   
@@ -110,7 +110,7 @@
   
   /* Botão Hoje */
   .calendar-today-btn {
-    background: #e5f3f4;
+    background: #692ff229;
     color: #111827;
   }
   
@@ -339,7 +339,7 @@
   .calendar-event-panel-header h2 {
     font-size: 1rem;
     font-weight: 600;
-    color: #421E97;
+    color: #111827;
     margin: 0;
   }
   
