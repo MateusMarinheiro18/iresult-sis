@@ -125,8 +125,8 @@ export default function Sidebar({
 
         const itemBase = `flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors duration-150`;
         const itemActive = active
-          ? "bg-[#F3F4FF] text-[#0B2527] shadow-sm"
-          : "text-[#F3F4FF] hover:bg-[#0b3738]/30";
+          ? "bg-[#F3F4FF] text-[#421E97] shadow-sm"
+          : "text-[#F3F4FF] hover:bg-[#421E97]/30";
 
         return (
           <li key={it.key}>
@@ -141,7 +141,7 @@ export default function Sidebar({
               {/* Icon container - sempre visível */}
               <span
                 className={`flex items-center justify-center min-w-[24px] text-[20px] transition-colors ${
-                  active ? "text-[#0B2527]" : "text-[#F3F4FF]"
+                  active ? "text-[#421E97]" : "text-[#F3F4FF]"
                 }`}
               >
                 {it.icon}
@@ -172,26 +172,14 @@ export default function Sidebar({
   );
 
   const Logo = () => (
-    <div className="flex items-center gap-3 px-6 py-4 border-b border-white/10">
-      {/* Logo icon - sempre visível */}
+    <div className="flex items-center justify-center px-6 py-1 border-b border-white/10">
+      {/* Logo icon - sempre visível e centralizado */}
       <div className="flex-shrink-0">
         <img
-          src="/logos/LogoWhite.png"
+          src="/logos/sis_white.png"
           alt="Logo"
-          className="w-8 h-8 object-contain"
+          className="w-30 h-30 object-contain"
         />
-      </div>
-
-      <div
-        className={`flex items-center transition-all duration-200 ease-in-out ${
-          isExpanded
-            ? "opacity-100 max-w-[200px]"
-            : "opacity-0 max-w-0 overflow-hidden"
-        }`}
-      >
-        <span className="text-[#F3F4FF] text-xl font-semibold whitespace-nowrap">
-          SIS
-        </span>
       </div>
 
       {/* Botão de colapsar - só aparece quando expandido */}
@@ -200,7 +188,7 @@ export default function Sidebar({
           aria-label={collapsed ? "Expandir barra lateral" : "Reduzir barra lateral"}
           title={collapsed ? "Expandir" : "Reduzir"}
           onClick={handleToggleCollapse}
-          className="ml-auto flex items-center justify-center rounded-md p-1 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/20"
+          className="absolute right-4 flex items-center justify-center rounded-md p-1 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/20"
         >
           <ChevronLeftOutlined className="text-[#F3F4FF]" />
         </button>
@@ -220,9 +208,11 @@ export default function Sidebar({
         onMouseLeave={() => {
           if (collapsed) setHoverOpen(false);
         }}
-        className={`hidden min-[851px]:flex fixed left-0 top-0 h-screen flex-col ${desktopWidth} bg-[#0B2527] text-[#F3F4FF] shadow-lg ${className} transition-all duration-200 ease-in-out z-30`}
+        className={`hidden min-[851px]:flex fixed left-0 top-0 h-screen flex-col ${desktopWidth} bg-[#421E97] text-[#F3F4FF] shadow-lg ${className} transition-all duration-200 ease-in-out z-30`}
       >
-        <Logo />
+        <div className="relative">
+          <Logo />
+        </div>
 
         <nav className="flex-1 px-4 py-4 overflow-y-auto overflow-x-hidden">
           {renderList()}
@@ -235,16 +225,13 @@ export default function Sidebar({
       {openOnMobile && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-40 flex min-[851px]:hidden">
           <div className="fixed inset-0 bg-black/40" onClick={onRequestClose} />
-          <aside className="relative z-50 w-72 bg-[#0B2527] h-full text-[#F3F4FF] shadow-xl">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-4">
-              <div className="flex items-center gap-3">
-                <img src="/logos/LogoWhite.png" alt="Logo" className="w-8 h-8" />
-                <span className="text-[#F3F4FF] text-xl font-semibold">SIS</span>
-              </div>
+          <aside className="relative z-50 w-72 bg-[#421E97] h-full text-[#F3F4FF] shadow-xl">
+            <div className="relative flex items-center justify-center border-b border-white/10 px-4 py-6">
+              <img src="/logos/sis_white.png" alt="Logo" className="w-22 h-12" />
               <button 
                 onClick={onRequestClose} 
                 aria-label="Fechar menu" 
-                className="p-2 rounded-md hover:bg-white/10 transition-colors"
+                className="absolute right-4 p-2 rounded-md hover:bg-white/10 transition-colors"
               >
                 <MenuOutlined className="text-[#F3F4FF]" />
               </button>
