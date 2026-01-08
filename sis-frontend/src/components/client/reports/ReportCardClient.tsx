@@ -34,7 +34,7 @@ export default function ReportCardClient({
       </div>
 
       <style jsx>{`
-        .report-card { background:#062123; border-radius:18px; padding:18px 20px; display:flex; flex-direction:column; justify-content:space-between; height:150px; overflow:hidden; }
+        .report-card { background:rgb(38, 17, 88); border-radius:18px; padding:18px 20px; display:flex; flex-direction:column; justify-content:space-between; height:150px; overflow:hidden; }
         .report-header { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
         .report-title { margin:0 0 4px; font-size:16px; font-weight:700; color:#f9fafb; word-break:break-word; }
         .report-date { margin:0; font-size:12px; color:#e5e7eb; }
