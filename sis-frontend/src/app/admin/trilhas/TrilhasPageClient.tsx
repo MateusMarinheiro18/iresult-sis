@@ -66,7 +66,7 @@ export default function TrilhasPageClient({ initialData }: Props) {
       <main className="container">
         <header className="header-row">
           <div>
-            <h1 className="page-title">TRILHAS</h1>
+            <h1 className="page-title">Trilhas</h1>
             <p className="page-subtitle">
               Visualize e gerencie todas as trilhas cadastradas.
             </p>
@@ -223,8 +223,8 @@ export default function TrilhasPageClient({ initialData }: Props) {
         }
 
         .page-title {
-          font-size: 20px;
-          font-weight: 700;
+          font-size: 1.6rem;
+          font-weight: 600;
           color: #111827;
           margin: 0 0 4px;
         }

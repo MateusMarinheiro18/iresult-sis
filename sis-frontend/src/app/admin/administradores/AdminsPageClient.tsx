@@ -17,7 +17,7 @@ export default function AdminsPageClient({
       <main className="container">
         {/* HEADER COM TÍTULO E BOTÃO VOLTAR */}
         <div className="header-row">
-          <h1 className="title">ADMINISTRADORES</h1>
+          <h1 className="title">Administradores</h1>
         </div>
 
         <div className="card-body">
@@ -48,9 +48,9 @@ export default function AdminsPageClient({
         }
 
         .title {
-          font-size: 20px;
-          font-weight: 700;
-          color: #421E97;
+          font-size: 1.6rem;
+          font-weight: 600;
+          color: #111827;
           margin: 0;
         }
 

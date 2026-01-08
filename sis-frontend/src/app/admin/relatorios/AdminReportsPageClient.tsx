@@ -39,7 +39,7 @@ export default function AdminReportsPageClient({
     <div className="page-root">
       <main className="container">
         <div className="header-row">
-          <h1 className="title">RELATÓRIOS POR EMPRESA</h1>
+          <h1 className="title">Relatórios por empresa</h1>
         </div>
 
         <div className="card-body">
@@ -150,9 +150,9 @@ export default function AdminReportsPageClient({
         }
 
         .title {
-          font-size: 20px;
-          font-weight: 700;
-          color: #421E97;
+          font-size: 1.6rem;
+          font-weight: 600;
+          color: #111827;
           margin: 0;
         }
 

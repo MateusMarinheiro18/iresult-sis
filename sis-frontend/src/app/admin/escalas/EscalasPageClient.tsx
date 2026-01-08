@@ -88,7 +88,7 @@ function EscalasPageContent({ initialData }: { initialData: EscalaRow[] }) {
       <main className="container">
         <header className="header-row">
           <div>
-            <h1 className="page-title">ESCALAS</h1>
+            <h1 className="page-title">Escalas</h1>
           </div>
         </header>
 
@@ -238,8 +238,8 @@ function EscalasPageContent({ initialData }: { initialData: EscalaRow[] }) {
         }
 
         .page-title {
-          font-size: 20px;
-          font-weight: 700;
+          font-size: 1.6rem;
+          font-weight: 600;
           color: #111827;
           margin: 0 0 4px;
         }
