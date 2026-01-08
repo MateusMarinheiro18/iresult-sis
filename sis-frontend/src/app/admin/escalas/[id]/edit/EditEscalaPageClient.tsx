@@ -54,7 +54,7 @@ export default function EditEscalaPageClient({
         .page-title {
           font-size: 20px;
           font-weight: 700;
-          color: #0b2527;
+          color: #421E97;
           margin: 0 0 4px;
         }
 

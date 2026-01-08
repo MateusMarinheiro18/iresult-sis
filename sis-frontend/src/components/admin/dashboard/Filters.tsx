@@ -85,7 +85,7 @@ export default function Filters({
           padding: 12px 16px;
           border-radius: 8px;
           border: 1px solid #d1d5db;
-          background: #0B2527;
+          background: #421E97;
           color: #ffffff;
           font-size: 14px;
           cursor: pointer;
@@ -364,17 +364,17 @@ function Dropdown({
 
         /* highlight (hover / keyboard) */
         .dropdown-item.highlight {
-          background: #0B2527; /* blue highlight */
+          background: #421E97; /* blue highlight */
           color: #ffffff;
         }
 
         .dropdown-item:hover {
-          background: #0B2527;
+          background: #421E97;
         }
 
         /* selected style (show check and slightly bold) */
         .dropdown-item.selected {
-          background: #0B2527;
+          background: #421E97;
           color: #F7FAFC;
         }
 

@@ -17,13 +17,13 @@ export default async function EmployeesPage(props: Props) {
     return (
       <div style={{ padding: 24, background: '#f3f4ff', minHeight: '100vh' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0b2527' }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#421E97' }}>
             Erro: ID da empresa inválido
           </h1>
           <p style={{ color: '#b91c1c', marginTop: 12 }}>
             Não foi possível identificar a empresa. Verifique a URL.
           </p>
-          <a href="/admin/empresas" style={{ color: '#0b2527', textDecoration: 'underline' }}>
+          <a href="/admin/empresas" style={{ color: '#421E97', textDecoration: 'underline' }}>
             Voltar para empresas
           </a>
         </div>

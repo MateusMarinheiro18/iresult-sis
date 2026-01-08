@@ -54,11 +54,11 @@ export default function EditCompanyReportPageClient({
         .page-root { padding: 24px; background: #f3f4ff; min-height: 100vh; box-sizing: border-box; }
         .container { max-width: 1180px; margin: 0 auto; }
         .header-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:12px; flex-wrap:wrap; }
-        .title { font-size:20px; font-weight:700; color:#0b2527; margin:0; }
+        .title { font-size:20px; font-weight:700; color:#421E97; margin:0; }
         .subtitle { margin:4px 0 0; font-size:13px; color:#4b5563; }
-        .back-btn { display:inline-flex; align-items:center; gap:6px; color:#0b2527; border:none; border-radius:8px; font-size:14px; font-weight:600; padding:8px 14px; cursor:pointer; background:transparent; }
+        .back-btn { display:inline-flex; align-items:center; gap:6px; color:#421E97; border:none; border-radius:8px; font-size:14px; font-weight:600; padding:8px 14px; cursor:pointer; background:transparent; }
         .card { background:#fff; border-radius:14px; box-shadow:0 6px 18px rgba(11,37,39,0.06); overflow:hidden; }
-        .card-header { background:#0b2527; padding:18px 24px; }
+        .card-header { background:#421E97; padding:18px 24px; }
         .card-header h2 { color:#fff; margin:0; font-size:16px; font-weight:700; }
         .card-body { padding:20px 24px 24px; }
         @media (max-width:640px) { .container{padding:8px;} .header-row{flex-direction:column; align-items:flex-start;} .back-btn{width:100%; justify-content:center;} .card-body{padding:16px;} }

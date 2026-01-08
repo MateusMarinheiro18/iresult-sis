@@ -21,7 +21,7 @@ export default function HeaderClient() {
         .page-header-title h1 { 
           font-size: 1.6rem; 
           margin: 0; 
-          color: #0b2527; 
+          color: #421E97; 
           font-weight: 600; 
         }
         .page-header-subtitle { 

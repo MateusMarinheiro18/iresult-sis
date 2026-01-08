@@ -19,7 +19,7 @@ type Payload = {
   expiresSeconds: number;
 };
 
-const BRAND_COLOR = '#0B2527';
+const BRAND_COLOR = '#421E97';
 
 function escapeHtml(s: string) {
   return String(s || '')

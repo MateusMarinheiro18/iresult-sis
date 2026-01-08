@@ -125,7 +125,7 @@ export default function ReportViewCard({
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          color: #0b2527;
+          color: #421E97;
           border: none;
           border-radius: 8px;
           font-size: 14px;
@@ -134,7 +134,7 @@ export default function ReportViewCard({
           cursor: pointer;
           background: transparent;
         }
-        .back-btn svg { stroke: #0b2527; }
+        .back-btn svg { stroke: #421E97; }
 
         .doc-card {
           background: #fff;
@@ -168,7 +168,7 @@ export default function ReportViewCard({
         }
 
         .icon-btn {
-          background: #0b2527;
+          background: #421E97;
           color: #fff;
           border: none;
           padding: 8px 12px;

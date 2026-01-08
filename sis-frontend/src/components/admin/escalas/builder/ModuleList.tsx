@@ -142,7 +142,7 @@ export default function ModuleList({
 
         .modulo-name {
           font-weight: 700;
-          color: #0B2527;
+          color: #421E97;
           font-size: 15px;
           white-space: nowrap;
           overflow: hidden;
@@ -174,7 +174,7 @@ export default function ModuleList({
           color:#374151;
         }
 
-        .range-pill strong { color: #0B2527; font-weight:700; margin-left:4px; }
+        .range-pill strong { color: #421E97; font-weight:700; margin-left:4px; }
         .range-label { color: #6b7280; font-weight:600; margin-left:2px; }
 
         .dot {
@@ -207,7 +207,7 @@ export default function ModuleList({
           border: 1px solid transparent;
           cursor:pointer;
           transition: all .12s ease;
-          color: #0B2527;
+          color: #421E97;
         }
 
         .icon-btn svg { display:block; }

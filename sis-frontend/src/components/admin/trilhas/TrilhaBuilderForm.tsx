@@ -323,7 +323,7 @@ export default function TrilhaBuilderForm({
 
         .trilha-builder .input:focus,
         .trilha-builder .textarea:focus {
-          border-color: #0b2527;
+          border-color: #421E97;
           box-shadow: 0 0 0 1px rgba(11, 37, 39, 0.1);
         }
 
@@ -369,7 +369,7 @@ export default function TrilhaBuilderForm({
         }
 
         .trilha-builder .switch input:checked + .slider {
-          background-color: #0b2527;
+          background-color: #421E97;
         }
 
         .trilha-builder .switch input:checked + .slider::before {
@@ -476,8 +476,8 @@ export default function TrilhaBuilderForm({
 
         .trilha-builder .pill-secondary {
           background: white;
-          color: #0b2527;
-          border-color: #0b2527;
+          color: #421E97;
+          border-color: #421E97;
         }
 
         .trilha-builder .pill-secondary:hover {
@@ -514,9 +514,9 @@ export default function TrilhaBuilderForm({
         }
 
         .trilha-builder .btn-primary {
-          background: #0b2527;
+          background: #421E97;
           color: #ffffff;
-          border-color: #0b2527;
+          border-color: #421E97;
         }
 
         .trilha-builder .btn-primary:hover {
@@ -526,8 +526,8 @@ export default function TrilhaBuilderForm({
 
         .trilha-builder .btn-secondary {
           background: #ffffff;
-          color: #0b2527;
-          border-color: #0b2527;
+          color: #421E97;
+          border-color: #421E97;
         }
 
         .trilha-builder .btn-secondary:hover {

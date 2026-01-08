@@ -21,13 +21,13 @@
   
   .admin-calendar-page .page-header-icon {
     font-size: 2rem;
-    color: #0b2527;
+    color: #421E97;
   }
   
   .admin-calendar-page h1 {
     font-size: 1.6rem;
     font-weight: 600;
-    color: #0b2527;
+    color: #421E97;
     margin: 0;
   }
   
@@ -116,7 +116,7 @@
   
   /* Botão Novo Evento */
   .calendar-new-event-btn {
-    background: #0b2527;
+    background: #421E97;
     color: #f3f4ff;
     font-weight: 500;
     padding-inline: 0.9rem;
@@ -151,7 +151,7 @@
   }
   
   .calendar-select:focus {
-    border-color: #0b2527;
+    border-color: #421E97;
   }
   
   .calendar-year-select {
@@ -281,20 +281,20 @@
   
   /* Hover */
   .calendar-day-cell:hover {
-    border-color: #0b2527;
+    border-color: #421E97;
     box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1);
   }
   
   /* Estado selecionado */
   .calendar-day-selected {
-    border-color: #0b2527;
-    background: #0b2527;
+    border-color: #421E97;
+    background: #421E97;
     color: #f3f4ff;
   }
   
   /* Hoje – anel em volta */
   .calendar-day-today {
-    box-shadow: 0 0 0 2px #0b2527;
+    box-shadow: 0 0 0 2px #421E97;
   }
   
   /* NÚMERO DO DIA – mais forte e com estados específicos */
@@ -339,7 +339,7 @@
   .calendar-event-panel-header h2 {
     font-size: 1rem;
     font-weight: 600;
-    color: #0b2527;
+    color: #421E97;
     margin: 0;
   }
   
@@ -388,14 +388,14 @@
     padding: 0.12rem 0.5rem;
     border-radius: 999px;
     background: #e5f3f4;
-    color: #0b2527;
+    color: #421E97;
   }
   
   .calendar-event-title {
     margin: 0;
     font-size: 0.95rem;
     font-weight: 600;
-    color: #0b2527;
+    color: #421E97;
   }
   
   .calendar-event-body {

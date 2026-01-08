@@ -244,7 +244,7 @@ export default function TrilhasPageClient() {
         .page-numbers { display:flex; gap:6px; }
         .page-number { display:flex; align-items:center; justify-content:center; min-width:36px; height:36px; padding:0 8px; border:1px solid #e5e7eb; background:white; border-radius:100%; cursor:pointer; font-size:14px; font-weight:600; color:#374151; transition:all .2s ease; }
         .page-number:hover { background:#f9fafb; border-color:#d1d5db; }
-        .page-number.active { background:#0b2527; color:white; border-color:#0b2527; }
+        .page-number.active { background:#421E97; color:white; border-color:#421E97; }
         @media (max-width:960px) {
           .controls-row { flex-direction:column; align-items:stretch; gap:12px; }
           .search-box { max-width:100%; }

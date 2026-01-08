@@ -109,7 +109,7 @@ export default function ReportPageClient() {
                 borderRadius: 8,
                 border: 'none',
                 background: 'transparent',
-                color: '#0b2527',
+                color: '#421E97',
                 fontWeight: 600,
               }}
             >

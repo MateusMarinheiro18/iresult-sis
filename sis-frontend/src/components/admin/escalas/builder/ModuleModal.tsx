@@ -263,7 +263,7 @@ export default function ModuleModal({
           justify-content:space-between;
           gap:12px;
           padding: 18px;
-          background: #0B2527;
+          background: #421E97;
           border-top-left-radius: 12px;
           border-top-right-radius: 12px;
         }
@@ -291,20 +291,20 @@ export default function ModuleModal({
           transition: border-color .15s, box-shadow .15s;
         }
         .input::placeholder { color:#374151; opacity:0.7; }
-        .input:focus { border-color:#0B2527; box-shadow: 0 0 0 2px rgba(11,37,39,0.06); }
+        .input:focus { border-color:#421E97; box-shadow: 0 0 0 2px rgba(11,37,39,0.06); }
 
         .faixas-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:6px; }
         .faixa-col { background:#fafafa; border-radius:8px; border:1px solid #eef2ff; padding:10px; }
-        .faixa-title { font-size:13px; font-weight:700; color:#0B2527; display:flex; align-items:center; gap:8px; margin:0 0 8px; }
+        .faixa-title { font-size:13px; font-weight:700; color:#421E97; display:flex; align-items:center; gap:8px; margin:0 0 8px; }
         .faixa-dot { width:10px;height:10px;border-radius:999px; display:inline-block; }
         .faixa-dot-risco { background:#dc2626; }
         .faixa-dot-intermediario { background:#facc15; }
         .faixa-dot-favoravel { background:#16a34a; }
 
         .modal-footer { display:flex; justify-content:flex-end; gap:10px; padding:12px 18px 18px; }
-        .btn-primary { background:#0B2527; color:#fff; border:none; padding:8px 14px; border-radius:999px; font-weight:700; cursor:pointer; }
+        .btn-primary { background:#421E97; color:#fff; border:none; padding:8px 14px; border-radius:999px; font-weight:700; cursor:pointer; }
         .btn-primary:hover { background:#134148; }
-        .btn-tertiary { background:transparent; border:1px solid #e5e7eb; padding:8px 12px; border-radius:999px; cursor:pointer; color:#0B2527; }
+        .btn-tertiary { background:transparent; border:1px solid #e5e7eb; padding:8px 12px; border-radius:999px; cursor:pointer; color:#421E97; }
         .btn-tertiary:hover { background:#f9fafb; }
 
         @media (max-width:720px) {

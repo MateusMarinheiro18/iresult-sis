@@ -118,7 +118,7 @@ function ConfirmDialog({ opts, onClose }: { opts: InternalConfirm; onClose: (res
         .confirm-desc { margin:0 0 18px 0; font-size:14px; color:#475569; }
         .confirm-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
         .btn-cancel { padding:8px 12px; border-radius:8px; background:white; border:1px solid rgba(11,37,39,0.08); cursor:pointer; min-width:96px; color:#111827; font-weight:600; }
-        .btn-confirm { padding:8px 12px; border-radius:8px; background:#0b2527; color:white; border:none; cursor:pointer; font-weight:800; min-width:96px; }
+        .btn-confirm { padding:8px 12px; border-radius:8px; background:#421E97; color:white; border:none; cursor:pointer; font-weight:800; min-width:96px; }
         .btn-confirm.danger { background:#dc2626; }
         .btn-cancel:disabled, .btn-confirm:disabled { opacity:0.7; cursor:not-allowed; }
         @media (max-width:520px) {

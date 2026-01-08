@@ -178,8 +178,8 @@ export default function TrilhasTable({ items, onDetails }: Props) {
 
         .pill-secondary {
           background: white;
-          color: #0b2527;
-          border-color: #0b2527;
+          color: #421E97;
+          border-color: #421E97;
         }
 
         .pill-secondary:hover {

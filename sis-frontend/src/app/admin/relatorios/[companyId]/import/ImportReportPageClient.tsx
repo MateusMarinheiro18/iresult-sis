@@ -345,7 +345,7 @@ export default function ImportReportPageClient({ companyId, companyName }: Props
           margin: 0;
           font-size: 18px;
           font-weight: 700;
-          color: #0b2527;
+          color: #421E97;
         }
 
         .company-name {
@@ -371,7 +371,7 @@ export default function ImportReportPageClient({ companyId, companyName }: Props
           flex-direction: column;
           gap: 6px;
           font-size: 14px;
-          color: #0b2527;
+          color: #421E97;
         }
 
         .file-label input[type='file'] {
@@ -393,7 +393,7 @@ export default function ImportReportPageClient({ companyId, companyName }: Props
           flex-direction: column;
           gap: 6px;
           font-size: 14px;
-          color: #0b2527;
+          color: #421E97;
         }
 
         .name-field input {
@@ -417,7 +417,7 @@ export default function ImportReportPageClient({ companyId, companyName }: Props
         }
 
         .btn-primary {
-          background: #0b2527;
+          background: #421E97;
           color: #ffffff;
           border-radius: 999px;
           border: none;
@@ -434,9 +434,9 @@ export default function ImportReportPageClient({ companyId, companyName }: Props
 
         .btn-ghost {
           background: transparent;
-          color: #0b2527;
+          color: #421E97;
           border-radius: 999px;
-          border: 1px solid #0b2527;
+          border: 1px solid #421E97;
           padding: 8px 18px;
           font-size: 14px;
           font-weight: 600;
@@ -452,7 +452,7 @@ export default function ImportReportPageClient({ companyId, companyName }: Props
           margin: 0 0 8px;
           font-size: 15px;
           font-weight: 600;
-          color: #0b2527;
+          color: #421E97;
         }
 
         .preview-placeholder {

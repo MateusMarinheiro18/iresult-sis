@@ -16,7 +16,7 @@ type SendBulkArgs = {
   to: string[];
 };
 
-const BRAND_COLOR = '#0B2527';
+const BRAND_COLOR = '#421E97';
 
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 

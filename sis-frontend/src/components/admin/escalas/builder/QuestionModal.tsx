@@ -243,7 +243,7 @@ export default function QuestionModal({
                   title="Voltar"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M15 18L9 12l6-6" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M15 18L9 12l6-6" stroke="#421E97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
 
@@ -261,8 +261,8 @@ export default function QuestionModal({
                     title="Adicionar resposta"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-                      <path d="M12 5v14" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M5 12h14" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M12 5v14" stroke="#421E97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M5 12h14" stroke="#421E97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
                 </div>
@@ -313,8 +313,8 @@ export default function QuestionModal({
             title="Cancelar"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-              <path d="M18 6L6 18" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M6 6l12 12" stroke="#0B2527" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M18 6L6 18" stroke="#421E97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M6 6l12 12" stroke="#421E97" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
 
@@ -330,7 +330,7 @@ export default function QuestionModal({
         .modal-sheet { width: 920px; max-width: calc(100% - 32px); background:#fff; border-radius:12px; box-shadow:0 20px 60px rgba(11,37,39,0.12); padding:0; z-index:10060; }
 
         .modal-banner {
-          display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:18px; background:#0B2527; border-top-left-radius:12px; border-top-right-radius:12px;
+          display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:18px; background:#421E97; border-top-left-radius:12px; border-top-right-radius:12px;
         }
         .modal-banner-title { margin:0; font-size:18px; font-weight:700; color:#F3F4FF; }
         .modal-banner-sub { margin:6px 0 0; font-size:13px; color: rgba(243,244,255,0.9); }
@@ -384,12 +384,12 @@ export default function QuestionModal({
 
         .btn-add-categoria {
           background: #fff;
-          color: #0B2527;
+          color: #421E97;
           border-color: rgba(11,37,39,0.12);
         }
         .btn-add-categoria:hover {
           background: #f9fafb;
-          border-color: #0B2527;
+          border-color: #421E97;
         }
 
         .btn-cancel-categoria {
@@ -447,7 +447,7 @@ export default function QuestionModal({
         }
 
         .checkbox-item:hover {
-          border-color: #0B2527;
+          border-color: #421E97;
           background: #f9fafb;
         }
 
@@ -471,8 +471,8 @@ export default function QuestionModal({
         }
 
         .checkbox-item input:checked + .checkbox-custom {
-          background: #0B2527;
-          border-color: #0B2527;
+          background: #421E97;
+          border-color: #421E97;
         }
 
         .checkbox-item input:checked + .checkbox-custom::after {
@@ -493,7 +493,7 @@ export default function QuestionModal({
         }
 
         .checkbox-item:hover .checkbox-label {
-          color: #0B2527;
+          color: #421E97;
         }
 
         /* ✅ BOTÃO DE DELETAR CATEGORIA INLINE */
@@ -549,7 +549,7 @@ export default function QuestionModal({
           margin-bottom:12px;
         }
         .responses-top-title { flex:1; padding-left:12px; }
-        .respostas-title { margin:0; font-size:15px; font-weight:700; color:#0B2527; }
+        .respostas-title { margin:0; font-size:15px; font-weight:700; color:#421E97; }
         .respostas-sub { margin:4px 0 0; color:#6b7280; font-size:13px; }
 
         .responses-top-actions { display:flex; align-items:center; gap:8px; }
@@ -564,7 +564,7 @@ export default function QuestionModal({
         .resposta-remove:hover { background: rgba(220,38,38,0.06); }
 
         .modal-footer { display:flex; justify-content:flex-end; gap:10px; padding:12px 18px 18px; align-items:center; }
-        .btn-primary { background:#0B2527; color:#fff; border:none; padding:8px 14px; border-radius:999px; font-weight:700; cursor:pointer; }
+        .btn-primary { background:#421E97; color:#fff; border:none; padding:8px 14px; border-radius:999px; font-weight:700; cursor:pointer; }
         .btn-primary:hover { background:#134148; }
         .btn-primary.small { padding:6px 10px; font-size:13px; }
 
@@ -578,7 +578,7 @@ export default function QuestionModal({
           background: transparent;
           border: 1px solid #e5e7eb;
           cursor:pointer;
-          color: #0B2527;
+          color: #421E97;
         }
         .icon-circle-footer:hover {
           background: #f9fafb;

@@ -226,8 +226,8 @@ export default function AdminsTableClient({
 
         .btn-new {
           background: transparent;
-          border: 1px solid #0b2527;
-          color: #0b2527;
+          border: 1px solid #421E97;
+          color: #421E97;
           padding: 8px 14px;
           border-radius: 999px;
           text-decoration: none;
@@ -238,7 +238,7 @@ export default function AdminsTableClient({
           align-items: center;
           gap: 6px;
         }
-        .btn-new:hover { background: #0b2527; color: white; }
+        .btn-new:hover { background: #421E97; color: white; }
 
         .table-scroll {
           width: 100%;
@@ -319,7 +319,7 @@ export default function AdminsTableClient({
           font-size: 14px; font-weight: 600; color: #374151;
         }
         .page-number:hover { background: #f9fafb; border-color: #d1d5db; }
-        .page-number.active { background: #0b2527; color: white; border-color: #0b2527; }
+        .page-number.active { background: #421E97; color: white; border-color: #421E97; }
 
         @media (max-width: 960px) {
           .controls-row { flex-direction: column; align-items: stretch; gap: 12px; }

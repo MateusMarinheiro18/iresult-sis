@@ -75,7 +75,7 @@ export default function ResetClient() {
 
   return (
     <div className="relative min-h-screen flex">
-      <main className="flex items-center justify-center flex-1 p-6 md:p-12" style={{ background: '#0B2527', color: '#fff' }}>
+      <main className="flex items-center justify-center flex-1 p-6 md:p-12" style={{ background: '#421E97', color: '#fff' }}>
         <div className="w-full max-w-md">
           <div className="mb-6 text-center">
             <Typography variant="h4" sx={{ color: '#E6EEF0', fontWeight: 300 }}>
@@ -125,7 +125,7 @@ export default function ResetClient() {
               sx={{
                 py: 1.5,
                 borderRadius: '999px',
-                backgroundColor: '#0B2527',
+                backgroundColor: '#421E97',
                 border: '2px solid #F6F7FB',
                 '&:hover': { backgroundColor: '#233A3C' }
               }}

@@ -25,7 +25,7 @@ type BuiltEmail = {
   text: string;
 };
 
-const BRAND_COLOR = '#0B2527';
+const BRAND_COLOR = '#421E97';
 
 let transporter: nodemailer.Transporter | null = null;
 

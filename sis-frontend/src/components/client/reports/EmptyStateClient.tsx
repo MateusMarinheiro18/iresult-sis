@@ -19,7 +19,7 @@ export default function EmptyStateClient() {
           min-width: 100%;
           color: #6b7280;
         }
-        .empty-title { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #0b2527; }
+        .empty-title { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #421E97; }
         .empty-text { margin: 0; font-size: 13px; }
       `}</style>
     </div>

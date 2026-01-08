@@ -401,8 +401,8 @@ export default function TrilhaDetailPageClient({
           font-size: 13px;
           font-weight: 700;
           cursor: pointer;
-          border: 1px solid #0b2527;
-          background: #0b2527;
+          border: 1px solid #421E97;
+          background: #421E97;
           color: #ffffff;
           transition: all 0.15s ease;
           white-space: nowrap;

@@ -66,7 +66,7 @@ export default function EmptyState({
           margin: 0 0 4px;
           font-size: 15px;
           font-weight: 600;
-          color: #0b2527;
+          color: #421E97;
         }
         .empty-text {
           margin: 0 0 12px;
@@ -74,7 +74,7 @@ export default function EmptyState({
           color: #6b7280;
         }
         .btn-new-report {
-          background: #0b2527;
+          background: #421E97;
           color: #fff;
           border-radius: 999px;
           border: none;
@@ -111,7 +111,7 @@ export default function EmptyState({
           text-align: left;
           font-size: 13px;
           cursor: pointer;
-          color: #0b2527;
+          color: #421E97;
           font-weight: 500;
         }
 

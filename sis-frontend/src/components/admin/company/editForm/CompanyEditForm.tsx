@@ -476,8 +476,8 @@ export default function CompanyEditForm({
             {fetchingCep && (
               <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <circle cx="12" cy="12" r="10" stroke="#0b2527" strokeWidth="2" opacity="0.2"></circle>
-                  <path d="M22 12a10 10 0 00-10-10" stroke="#0b2527" strokeWidth="2" strokeLinecap="round"></path>
+                  <circle cx="12" cy="12" r="10" stroke="#421E97" strokeWidth="2" opacity="0.2"></circle>
+                  <path d="M22 12a10 10 0 00-10-10" stroke="#421E97" strokeWidth="2" strokeLinecap="round"></path>
                 </svg>
               </div>
             )}
@@ -680,7 +680,7 @@ export default function CompanyEditForm({
         }
 
         .input:focus {
-          border-color: #0b2527;
+          border-color: #421E97;
           box-shadow: 0 0 0 3px rgba(11, 37, 39, 0.06);
         }
 
@@ -742,7 +742,7 @@ export default function CompanyEditForm({
         }
 
         .group-name {
-          color: #0b2527;
+          color: #421E97;
         }
 
         .group-remove {
@@ -778,15 +778,15 @@ export default function CompanyEditForm({
         }
 
         .btn.primary {
-          background: #0b2527;
+          background: #421E97;
           color: white;
           box-shadow: 0 6px 20px rgba(11, 37, 39, 0.12);
         }
 
         .btn.secondary {
           background: white;
-          color: #0b2527;
-          border: 1px solid #0b2527;
+          color: #421E97;
+          border: 1px solid #421E97;
         }
 
         .btn.small {
@@ -795,7 +795,7 @@ export default function CompanyEditForm({
           padding: 0 16px;
           font-size: 12px;
           border-radius: 999px;
-          background: #0b2527;
+          background: #421E97;
           color: #fff;
           box-shadow: 0 4px 12px rgba(11, 37, 39, 0.12);
           white-space: nowrap;

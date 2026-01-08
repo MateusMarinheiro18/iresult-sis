@@ -154,7 +154,7 @@ export default function QuestionList({
         .question-main { flex: 1; display:flex; flex-direction:column; gap:8px; min-width:0; }
 
         .question-header { display:flex; justify-content:space-between; gap:12px; align-items:center; }
-        .question-title { font-size:15px; color:#0B2527; font-weight:700; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .question-title { font-size:15px; color:#421E97; font-weight:700; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .question-meta { display:flex; gap:8px; align-items:center; margin-left:8px; flex-wrap: wrap; }
 
         .meta-pill {
@@ -164,7 +164,7 @@ export default function QuestionList({
           border-radius:999px;
           background:#f3f7f7;
           border:1px solid #eef4f7;
-          color:#0B2527;
+          color:#421E97;
           font-weight:600;
         }
         .meta-pill.subtle { 
@@ -205,7 +205,7 @@ export default function QuestionList({
           border: 1px solid transparent;
           cursor:pointer;
           transition: all .12s ease;
-          color: #0B2527;
+          color: #421E97;
         }
         .icon-btn:hover { transform: translateY(-1px); }
         .icon-btn:focus { outline: 3px solid rgba(11,37,39,0.12); outline-offset: 2px; }

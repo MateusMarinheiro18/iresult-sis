@@ -83,7 +83,7 @@ export default function NewUserRhPageClient({ companyId, companyName, error }: P
           .title {
             font-size: 20px;
             font-weight: 700;
-            color: #0b2527;
+            color: #421E97;
             margin: 0;
           }
 
@@ -91,7 +91,7 @@ export default function NewUserRhPageClient({ companyId, companyName, error }: P
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            color: #0B2527;
+            color: #421E97;
             border: none;
             border-radius: 8px;
             font-size: 14px;
@@ -107,7 +107,7 @@ export default function NewUserRhPageClient({ companyId, companyName, error }: P
           }
 
           .back-btn svg {
-            stroke: #0B2527;
+            stroke: #421E97;
           }
 
           .card {
@@ -118,7 +118,7 @@ export default function NewUserRhPageClient({ companyId, companyName, error }: P
           }
 
           .card-header {
-            background: #0b2527;
+            background: #421E97;
             padding: 18px 24px;
           }
 
@@ -222,7 +222,7 @@ export default function NewUserRhPageClient({ companyId, companyName, error }: P
         .title {
           font-size: 20px;
           font-weight: 700;
-          color: #0b2527;
+          color: #421E97;
           margin: 0;
         }
 
@@ -230,7 +230,7 @@ export default function NewUserRhPageClient({ companyId, companyName, error }: P
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          color: #0B2527;
+          color: #421E97;
           border: none;
           border-radius: 8px;
           font-size: 14px;
@@ -246,7 +246,7 @@ export default function NewUserRhPageClient({ companyId, companyName, error }: P
         }
 
         .back-btn svg {
-          stroke: #0B2527;
+          stroke: #421E97;
         }
 
         /* === CARD DO FORMULÁRIO === */
@@ -258,7 +258,7 @@ export default function NewUserRhPageClient({ companyId, companyName, error }: P
         }
 
         .card-header {
-          background: #0b2527;
+          background: #421E97;
           padding: 18px 24px;
         }
 

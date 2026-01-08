@@ -139,12 +139,12 @@ export default function ReportEditForm({
         .field.full { grid-column: 1 / -1; }
         .label{ font-size:12px; font-weight:700; color:#233; margin-bottom:8px; letter-spacing:0.2px; }
         .input{ padding:8px 12px; border:1px solid #e6e9ef; border-radius:8px; background:#fff; font-size:14px; outline:none; transition:box-shadow .12s, border-color .12s; color:#111827; }
-        .input:focus{ border-color:#0b2527; box-shadow:0 0 0 3px rgba(11,37,39,0.06); }
+        .input:focus{ border-color:#421E97; box-shadow:0 0 0 3px rgba(11,37,39,0.06); }
         .textarea{ min-height:140px; resize:vertical; line-height:1.5; }
         .buttons { margin-top:26px; display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap; }
         .btn{ min-width:140px; height:44px; border-radius:999px; font-weight:700; letter-spacing:0.6px; cursor:pointer; border:none; }
-        .btn.primary{ background:#0b2527; color:white; box-shadow:0 6px 20px rgba(11,37,39,0.12); }
-        .btn.secondary{ background:white; color:#0b2527; border:1px solid #0b2527; }
+        .btn.primary{ background:#421E97; color:white; box-shadow:0 6px 20px rgba(11,37,39,0.12); }
+        .btn.secondary{ background:white; color:#421E97; border:1px solid #421E97; }
         @media (max-width:960px){ .grid{ grid-template-columns:1fr; } .buttons{ flex-direction:column; } .btn{ width:100%; min-width:0; } .btn + .btn{ margin-top:8px; } }
       `}</style>
     </form>

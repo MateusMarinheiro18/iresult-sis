@@ -444,7 +444,7 @@ export default function EmployeeForm({
           opacity: 1;
         }
         .input:focus {
-          border-color: #0b2527;
+          border-color: #421E97;
           box-shadow: 0 0 0 3px rgba(11, 37, 39, 0.06);
         }
         .form-error {
@@ -469,7 +469,7 @@ export default function EmployeeForm({
           border: none;
         }
         .btn.primary {
-          background: #0b2527;
+          background: #421E97;
           color: white;
           box-shadow: 0 6px 20px rgba(11, 37, 39, 0.12);
         }
@@ -479,8 +479,8 @@ export default function EmployeeForm({
         }
         .btn.secondary {
           background: white;
-          color: #0b2527;
-          border: 1px solid #0b2527;
+          color: #421E97;
+          border: 1px solid #421E97;
         }
         @media (max-width: 960px) {
           .grid {

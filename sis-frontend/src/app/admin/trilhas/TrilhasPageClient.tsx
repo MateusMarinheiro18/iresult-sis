@@ -288,8 +288,8 @@ export default function TrilhasPageClient({ initialData }: Props) {
 
         .btn-new {
           background: transparent;
-          border: 1px solid #0b2527;
-          color: #0b2527;
+          border: 1px solid #421E97;
+          color: #421E97;
           padding: 8px 14px;
           border-radius: 999px;
           text-decoration: none;
@@ -299,7 +299,7 @@ export default function TrilhasPageClient({ initialData }: Props) {
         }
 
         .btn-new:hover {
-          background: #0b2527;
+          background: #421E97;
           color: white;
         }
 
@@ -376,9 +376,9 @@ export default function TrilhasPageClient({ initialData }: Props) {
         }
 
         .page-number.active {
-          background: #0b2527;
+          background: #421E97;
           color: white;
-          border-color: #0b2527;
+          border-color: #421E97;
         }
 
         /* Responsive */

@@ -26,7 +26,7 @@ type BuiltEmail = {
   text: string;
 };
 
-const BRAND_COLOR = '#0B2527'; // cor padrão solicitada
+const BRAND_COLOR = '#421E97'; // cor padrão solicitada
 
 function escapeHtml(s: string) {
   return String(s || '')

@@ -522,7 +522,7 @@ export default function ImportEmployeesClient({ companyId }: { companyId: number
         }
 
         .btn.success {
-          background: #0b2527;
+          background: #421E97;
           color: #fff;
         }
 

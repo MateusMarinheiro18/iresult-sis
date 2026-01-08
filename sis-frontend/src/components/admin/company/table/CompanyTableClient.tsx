@@ -120,7 +120,7 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
                     style={{
                       display: 'inline-block',
                       padding: '7px 18px',
-                      background: '#0B2527',
+                      background: '#421E97',
                       color: 'white',
                       borderRadius: '999px',
                       textDecoration: 'none',
@@ -141,9 +141,9 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
                       display: 'inline-block',
                       padding: '7px 18px',
                       background: 'white',
-                      color: '#0B2527',
+                      color: '#421E97',
                       borderRadius: '999px',
-                      border: '1px solid #0B2527',
+                      border: '1px solid #421E97',
                       textDecoration: 'none',
                       fontWeight: 600,
                       fontSize: '13px',
@@ -267,8 +267,8 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
 
         .btn-new {
           background: transparent;
-          border: 1px solid #0b2527;
-          color: #0b2527;
+          border: 1px solid #421E97;
+          color: #421E97;
           padding: 8px 14px;
           border-radius: 999px;
           text-decoration: none;
@@ -278,7 +278,7 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
         }
         
         .btn-new:hover {
-          background: #0b2527;
+          background: #421E97;
           color: white;
         }
 
@@ -441,9 +441,9 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
         }
 
         .page-number.active {
-          background: #0b2527;
+          background: #421E97;
           color: white;
-          border-color: #0b2527;
+          border-color: #421E97;
         }
 
         /* Responsive */

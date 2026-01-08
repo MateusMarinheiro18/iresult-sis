@@ -192,7 +192,7 @@ export default function FileUploader({ onParsed, setMessage, setParsing }: Props
         }
         .dropzone:hover,
         .dropzone.hovered {
-          border-color: #0b2527;
+          border-color: #421E97;
           background-color: rgba(11, 37, 39, 0.15);
         }
         .content {
@@ -204,12 +204,12 @@ export default function FileUploader({ onParsed, setMessage, setParsing }: Props
         }
         .icon {
           font-size: 72px;
-          color: #0b2527;
+          color: #421E97;
           transition: color 0.22s ease, transform 0.22s ease;
         }
         .dropzone:hover .icon,
         .dropzone.hovered .icon {
-          color: #0b2527;
+          color: #421E97;
           transform: scale(1.03);
         }
         .text {
@@ -226,7 +226,7 @@ export default function FileUploader({ onParsed, setMessage, setParsing }: Props
         }
         .dropzone:hover .text,
         .dropzone.hovered .text {
-          color: #0b2527;
+          color: #421E97;
         }
       `}</style>
     </div>

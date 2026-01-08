@@ -46,7 +46,7 @@ export default function NotFound() {
         h1 {
           font-size: 3rem;
           margin-bottom: 0.75rem;
-          color: #0b2527;
+          color: #421E97;
         }
 
         p {
@@ -79,15 +79,15 @@ export default function NotFound() {
         }
 
         .btn-primary {
-          background: #0b2527;
+          background: #421E97;
           color: #ffffff;
           box-shadow: 0 6px 20px rgba(11, 37, 39, 0.12);
         }
 
         .btn-secondary {
           background: #ffffff;
-          color: #0b2527;
-          border: 1px solid #0b2527;
+          color: #421E97;
+          border: 1px solid #421E97;
         }
 
         @media (max-width: 480px) {

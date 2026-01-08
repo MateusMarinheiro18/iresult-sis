@@ -12,7 +12,7 @@ export default function ClientResetPasswordPage() {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center',
-        background: '#0B2527',
+        background: '#421E97',
         color: '#fff'
       }}>
         Carregando...

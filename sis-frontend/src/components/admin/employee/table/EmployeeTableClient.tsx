@@ -525,16 +525,16 @@ export default function EmployeesTableClient({
           min-width: 190px;
           padding: 0 32px 0 14px;
           border-radius: 999px;
-          border: 1px solid #0b2527;
+          border: 1px solid #421E97;
           background: #ffffff;
           font-size: 13px;
           font-weight: 600;
-          color: #0b2527;
+          color: #421E97;
           cursor: pointer;
           outline: none;
           appearance: none;
-          background-image: linear-gradient(45deg, transparent 50%, #0b2527 50%),
-            linear-gradient(135deg, #0b2527 50%, transparent 50%);
+          background-image: linear-gradient(45deg, transparent 50%, #421E97 50%),
+            linear-gradient(135deg, #421E97 50%, transparent 50%);
           background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
           background-size: 6px 6px, 6px 6px;
           background-repeat: no-repeat;
@@ -542,12 +542,12 @@ export default function EmployeesTableClient({
         }
 
         .group-filter:hover {
-          background: #0b2527;
+          background: #421E97;
           color: #ffffff;
         }
 
         .group-filter:focus {
-          border-color: #0b2527;
+          border-color: #421E97;
           box-shadow: 0 0 0 3px rgba(11, 37, 39, 0.08);
         }
 
@@ -560,8 +560,8 @@ export default function EmployeesTableClient({
 
         .btn-new {
           background: transparent;
-          border: 1px solid #0b2527;
-          color: #0b2527;
+          border: 1px solid #421E97;
+          color: #421E97;
           padding: 8px 14px;
           border-radius: 999px;
           text-decoration: none;
@@ -573,7 +573,7 @@ export default function EmployeesTableClient({
           gap: 6px;
         }
         .btn-new:hover {
-          background: #0b2527;
+          background: #421E97;
           color: white;
         }
 
@@ -602,7 +602,7 @@ export default function EmployeesTableClient({
           border: none;
           cursor: pointer;
           font-weight: 600;
-          color: #0b2527;
+          color: #421E97;
           text-align: left;
           width: 100%;
           border-radius: 8px;
@@ -783,9 +783,9 @@ export default function EmployeesTableClient({
           border-color: #d1d5db;
         }
         .page-number.active {
-          background: #0b2527;
+          background: #421E97;
           color: white;
-          border-color: #0b2527;
+          border-color: #421E97;
         }
 
         @media (max-width: 960px) {

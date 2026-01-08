@@ -152,7 +152,7 @@ export default function AdminReportsPageClient({
         .title {
           font-size: 20px;
           font-weight: 700;
-          color: #0b2527;
+          color: #421E97;
           margin: 0;
         }
 
@@ -160,7 +160,7 @@ export default function AdminReportsPageClient({
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          color: #0b2527;
+          color: #421E97;
           border: none;
           border-radius: 8px;
           font-size: 14px;
@@ -187,7 +187,7 @@ export default function AdminReportsPageClient({
           margin: 0 0 4px;
           font-size: 15px;
           font-weight: 600;
-          color: #0b2527;
+          color: #421E97;
         }
 
         .empty-text {
@@ -255,7 +255,7 @@ export default function AdminReportsPageClient({
           font-weight: 600;
           cursor: pointer;
           background: #ffffff;
-          color: #0b2527;
+          color: #421E97;
           transition: transform 0.15s ease, box-shadow 0.15s ease;
           box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
         }

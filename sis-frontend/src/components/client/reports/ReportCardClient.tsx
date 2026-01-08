@@ -39,7 +39,7 @@ export default function ReportCardClient({
         .report-title { margin:0 0 4px; font-size:16px; font-weight:700; color:#f9fafb; word-break:break-word; }
         .report-date { margin:0; font-size:12px; color:#e5e7eb; }
         .report-footer { margin-top:16px; display:flex; justify-content:center; }
-        .open-btn { border:none; border-radius:999px; padding:8px 32px; font-size:14px; font-weight:600; cursor:pointer; background:#fff; color:#0b2527; box-shadow:0 4px 10px rgba(0,0,0,0.18); }
+        .open-btn { border:none; border-radius:999px; padding:8px 32px; font-size:14px; font-weight:600; cursor:pointer; background:#fff; color:#421E97; box-shadow:0 4px 10px rgba(0,0,0,0.18); }
       `}</style>
     </div>
   );

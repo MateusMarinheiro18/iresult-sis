@@ -108,7 +108,7 @@ export default function PdfReportViewCardClient({
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          color: #0b2527;
+          color: #421E97;
           border: none;
           border-radius: 8px;
           font-size: 14px;
@@ -118,7 +118,7 @@ export default function PdfReportViewCardClient({
           background: transparent;
         }
         .back-btn svg {
-          stroke: #0b2527;
+          stroke: #421E97;
         }
 
         .doc-card {

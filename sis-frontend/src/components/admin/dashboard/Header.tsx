@@ -32,7 +32,7 @@ export default function Header() {
         .page-header-title h1 {
             font-size: 1.6rem;
             font-weight: 600;
-            color: #0b2527;
+            color: #421E97;
             margin: 0;
         }
 

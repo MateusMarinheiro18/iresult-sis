@@ -48,7 +48,7 @@ export default function NewEscalaPageClient() {
         .page-title {
           font-size: 22px;
           font-weight: 700;
-          color: #0B2527;
+          color: #421E97;
           margin: 0 0 6px;
         }
 

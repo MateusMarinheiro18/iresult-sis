@@ -238,7 +238,7 @@ export default function PreviewTable({
           min-width: 900px; 
         }
         thead {
-          background: #0B2527;
+          background: #421E97;
           color: white;
         }
         th { 
@@ -262,7 +262,7 @@ export default function PreviewTable({
         }
         input:focus, select:focus {
           outline: none;
-          border-color: #0B2527;
+          border-color: #421E97;
         }
         tr.row-error td { 
           background: #fee2e2;

@@ -117,12 +117,12 @@ export default function AdminsForm({ initial }: { initial?: any } = {}) {
           color: #111827;
         }
         .input::placeholder { color: #9ca3af; opacity:1; }
-        .input:focus { border-color: #0b2527; box-shadow: 0 0 0 3px rgba(11,37,39,0.06); }
+        .input:focus { border-color: #421E97; box-shadow: 0 0 0 3px rgba(11,37,39,0.06); }
         .buttons { margin-top: 26px; display:flex; gap:16px; justify-content:center; align-items:center; }
         .btn { min-width: 180px; height:44px; border-radius:999px; font-weight:700; letter-spacing:0.6px; cursor:pointer; border:none; }
-        .btn.primary { background: #0b2527; color: white; box-shadow: 0 6px 20px rgba(11,37,39,0.12); }
+        .btn.primary { background: #421E97; color: white; box-shadow: 0 6px 20px rgba(11,37,39,0.12); }
         .btn.primary:disabled { opacity:0.6; cursor:not-allowed; }
-        .btn.secondary { background: white; color: #0b2527; border: 1px solid #0b2527; }
+        .btn.secondary { background: white; color: #421E97; border: 1px solid #421E97; }
 
         @media (max-width: 960px) {
           .grid { grid-template-columns: 1fr; }

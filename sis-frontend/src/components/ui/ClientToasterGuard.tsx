@@ -26,7 +26,7 @@ export default function ClientToasterGuard() {
           borderRadius: 10,
           padding: '12px 16px',
           background: '#FFFFFF',
-          color: '#0B2527',
+          color: '#421E97',
           fontWeight: 600,
           fontSize: '14px',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',

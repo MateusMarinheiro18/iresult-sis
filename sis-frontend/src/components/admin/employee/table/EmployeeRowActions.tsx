@@ -324,7 +324,7 @@ export default function EmployeeRowActions({
           margin: 0 0 6px;
           font-size: 18px;
           font-weight: 700;
-          color: #0b2527;
+          color: #421E97;
         }
 
         .modal-text {
@@ -346,7 +346,7 @@ export default function EmployeeRowActions({
         }
 
         .modal-textarea:focus {
-          border-color: #0b2527;
+          border-color: #421E97;
           box-shadow: 0 0 0 3px rgba(11, 37, 39, 0.08);
         }
 
@@ -368,15 +368,15 @@ export default function EmployeeRowActions({
         }
 
         .modal-btn.primary {
-          background: #0b2527;
+          background: #421E97;
           color: #ffffff;
           box-shadow: 0 6px 20px rgba(11, 37, 39, 0.18);
         }
 
         .modal-btn.secondary {
           background: #ffffff;
-          color: #0b2527;
-          border: 1px solid #0b2527;
+          color: #421E97;
+          border: 1px solid #421E97;
         }
 
         .modal-btn:disabled {

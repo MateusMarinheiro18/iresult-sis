@@ -99,7 +99,7 @@ export default function ReportCard({
         .menu-item:hover { background:#f3f4ff; }
         .menu-item.delete { color:#b91c1c; }
         .report-footer { margin-top:16px; display:flex; justify-content:center; }
-        .open-btn { border:none; border-radius:999px; padding:8px 32px; font-size:14px; font-weight:600; cursor:pointer; background:#fff; color:#0b2527; box-shadow:0 4px 10px rgba(0,0,0,0.18); }
+        .open-btn { border:none; border-radius:999px; padding:8px 32px; font-size:14px; font-weight:600; cursor:pointer; background:#fff; color:#421E97; box-shadow:0 4px 10px rgba(0,0,0,0.18); }
       `}</style>
     </div>
   );

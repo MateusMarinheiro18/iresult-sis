@@ -1164,7 +1164,7 @@ export default function EscalaBuilderForm({
         .card-header-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
         .data-card { padding: 0; overflow: visible; }
         .card-banner {
-          background: #0B2527;
+          background: #421E97;
           padding: 18px;
           border-top-left-radius: 12px;
           border-top-right-radius: 12px;
@@ -1213,7 +1213,7 @@ export default function EscalaBuilderForm({
         input[type="date"] {
           color: #374151;
         }
-        .input:focus { border-color:#0B2527; box-shadow:0 0 0 2px rgba(11,37,39,0.06); }
+        .input:focus { border-color:#421E97; box-shadow:0 0 0 2px rgba(11,37,39,0.06); }
         .switch-field { align-items:flex-start; display:flex; flex-direction:column; gap:8px; }
         .new-switch {
           position: relative;
@@ -1247,7 +1247,7 @@ export default function EscalaBuilderForm({
           box-shadow: 0 4px 10px rgba(2,6,23,0.12);
         }
         .new-switch input:checked + .slider {
-          background: #0B2527;
+          background: #421E97;
         }
         .new-switch input:checked + .slider::before {
           transform: translateX(24px);
@@ -1269,15 +1269,15 @@ export default function EscalaBuilderForm({
           white-space: nowrap;
         }
         .btn-primary {
-          background: #0B2527;
+          background: #421E97;
           color: #ffffff;
-          border-color: #0B2527;
+          border-color: #421E97;
         }
         .btn-primary:hover { background: #134148; border-color:#134148; }
         .btn-secondary {
           background: #ffffff;
-          color:#0B2527;
-          border: 1px solid #0B2527;
+          color:#421E97;
+          border: 1px solid #421E97;
         }
         .btn-secondary:hover { background:#f3f7f7; }
         .footer-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
