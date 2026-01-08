@@ -216,7 +216,7 @@ export default function AdminReportsPageClient({
         }
 
         .company-card {
-          background: #062123;
+          background:rgb(38, 17, 88);
           border-radius: 18px;
           padding: 18px 20px;
           display: flex;
