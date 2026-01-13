@@ -153,9 +153,29 @@ export default function QuestionList({
 
         .question-main { flex: 1; display:flex; flex-direction:column; gap:8px; min-width:0; }
 
-        .question-header { display:flex; justify-content:space-between; gap:12px; align-items:center; }
-        .question-title { font-size:15px; color:#421E97; font-weight:700; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .question-meta { display:flex; gap:8px; align-items:center; margin-left:8px; flex-wrap: wrap; }
+        .question-header { 
+          display:flex; 
+          justify-content:space-between; 
+          gap:12px; 
+          align-items:center;
+          min-width: 0;
+        }
+        .question-title { 
+          font-size:15px; 
+          color:#421E97; 
+          font-weight:700; 
+          min-width:0; 
+          white-space:nowrap; 
+          overflow:hidden; 
+          text-overflow:ellipsis;
+          flex: 1;
+        }
+        .question-meta { 
+          display:flex; 
+          gap:8px; 
+          align-items:center;
+          flex-shrink: 0;
+        }
 
         .meta-pill {
           display:inline-block;
@@ -166,6 +186,7 @@ export default function QuestionList({
           border:1px solid #eef4f7;
           color:#421E97;
           font-weight:600;
+          white-space: nowrap;
         }
         .meta-pill.subtle { 
           background:#fff; 
@@ -215,6 +236,20 @@ export default function QuestionList({
 
         @media (max-width: 720px) {
           .question-item { padding:10px 12px; }
+          .question-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+          }
+          .question-title {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+          }
+          .question-meta {
+            flex-wrap: wrap;
+            width: 100%;
+          }
           .response-pill { font-size:12px; padding:6px 8px; }
           .meta-pill.subtle { max-width: 150px; }
         }
