@@ -97,7 +97,7 @@ export async function sendEscalaEmails({
     const safeLink = escapeHtml(r.link);
     const safeEmpresa = r.empresa ? escapeHtml(r.empresa) : '';
 
-    const preheader = 'Convite para participação na escala';
+    const preheader = 'Convite para participação no questionário';
     const companyName = 'SIS';
 
     // plain-text
@@ -106,7 +106,7 @@ export async function sendEscalaEmails({
       '',
       message,
       '',
-      `Responder escala: ${r.link}`,
+      `Responder questionário: ${r.link}`,
       '',
       'Obrigado.',
     ].join('\n');
@@ -165,7 +165,7 @@ export async function sendEscalaEmails({
             <p>${safeMessage}</p>
 
             <div class="btn-wrap">
-              <a class="btn" href="${safeLink}" target="_blank" rel="noopener noreferrer" style="color:#ffffff !important; text-decoration:none;" aria-label="Responder escala">Responder escala</a>
+              <a class="btn" href="${safeLink}" target="_blank" rel="noopener noreferrer" style="color:#ffffff !important; text-decoration:none;" aria-label="Responder questionário">Responder questionário</a>
             </div>
 
             <div class="box">
