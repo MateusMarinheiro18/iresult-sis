@@ -13,7 +13,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup SSH agent
-        uses: webfactory/ssh-agent@v0.8.1
+        # ALTEREI AQUI para uma tag estável disponível
+        uses: webfactory/ssh-agent@v0.5.3
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
@@ -29,7 +30,6 @@ jobs:
             echo "Entrando em ${{ secrets.DEPLOY_PATH }}"
             cd ${{ secrets.DEPLOY_PATH }}
 
-            # se você quiser usar um fallback para BRANCH, defina o secret BRANCH no GitHub.
             BRANCH="${{ secrets.BRANCH }}"
             if [ -z "$BRANCH" ]; then
               BRANCH="main"
