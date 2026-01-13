@@ -346,16 +346,6 @@ export default function Headbar({
             >
               <MenuItem
                 onClick={() => {
-                  setAnchorEl(null);
-                  const profilePath = variant === "client" ? "/client/profile" : "/admin/profile";
-                  router.push(profilePath);
-                }}
-              >
-                Meu Perfil
-              </MenuItem>
-
-              <MenuItem
-                onClick={() => {
                   // dispara logout
                   handleLogout();
                 }}
