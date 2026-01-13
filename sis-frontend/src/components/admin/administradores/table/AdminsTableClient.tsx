@@ -2,7 +2,6 @@
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminRowActions from './AdminsRowActions';
-import Link from 'next/link';
 
 type Admin = {
   id: number;
@@ -117,9 +116,7 @@ export default function AdminsTableClient({
                 <td className="cell id-cell">#{e.id}</td>
 
                 <td className="cell name-cell">
-                  <Link href={`/admin/administradores/${e.id}`} className="name-link">
-                    {e.nome ?? '—'}
-                  </Link>
+                  <span className="name-text">{e.nome ?? '—'}</span>
                 </td>
 
                 <td className="cell created-cell">{e.email ?? '—'}</td>
@@ -281,8 +278,7 @@ export default function AdminsTableClient({
         .cell { padding: 18px 20px; vertical-align: middle; font-size: 14px; color: #333; }
         .id-cell { font-weight: 800; color: #111827; padding-left: 24px; }
         .name-cell { max-width: 300px; }
-        .name-link { color: #1f2a65; font-weight: 700; text-decoration: none; }
-        .name-link:hover { text-decoration: underline; }
+        .name-text { color: #333333; }
         .created-cell { color: #6b7280; font-size: 13px; }
         .gestor-cell { color: #374151; }
         .cidade-cell { color: #374151; }
