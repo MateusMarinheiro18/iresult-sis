@@ -1,17 +1,10 @@
 // src/lib/email/sendAdminAccessEmail.ts
-// Envia o e-mail de acesso administrativo usando nodemailer.
+// Envia o e-mail de acesso administrativo usando Brevo.
 // A função pública sendAdminAccessEmail(opts) aceita APENAS:
 //   { to: string; name?: string | null; plainPassword: string }
 // e NÃO adiciona novos parâmetros.
-//
-// Requisitos:
-//   npm install nodemailer
-//   Defina as variáveis de ambiente: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
-//
-// Uso:
-//   await sendAdminAccessEmail({ to: 'admin@exemplo.com', name: 'Fulano', plainPassword: 'senha123' });
 
-import nodemailer from 'nodemailer';
+import { sendEmailViaBrevo, escapeHtml } from './brevoClient';
 
 type Opts = {
   to: string;
@@ -26,16 +19,7 @@ type BuiltEmail = {
   text: string;
 };
 
-const BRAND_COLOR = '#421E97'; // cor padrão solicitada
-
-function escapeHtml(s: string) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+const BRAND_COLOR = '#421E97';
 
 function buildAdminAccessEmailPayload(opts: Opts): BuiltEmail {
   const { to, name, plainPassword } = opts;
@@ -47,10 +31,7 @@ function buildAdminAccessEmailPayload(opts: Opts): BuiltEmail {
   const subject = 'Acesso administrativo criado — acesse sua conta';
   const preheader = 'Seu usuário administrativo foi criado. Use as credenciais abaixo para acessar.';
 
-  // NOTE: usamos apenas as 3 variáveis fornecidas dinamicamente.
-  // Texto fixo abaixo (podem ajustar se quiserem traduzir / parametrizar no futuro).
   const companyName = 'SIS';
-  const supportEmail = 'suporte@seudominio.com';
   const loginUrl = 'https://146.190.121.239:3001/admin/login';
 
   const html = `<!doctype html>
@@ -73,7 +54,6 @@ function buildAdminAccessEmailPayload(opts: Opts): BuiltEmail {
     .label { color:#6b7b7b; font-size:13px; }
     .value { font-weight:600; color:#122; word-break:break-all; }
     .btn-wrap { text-align:center; margin:18px 0 8px 0; }
-    /* Força cor branca no botão (alguns clients sobrescrevem links) */
     .btn { display:inline-block; background:${BRAND_COLOR}; color:#ffffff !important; padding:12px 22px; border-radius:8px; font-weight:600; text-decoration:none; min-width:160px; }
     .note { font-size:13px; color:#6b7b7b; margin-top:8px; }
     .footer { background:#f1f4f4; padding:14px 20px; font-size:13px; color:#6b7b7b; text-align:center; }
@@ -116,7 +96,6 @@ function buildAdminAccessEmailPayload(opts: Opts): BuiltEmail {
             </div>
 
             <div class="btn-wrap">
-              <!-- Inline style com !important para garantir letra branca em clients que reescrevem links -->
               <a class="btn" href="${loginUrl}" target="_blank" rel="noopener noreferrer" aria-label="Acessar painel - fazer login" style="color:#ffffff !important; text-decoration:none;">Acessar o painel</a>
             </div>
 
@@ -151,75 +130,18 @@ function buildAdminAccessEmailPayload(opts: Opts): BuiltEmail {
   };
 }
 
-/**
- * Cria e retorna um transporte nodemailer configurado pelas variáveis de ambiente.
- * Lança erro se configuração faltando.
- */
-function createTransporterFromEnv() {
-  const host = process.env.SMTP_HOST;
-  const portRaw = process.env.SMTP_PORT;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.MAIL_FROM;
-
-  if (!host || !portRaw || !user || !pass) {
-    throw new Error('SMTP configuration missing. Please set SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS env vars.');
-  }
-
-  const port = Number(portRaw);
-  const secureEnv = process.env.SMTP_SECURE;
-  let secure: boolean;
-  if (typeof secureEnv !== 'undefined') {
-    secure = secureEnv === 'true' || secureEnv === '1';
-  } else {
-    // porta 465 -> secure true, caso contrário false (587/25)
-    secure = port === 465;
-  }
-
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: {
-      user,
-      pass,
-    },
-  });
-
-  return {
-    transporter,
-    defaults: {
-      from: from || user,
-    },
-  };
-}
-
-/**
- * Envia o e-mail usando nodemailer. Recebe apenas as 3 variáveis informadas (to, name?, plainPassword).
- * Retorna o resultado do sendMail (Promise).
- */
 export async function sendAdminAccessEmail(opts: Opts) {
-  // constrói payload
   const built = buildAdminAccessEmailPayload(opts);
 
-  // cria transporter (lê env)
-  const { transporter, defaults } = createTransporterFromEnv();
-
-  // prepare mensagem
-  const mailOptions = {
-    from: defaults.from,
+  await sendEmailViaBrevo({
     to: built.to,
     subject: built.subject,
-    html: built.html,
-    text: built.text,
-  };
+    htmlContent: built.html,
+    textContent: built.text,
+  });
 
-  // envia
-  const result = await transporter.sendMail(mailOptions);
-  // nodemailer retorna info object; devolveremos esse objeto para facilitar debug
-  return result;
+  return { success: true, to: built.to };
 }
 
-// Também exportamos a função de build caso queira apenas gerar o html/text sem enviar
 export { buildAdminAccessEmailPayload as buildAdminAccessEmail };
 export type { BuiltEmail as BuiltEmail };

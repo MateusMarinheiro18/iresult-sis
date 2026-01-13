@@ -7,7 +7,7 @@
 //  - função pública: sendBulkEmail(...) e sendEscalaEmails(...)
 // Não adiciona novos parâmetros.
 
-import nodemailer from 'nodemailer';
+import { sendEmailViaBrevo, escapeHtml } from './brevoClient';
 
 type SendBulkArgs = {
   subject: string;
@@ -18,49 +18,15 @@ type SendBulkArgs = {
 
 const BRAND_COLOR = '#421E97';
 
-let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
-
-function escapeHtml(s: string) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function getTransporter() {
-  if (transporter) return transporter;
-
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    throw new Error('Configuração SMTP ausente. Defina SMTP_HOST, SMTP_USER e SMTP_PASS no .env');
-  }
-
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === 'true', // true para 465, false para 587
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  return transporter;
-}
-
 export async function sendBulkEmail({ subject, text, html, to }: SendBulkArgs) {
   const emails = Array.from(new Set(to));
   if (!emails.length) return;
 
-  const t = getTransporter();
-
-  await t.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    bcc: emails,
+  await sendEmailViaBrevo({
+    to: emails,
     subject,
-    text,
-    html,
+    htmlContent: html || '',
+    textContent: text,
   });
 }
 
@@ -84,10 +50,7 @@ export async function sendEscalaEmails({
   message,
   recipients,
 }: SendEscalaArgs) {
-  const t = getTransporter();
-
   const list = recipients.filter((r) => r.email);
-
   if (!list.length) return;
 
   for (const r of list) {
@@ -188,12 +151,11 @@ export async function sendEscalaEmails({
 </body>
 </html>`;
 
-    await t.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    await sendEmailViaBrevo({
       to: r.email,
       subject,
-      text: plain,
-      html,
+      htmlContent: html,
+      textContent: plain,
     });
   }
 }

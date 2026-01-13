@@ -1,66 +1,17 @@
 // src/lib/email/sendRhPasswordResetEmail.ts
-// Envia e-mail de redefinição de senha para usuários do painel RH, mantendo o padrão estético
-// dos outros templates (top bar, botão com texto branco, card reduzido para link, etc).
-// Esta função aceita APENAS as variáveis:
-//   { to: string; name?: string; resetLink: string; expiresSeconds: number }
-// Não adiciona novos parâmetros.
-//
-// Requisitos:
-//   npm install nodemailer
-// Variáveis de ambiente utilizadas:
-//   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM (opcional)
+// Envia e-mail de redefinição de senha para usuários do painel RH via Brevo
 
-import nodemailer from 'nodemailer';
+import { sendEmailViaBrevo, escapeHtml } from './brevoClient';
 
 type Payload = {
   to: string;
   name?: string | null;
-  resetLink: string; // link completo recomendado
+  resetLink: string;
   expiresSeconds: number;
 };
 
 const BRAND_COLOR = '#421E97';
 
-function escapeHtml(s: string) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function createTransporterFromEnv() {
-  const host = process.env.SMTP_HOST;
-  const portRaw = process.env.SMTP_PORT;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !portRaw || !user || !pass) {
-    throw new Error('SMTP configuration missing. Please set SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS env vars.');
-  }
-
-  const port = Number(portRaw);
-  const secureEnv = process.env.SMTP_SECURE;
-  let secure: boolean;
-  if (typeof secureEnv !== 'undefined') {
-    secure = secureEnv === 'true' || secureEnv === '1';
-  } else {
-    secure = port === 465;
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: { user, pass },
-  });
-}
-
-/**
- * Monta HTML e text seguindo a estética do restante (mesma top-bar, btn, card reduzido para link).
- * Usa apenas as variáveis do Payload.
- */
 function buildRhResetHtmlText(payload: Payload) {
   const { name, resetLink, expiresSeconds } = payload;
   const safeName = name ? escapeHtml(name) : '';
@@ -169,24 +120,15 @@ function buildRhResetHtmlText(payload: Payload) {
   return { subject, html, text };
 }
 
-/**
- * Envia o e-mail de redefinição de senha RH usando apenas as variáveis passadas no Payload.
- * Retorna o objeto retornado por nodemailer (info) para facilitar o debug.
- */
 export async function sendRhPasswordResetEmail({ to, name, resetLink, expiresSeconds }: Payload) {
-  const transporter = createTransporterFromEnv();
-
   const { subject, html, text } = buildRhResetHtmlText({ to, name, resetLink, expiresSeconds });
 
-  const from = process.env.SMTP_FROM || `SIS <no-reply@localhost>`;
-
-  const info = await transporter.sendMail({
-    from,
+  await sendEmailViaBrevo({
     to,
     subject,
-    text,
-    html,
+    htmlContent: html,
+    textContent: text,
   });
 
-  return info;
+  return { success: true, to };
 }

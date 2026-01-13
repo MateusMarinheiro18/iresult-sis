@@ -1,15 +1,10 @@
 // src/lib/email/sendUserAccess.ts
-// Envia o e-mail de acesso de usuário (portal) usando nodemailer.
+// Envia o e-mail de acesso de usuário (portal) usando Brevo.
 // A função pública sendUserAccessEmail(opts) aceita APENAS:
 //   { to: string; name?: string | null; email: string; plainPassword: string }
 // Não adiciona novos parâmetros.
-//
-// Requisitos:
-//   npm install nodemailer
-// Variáveis de ambiente esperadas (no seu ambiente atual):
-//   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM (opcional), FRONTEND_BASE_URL (opcional)
 
-import nodemailer from 'nodemailer';
+import { sendEmailViaBrevo, escapeHtml } from './brevoClient';
 
 type Opts = {
   to: string;
@@ -27,49 +22,11 @@ type BuiltEmail = {
 
 const BRAND_COLOR = '#421E97';
 
-let transporter: nodemailer.Transporter | null = null;
-
-function escapeHtml(s: string) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-/**
- * Mantém o comportamento existente: cria um transporter (cacheado) a partir das env vars.
- * Se faltar configuração, retorna null (fallback dev — não lança).
- */
-function getTransporter() {
-  if (transporter) return transporter;
-
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !user || !pass) {
-    console.warn('SMTP não configurado - env vars faltando. Emails não serão enviados em dev.');
-    return null;
-  }
-
-  transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465,
-    auth: { user, pass },
-  });
-
-  return transporter;
-}
-
 /**
  * Gera o HTML e text seguindo exatamente a estética do sendAdminAccessEmail.ts
  * Usa apenas as variáveis fornecidas dinamicamente: to, name?, email, plainPassword
  */
-function buildUserAccessPayload(opts: Opts): BuiltEmail & { from?: string } {
+function buildUserAccessPayload(opts: Opts): BuiltEmail {
   const { to, name, email, plainPassword } = opts;
   const safeTo = escapeHtml(to);
   const safeName = name ? escapeHtml(name) : '';
@@ -80,7 +37,6 @@ function buildUserAccessPayload(opts: Opts): BuiltEmail & { from?: string } {
   const preheader = 'Sua conta no portal foi criada. Use as credenciais abaixo para acessar.';
   const companyName = 'SIS';
   const portal = process.env.FRONTEND_BASE_URL ?? 'http://146.190.121.239:3001';
-  const from = process.env.SMTP_FROM || undefined;
 
   const html = `<!doctype html>
 <html lang="pt-BR">
@@ -145,7 +101,6 @@ function buildUserAccessPayload(opts: Opts): BuiltEmail & { from?: string } {
             </div>
 
             <div class="btn-wrap">
-              <!-- Inline style com !important para garantir letra branca em clients que reescrevem links -->
               <a class="btn" href="${portal}" target="_blank" rel="noopener noreferrer" aria-label="Acessar portal" style="color:#ffffff !important; text-decoration:none;">Acessar o portal</a>
             </div>
 
@@ -178,35 +133,21 @@ function buildUserAccessPayload(opts: Opts): BuiltEmail & { from?: string } {
     '',
   ].join('\n');
 
-  return { to: safeTo, subject, html, text, from };
+  return { to: safeTo, subject, html, text };
 }
 
-/**
- * Envia o e-mail com apenas os campos que você informou (to, name?, email, plainPassword).
- * Em dev, caso o transporter não esteja configurado, não lança — apenas loga e retorna.
- */
 export async function sendUserAccessEmail(opts: Opts) {
-  const t = getTransporter();
   const payload = buildUserAccessPayload(opts);
 
-  if (!t) {
-    // Dev fallback - log minimal info
-    console.info('sendUserAccessEmail: transporter não configurado — skip send (dev).');
-    return { accepted: [], rejected: [], dev: true };
-  }
-
-  const mailOptions: nodemailer.SendMailOptions = {
-    from: process.env.SMTP_FROM || undefined,
+  await sendEmailViaBrevo({
     to: payload.to,
     subject: payload.subject,
-    html: payload.html,
-    text: payload.text,
-  };
+    htmlContent: payload.html,
+    textContent: payload.text,
+  });
 
-  const result = await t.sendMail(mailOptions);
-  return result;
+  return { success: true, to: payload.to };
 }
 
-// também exporta o builder caso queira gerar html/text sem enviar
 export { buildUserAccessPayload as buildUserAccessEmail };
 export type { BuiltEmail as BuiltEmail };
