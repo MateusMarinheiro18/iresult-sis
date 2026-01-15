@@ -13,7 +13,7 @@ import AccountCircleOutlined from "@mui/icons-material/AccountCircleOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast from "react-hot-toast";
 
 type Variant = "client" | "admin";
@@ -54,6 +54,8 @@ export default function Headbar({
 
   const searchRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   // focus search with Ctrl+K (or Cmd+K)
   useEffect(() => {
@@ -149,35 +151,62 @@ export default function Headbar({
     };
   }, [variant]);
 
-  // --- NEW: initialize selected from URL query param if present ---
+  // --- UPDATED: sync selectedCompany from URL (route param takes priority) ---
   useEffect(() => {
-    if (variant !== "admin") return;
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const c = params.get("company");
-      if (c && companies) {
-        const id = Number(c);
-        const found = companies.find((x) => x.id === id);
-        if (found) setSelectedCompany(found);
-      }
-    } catch (err) {
-      // ignore on SSR/hydration mismatch
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companies]);
+    if (variant !== "admin" || !companies) return;
 
-  // helper: update ?company= in URL (preserve other params)
+    // Tenta extrair companyId da rota dinâmica (ex: /admin/relatorios/8)
+    const routeCompanyMatch = pathname.match(/\/admin\/relatorios\/(\d+)/);
+    
+    if (routeCompanyMatch) {
+      // Prioridade 1: companyId na rota
+      const routeCompanyId = Number(routeCompanyMatch[1]);
+      const found = companies.find((c) => c.id === routeCompanyId);
+      if (found) {
+        setSelectedCompany(found);
+      }
+      return;
+    }
+
+    // Prioridade 2: query param ?company=
+    const companyParam = searchParams.get("company");
+    if (!companyParam) {
+      setSelectedCompany(null);
+      return;
+    }
+
+    const companyId = Number(companyParam);
+    const found = companies.find((c) => c.id === companyId);
+    if (found) {
+      setSelectedCompany(found);
+    }
+  }, [searchParams, pathname, companies, variant]);
+
+  // --- UPDATED: helper to navigate with company filter ---
   function applyCompanyToUrl(companyId: number | null) {
-    const url = new URL(window.location.href);
-    const params = url.searchParams;
+    // Se estamos em uma rota dinâmica de empresa, navega para a listagem geral
+    const isInCompanyRoute = pathname.match(/\/admin\/relatorios\/\d+/);
+    
+    if (isInCompanyRoute) {
+      // Volta para /admin/relatorios com ou sem filtro
+      if (companyId === null || companyId === 0) {
+        router.push('/admin/relatorios');
+      } else {
+        router.push(`/admin/relatorios?company=${companyId}`);
+      }
+      return;
+    }
+
+    // Se já estamos na listagem geral, apenas atualiza query param
+    const params = new URLSearchParams(searchParams.toString());
     if (companyId === null || companyId === 0) {
       params.delete("company");
     } else {
       params.set("company", String(companyId));
     }
-    // push without reloading the page (client navigation)
-    // note: using router.push so Next can handle it
-    router.push(`${url.pathname}${params.toString() ? "?" + params.toString() : ""}`);
+
+    const newUrl = `${pathname}${params.toString() ? "?" + params.toString() : ""}`;
+    router.push(newUrl);
   }
 
   function handleCompanySelect(c: Company) {
