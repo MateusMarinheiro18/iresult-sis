@@ -22,8 +22,18 @@ export default function CompaniesTableClient({ initialData }: { initialData: Com
   // filtra por nome (razaoSocial) - case insensitive
   const filtered = useMemo(() => {
     const q = String(query || '').trim().toLowerCase();
-    if (!q) return initialData;
-    return initialData.filter((c) => (c.razaoSocial ?? '').toLowerCase().includes(q));
+    let result = initialData;
+    
+    if (q) {
+      result = initialData.filter((c) => (c.razaoSocial ?? '').toLowerCase().includes(q));
+    }
+    
+    // Ordenar alfabeticamente por razaoSocial
+    return result.sort((a, b) => {
+      const nameA = (a.razaoSocial ?? '').toLowerCase();
+      const nameB = (b.razaoSocial ?? '').toLowerCase();
+      return nameA.localeCompare(nameB, 'pt-BR');
+    });
   }, [initialData, query]);
 
   // Reseta para página 1 quando a busca muda
