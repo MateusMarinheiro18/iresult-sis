@@ -118,28 +118,44 @@ export default function Headbar({
     }
   }
 
-  // --- NEW: fetch companies (tries API, otherwise fallback sample) ---
+  // --- UPDATED: fetch companies based on variant ---
   useEffect(() => {
-    if (variant !== "admin") return;
-
     let mounted = true;
     async function load() {
       setLoadingCompanies(true);
       try {
-        const res = await fetch("/api/admins/companies");
-        if (!res.ok) throw new Error("no api");
-        const data = (await res.json()) as Company[];
-        if (!mounted) return;
-        setCompanies(data);
+        if (variant === "admin") {
+          // Admin: busca todas as empresas
+          const res = await fetch("/api/admins/companies");
+          if (!res.ok) throw new Error("no api");
+          const data = (await res.json()) as Company[];
+          if (!mounted) return;
+          setCompanies(data);
+        } else {
+          // Client: busca apenas a empresa do RH logado
+          const res = await fetch("/api/rh/company");
+          if (!res.ok) throw new Error("no api");
+          const data = (await res.json()) as Company;
+          if (!mounted) return;
+          setCompanies([data]);
+          setSelectedCompany(data); // já seleciona automaticamente
+        }
       } catch (e) {
         // fallback sample list while API is not ready
         if (!mounted) return;
-        setCompanies([
-          { id: 0, name: "EMPRESA" }, // sentinel default
-          { id: 1, name: "Nova Empresa" },
-          { id: 2, name: "Empresa Beta" },
-          { id: 3, name: "Empresa Gamma" },
-        ]);
+        if (variant === "admin") {
+          setCompanies([
+            { id: 0, name: "EMPRESA" },
+            { id: 1, name: "Nova Empresa" },
+            { id: 2, name: "Empresa Beta" },
+            { id: 3, name: "Empresa Gamma" },
+          ]);
+        } else {
+          // Client fallback: empresa fictícia
+          const fallback = { id: 1, name: "Minha Empresa" };
+          setCompanies([fallback]);
+          setSelectedCompany(fallback);
+        }
       } finally {
         if (!mounted) return;
         setLoadingCompanies(false);
@@ -221,7 +237,7 @@ export default function Headbar({
   return (
     <header className="w-full backdrop-blur-sm border-b border-gray-100 bg-[#F3F4FF]">
       <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center gap-4">
-        {/* Left: hamburger (mobile) + (search OR company selector for admin) */}
+        {/* Left: hamburger (mobile) + company selector */}
         <div className="flex items-center gap-3">
           <div className="min-[851px]:hidden max-[850px]:block">
             <IconButton onClick={() => onToggleMobile?.()} aria-label="Abrir menu" size="small">
@@ -229,24 +245,29 @@ export default function Headbar({
             </IconButton>
           </div>
 
-          {variant === "admin" ? (
-            // --- Company selector button (styled as pill) ---
-            <div>
-              <button
-                onClick={(e) => setCompanyAnchor(e.currentTarget)}
-                className="inline-flex items-center gap-2 rounded-full border px-4 py-2 font-semibold text-sm leading-none
-                           border-[#130438] text-[#130438] bg-white shadow-sm"
-                aria-haspopup="true"
-                aria-expanded={companyOpen ? "true" : undefined}
-                aria-label="Selecionar Empresa"
-                title="Selecionar Empresa"
-              >
-                <span className="truncate max-w-[160px]">
-                  {selectedCompany ? selectedCompany.name : "EMPRESA"}
-                </span>
-                <ArrowDropDownIcon />
-              </button>
+          {/* --- Company selector button (both admin and client) --- */}
+          <div>
+            <button
+              onClick={(e) => variant === "admin" && setCompanyAnchor(e.currentTarget)}
+              disabled={variant === "client"}
+              className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 font-semibold text-sm leading-none
+                         border-[#130438] text-[#130438] bg-white shadow-sm
+                         hover:bg-gray-50 transition-colors
+                         disabled:hover:bg-white disabled:cursor-default
+                         h-[36px] min-w-[120px]"
+              aria-haspopup={variant === "admin" ? "true" : undefined}
+              aria-expanded={companyOpen ? "true" : undefined}
+              aria-label="Empresa"
+              title={variant === "client" ? "Sua empresa" : "Selecionar Empresa"}
+            >
+              <span className="truncate max-w-[160px]">
+                {selectedCompany ? selectedCompany.name : "EMPRESA"}
+              </span>
+              {variant === "admin" && <ArrowDropDownIcon className="text-[20px]" />}
+            </button>
 
+            {/* Menu apenas para admin */}
+            {variant === "admin" && (
               <Menu
                 anchorEl={companyAnchor}
                 open={companyOpen}
@@ -304,35 +325,8 @@ export default function Headbar({
                   </Link>
                 </div>
               </Menu>
-            </div>
-          ) : (
-            // normal search bar for client
-            <>
-              <div className="hidden md:flex items-center bg-white rounded-full shadow-sm px-3 py-2 w-[520px] max-w-full border border-gray-100">
-                <SearchIcon className="text-gray-400 mr-2" />
-                <input
-                  ref={searchRef}
-                  type="search"
-                  placeholder="Search [CTRL + K]"
-                  aria-label="Buscar"
-                  className="flex-1 outline-none text-sm text-gray-600 placeholder-gray-400 bg-transparent"
-                />
-                <span className="ml-3 text-xs text-gray-400 px-2 py-0.5 rounded">CTRL + K</span>
-              </div>
-
-              {/* compact search on small screens */}
-              <div className="md:hidden">
-                <button
-                  onClick={() => searchRef.current?.focus()}
-                  aria-label="Buscar"
-                  className="p-2 rounded-full hover:bg-gray-100"
-                  title="Buscar"
-                >
-                  <SearchIcon />
-                </button>
-              </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
 
         {/* center spacer */}
