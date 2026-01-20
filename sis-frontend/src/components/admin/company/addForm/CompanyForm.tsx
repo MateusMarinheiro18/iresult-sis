@@ -127,6 +127,9 @@ export default function CompanyForm({ initial }: { initial?: any }) {
   });
   const [newGroupName, setNewGroupName] = useState('');
 
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+
   // Se `initial` mudar (edge cases), reatribui valores
   useEffect(() => {
     setRazaoSocial(initial?.razaoSocial ?? '');
@@ -316,6 +319,39 @@ export default function CompanyForm({ initial }: { initial?: any }) {
     }
   }
 
+  /* ------------------ Logo upload ------------------ */
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Tipo de arquivo não permitido. Use JPG, PNG ou WebP.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Tamanho máximo: 5MB.');
+      return;
+    }
+
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleRemoveLogo() {
+    setLogoFile(null);
+    setLogoPreview(null);
+    // Limpa o input file
+    const fileInput = document.getElementById('logo-input') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  }
+
   /* ------------------ Submit ------------------ */
 
   async function handleSubmit(e: React.FormEvent) {
@@ -374,6 +410,18 @@ export default function CompanyForm({ initial }: { initial?: any }) {
         toast.error(msg);
         setSaving(false);
         return;
+      }
+
+      // Upload do logo se houver
+      if (logoFile && body.id) {
+        const formData = new FormData();
+        formData.append('logo', logoFile);
+        formData.append('empresaId', String(body.id));
+
+        await fetch('/api/companies/logo', {
+          method: 'POST',
+          body: formData,
+        });
       }
 
       const successMsg = extractMessageFromBody(body) ?? 'Empresa cadastrada com sucesso.';
@@ -519,6 +567,60 @@ export default function CompanyForm({ initial }: { initial?: any }) {
             value={pais}
             onChange={(e) => setPais(e.target.value)}
             placeholder="Brasil"
+          />
+        </div>
+
+        <div className="field logo-field">
+          <label className="label">Logo da empresa</label>
+          <div className="logo-upload-container">
+            {logoPreview ? (
+              <div className="logo-preview-box">
+                <img src={logoPreview} alt="Preview do logo" />
+                <button
+                  type="button"
+                  className="remove-logo-btn"
+                  onClick={handleRemoveLogo}
+                  disabled={saving}
+                  aria-label="Remover logo"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div 
+                className="logo-placeholder"
+                onClick={() => !saving && document.getElementById('logo-input')?.click()}
+                style={{ cursor: saving ? 'not-allowed' : 'pointer' }}
+              >
+                <div className="placeholder-content">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                  <p>Nenhuma imagem selecionada</p>
+                  <button
+                    type="button"
+                    className="btn-upload"
+                    disabled={saving}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      document.getElementById('logo-input')?.click();
+                    }}
+                  >
+                    ESCOLHER IMAGEM
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <input
+            id="logo-input"
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            onChange={handleLogoChange}
+            disabled={saving}
+            style={{ display: 'none' }}
           />
         </div>
       </div>
@@ -741,6 +843,121 @@ export default function CompanyForm({ initial }: { initial?: any }) {
           gap: 16px;
           justify-content: center;
           align-items: center;
+        }
+
+        .logo-field {
+          grid-column: 1 / -1;
+        }
+
+        .logo-upload-container {
+          margin: 12px 0;
+        }
+
+        .logo-preview-box {
+          position: relative;
+          width: 200px;
+          height: 200px;
+          border: 2px dashed #d1d5db;
+          border-radius: 8px;
+          background: #f9fafb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+        }
+
+        .logo-preview-box img {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+        }
+
+        .remove-logo-btn {
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #ef4444;
+          color: white;
+          border: 2px solid white;
+          font-size: 20px;
+          line-height: 1;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          transition: background 0.2s ease;
+        }
+
+        .remove-logo-btn:hover:not(:disabled) {
+          background: #dc2626;
+        }
+
+        .remove-logo-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .logo-placeholder {
+          width: 200px;
+          height: 200px;
+          border: 2px dashed #d1d5db;
+          border-radius: 8px;
+          background: #f9fafb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .logo-placeholder:hover {
+          border-color: #9ca3af;
+          background: #f3f4f6;
+        }
+
+        .placeholder-content {
+          text-align: center;
+          color: #9ca3af;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .placeholder-content svg {
+          color: #d1d5db;
+        }
+
+        .placeholder-content p {
+          margin: 0;
+          font-size: 13px;
+        }
+
+        .btn-upload {
+          min-width: 160px;
+          height: 38px;
+          border-radius: 8px;
+          background: #421E97;
+          color: white;
+          border: none;
+          font-weight: 700;
+          font-size: 12px;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          transition: background 0.2s ease;
+          box-shadow: 0 2px 8px rgba(66, 30, 151, 0.2);
+        }
+
+        .btn-upload:hover:not(:disabled) {
+          background: #5a2bb8;
+        }
+
+        .btn-upload:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         @media (max-width: 960px) {

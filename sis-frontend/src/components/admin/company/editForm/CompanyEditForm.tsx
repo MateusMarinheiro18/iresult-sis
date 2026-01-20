@@ -128,6 +128,7 @@ export default function CompanyEditForm({
     cidade?: string | null;
     estado?: string | null;
     pais?: string | null;
+    logoFileName?: string | null;
   };
 }) {
   const router = useRouter();
@@ -161,6 +162,11 @@ export default function CompanyEditForm({
   const [groups, setGroups] = useState<string[]>(() => extractInitialGroups(initial));
   const [newGroupName, setNewGroupName] = useState('');
 
+  const [uploading, setUploading] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(
+    initial?.logoFileName ? `/uploads/logos/${initial.logoFileName}` : null
+  );
+
   // Se `initial` mudar (raro), reatribui valores
   useEffect(() => {
     setRazaoSocial(initial?.razaoSocial ?? '');
@@ -179,6 +185,7 @@ export default function CompanyEditForm({
     setCidade(initial?.cidade ?? '');
     setEstado(initial?.estado ?? '');
     setPais(initial?.pais ?? '');
+    setLogoPreview(initial?.logoFileName ? `/uploads/logos/${initial.logoFileName}` : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial?.id]);
 
@@ -336,6 +343,57 @@ export default function CompanyEditForm({
     }
   }
 
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Tipo de arquivo não permitido. Use JPG, PNG ou WebP.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Tamanho máximo: 5MB.');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('logo', file);
+      formData.append('empresaId', String(initial.id));
+
+      const res = await fetch('/api/companies/logo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        toast.error(error.error || 'Erro ao fazer upload do logo.');
+        return;
+      }
+
+      const data = await res.json();
+      setLogoPreview(data.url);
+      toast.success('Logo atualizado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao fazer upload:', err);
+      toast.error('Erro ao fazer upload do logo.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleRemoveLogo() {
+    setLogoPreview(null);
+    // Limpa o input file
+    const fileInput = document.getElementById('logo-input') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -477,7 +535,7 @@ export default function CompanyEditForm({
               <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
                   <circle cx="12" cy="12" r="10" stroke="#421E97" strokeWidth="2" opacity="0.2"></circle>
-                  <path d="M22 12a10 10 0 00-10-10" stroke="#421E97" strokeWidth="2" strokeLinecap="round"></path>
+                  <path d="M21 15l-5-5L5 21" stroke="#421E97" strokeWidth="2" strokeLinecap="round"></path>
                 </svg>
               </div>
             )}
@@ -560,6 +618,60 @@ export default function CompanyEditForm({
             value={pais}
             onChange={(e) => setPais(e.target.value)}
             placeholder="Brasil"
+          />
+        </div>
+
+        <div className="field logo-field">
+          <label className="label">Logo da empresa</label>
+          <div className="logo-upload-container">
+            {logoPreview ? (
+              <div className="logo-preview-box">
+                <img src={logoPreview} alt="Logo da empresa" />
+                <button
+                  type="button"
+                  className="remove-logo-btn"
+                  onClick={handleRemoveLogo}
+                  disabled={uploading}
+                  aria-label="Remover logo"
+                >
+                  ×
+                </button>
+              </div>
+            ) : (
+              <div 
+                className="logo-placeholder"
+                onClick={() => !uploading && document.getElementById('logo-input')?.click()}
+                style={{ cursor: uploading ? 'not-allowed' : 'pointer' }}
+              >
+                <div className="placeholder-content">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                  <p>Nenhuma imagem selecionada</p>
+                  <button
+                    type="button"
+                    className="btn-upload"
+                    disabled={uploading}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      document.getElementById('logo-input')?.click();
+                    }}
+                  >
+                    {uploading ? 'Enviando...' : 'ESCOLHER IMAGEM'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <input
+            id="logo-input"
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            onChange={handleLogoChange}
+            disabled={uploading}
+            style={{ display: 'none' }}
           />
         </div>
       </div>
@@ -799,6 +911,121 @@ export default function CompanyEditForm({
           color: #fff;
           box-shadow: 0 4px 12px rgba(11, 37, 39, 0.12);
           white-space: nowrap;
+        }
+
+        .logo-field {
+          grid-column: 1 / -1;
+        }
+
+        .logo-upload-container {
+          margin: 12px 0;
+        }
+
+        .logo-preview-box {
+          position: relative;
+          width: 200px;
+          height: 200px;
+          border: 2px dashed #d1d5db;
+          border-radius: 8px;
+          background: #f9fafb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+        }
+
+        .logo-preview-box img {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+        }
+
+        .remove-logo-btn {
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #ef4444;
+          color: white;
+          border: 2px solid white;
+          font-size: 20px;
+          line-height: 1;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          transition: background 0.2s ease;
+        }
+
+        .remove-logo-btn:hover:not(:disabled) {
+          background: #dc2626;
+        }
+
+        .remove-logo-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .logo-placeholder {
+          width: 200px;
+          height: 200px;
+          border: 2px dashed #d1d5db;
+          border-radius: 8px;
+          background: #f9fafb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .logo-placeholder:hover {
+          border-color: #9ca3af;
+          background: #f3f4f6;
+        }
+
+        .placeholder-content {
+          text-align: center;
+          color: #9ca3af;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .placeholder-content svg {
+          color: #d1d5db;
+        }
+
+        .placeholder-content p {
+          margin: 0;
+          font-size: 13px;
+        }
+
+        .btn-upload {
+          min-width: 160px;
+          height: 38px;
+          border-radius: 8px;
+          background: #421E97;
+          color: white;
+          border: none;
+          font-weight: 700;
+          font-size: 12px;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          transition: background 0.2s ease;
+          box-shadow: 0 2px 8px rgba(66, 30, 151, 0.2);
+        }
+
+        .btn-upload:hover:not(:disabled) {
+          background: #5a2bb8;
+        }
+
+        .btn-upload:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         @media (max-width: 960px) {
