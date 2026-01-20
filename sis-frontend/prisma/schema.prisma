@@ -7,10 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// models will be merged from prisma/models/*.prisma
-
-// ---- tab_administrador.prisma ----
-// prisma/models/administrador.prisma
 model Administrador {
   id        Int    @id @default(autoincrement()) @map("id_administrador")
   nome      String @map("nome")
@@ -20,119 +16,93 @@ model Administrador {
   @@map("tab_administrador")
 }
 
-// ---- tab_empresa.prisma ----
-// prisma/models/empresa.prisma (apenas o model Empresa - substitua o bloco existente)
 model Empresa {
-  id          Int     @id @default(autoincrement()) @map("id_empresa")
-  razaoSocial String  @map("razao_social")
-  cnpj        String? @map("CNPJ")
-  email       String? @map("email")
-  telefone    String? @map("telefone")
-  cep         String? @map("CEP")
-
-  // NOVOS CAMPOS DE ENDEREÇO (adicionados)
-  logradouro  String? @map("logradouro")
-  numero      String? @map("numero")
-  complemento String? @map("complemento")
-  cidade      String? @map("cidade")
-  estado      String? @map("estado") // sigla (ex: SP)
-  pais        String? @map("pais") // nome completo (ex: Brasil)
-
-  ativo     Int?      @map("ativo")
-  created   DateTime? @map("created")
-  createdBy Int?      @map("created_by")
-  deleted   DateTime? @map("deleted")
-  deletedBy Int?      @map("deleted_by")
-  updated   DateTime? @map("updated")
-  updatedBy Int?      @map("updated_by")
-
-  usuarios        EmpresaUsuario[]     @relation("EmpresaUsuarios")
-  funcionarios    EmpresaFuncionario[] @relation("EmpresaFuncionarios")
-  relatorios      EmpresaRelatorio[]   @relation("EmpresaRelatorios")
-  empresasTrilhas EmpresaHasTrilha[]   @relation("EmpresaTrilhas")
-  escalasEmpresas EscalaHasEmpresa[]   @relation("EscalaHasEmpresas")
-
+  id                    Int                   @id @default(autoincrement()) @map("id_empresa")
+  razaoSocial           String                @map("razao_social")
+  cnpj                  String?               @map("CNPJ")
+  email                 String?               @map("email")
+  telefone              String?               @map("telefone")
+  cep                   String?               @map("CEP")
+  ativo                 Int?                  @map("ativo")
+  created               DateTime?             @map("created")
+  createdBy             Int?                  @map("created_by")
+  deleted               DateTime?             @map("deleted")
+  deletedBy             Int?                  @map("deleted_by")
+  updated               DateTime?             @map("updated")
+  updatedBy             Int?                  @map("updated_by")
+  cidade                String?               @map("cidade")
+  complemento           String?               @map("complemento")
+  estado                String?               @map("estado")
+  logradouro            String?               @map("logradouro")
+  numero                String?               @map("numero")
+  pais                  String?               @map("pais")
+  logoFileName          String?               @map("logo_file_name")
+  funcionarios          EmpresaFuncionario[]  @relation("EmpresaFuncionarios")
+  gruposFuncionarios    EmpresaGrupo[]        @relation("EmpresaGrupos")
+  empresasTrilhas       EmpresaHasTrilha[]    @relation("EmpresaTrilhas")
+  relatorios            EmpresaRelatorio[]    @relation("EmpresaRelatorios")
+  usuarios              EmpresaUsuario[]      @relation("EmpresaUsuarios")
+  escalasEmpresas       EscalaHasEmpresa[]    @relation("EscalaHasEmpresas")
   respostasFuncionarios RespostaFuncionario[] @relation("EmpresaRespostasFuncionario")
-
-  // NOVO: grupos internos de funcionários da empresa
-  gruposFuncionarios EmpresaGrupo[] @relation("EmpresaGrupos")
 
   @@map("tab_empresa")
 }
 
-// ---- tab_empresa_funcionario.prisma ----
-// prisma/models/empresa_funcionario.prisma
 model EmpresaFuncionario {
-  id_funcionario    Int       @id @default(autoincrement()) @map("id_funcionario")
-  nome              String?   @map("nome")
-  gestor            String?   @map("gestor")
-  email             String?   @map("email")
-  telefone          String?   @map("telefone")
-  data_nascimento   DateTime? @map("data_nascimento")
-  cidade_nascimento String?   @map("cidade_nascimento")
+  id_funcionario    Int                   @id @default(autoincrement()) @map("id_funcionario")
+  nome              String?               @map("nome")
+  gestor            String?               @map("gestor")
+  email             String?               @map("email")
+  telefone          String?               @map("telefone")
+  data_nascimento   DateTime?             @map("data_nascimento")
+  cidade_nascimento String?               @map("cidade_nascimento")
+  id_empresa        Int?                  @map("id_empresa")
+  ativo             Int?                  @map("ativo")
+  created           DateTime?             @map("created")
+  created_by        Int?                  @map("created_by")
+  deleted           DateTime?             @map("deleted")
+  deleted_by        Int?                  @map("deleted_by")
+  updated           DateTime?             @map("updated")
+  updated_by        Int?                  @map("updated_by")
+  id_grupo          Int?                  @map("id_grupo")
+  empresa           Empresa?              @relation("EmpresaFuncionarios", fields: [id_empresa], references: [id])
+  grupo             EmpresaGrupo?         @relation("GrupoFuncionarios", fields: [id_grupo], references: [id])
+  respostas         RespostaFuncionario[] @relation("FuncionarioRespostas")
 
-  id_empresa Int?     @map("id_empresa")
-  empresa    Empresa? @relation("EmpresaFuncionarios", fields: [id_empresa], references: [id])
-
-  // grupo interno principal do funcionário (1 grupo por funcionário)
-  id_grupo Int?          @map("id_grupo")
-  grupo    EmpresaGrupo? @relation("GrupoFuncionarios", fields: [id_grupo], references: [id], onDelete: SetNull)
-
-  ativo      Int?      @map("ativo")
-  created    DateTime? @map("created")
-  created_by Int?      @map("created_by")
-  deleted    DateTime? @map("deleted")
-  deleted_by Int?      @map("deleted_by")
-  updated    DateTime? @map("updated")
-  updated_by Int?      @map("updated_by")
-
-  // NOVO: todas as respostas que esse funcionário já deu em escalas
-  respostas RespostaFuncionario[] @relation("FuncionarioRespostas")
-
+  @@index([id_empresa], map: "tab_empresa_funcionario_id_empresa_fkey")
+  @@index([id_grupo], map: "tab_empresa_funcionario_id_grupo_fkey")
   @@map("tab_empresa_funcionario")
 }
 
-// ---- tab_empresa_grupo.prisma ----
-// prisma/models/tab_empresa_grupo.prisma
-
 model EmpresaGrupo {
-  id        Int    @id @default(autoincrement()) @map("id_grupo")
-  nome      String @map("nome")
-  idEmpresa Int    @map("id_empresa")
-
-  ativo     Int?      @map("ativo")
-  created   DateTime? @map("created")
-  createdBy Int?      @map("created_by")
-  deleted   DateTime? @map("deleted")
-  deletedBy Int?      @map("deleted_by")
-  updated   DateTime? @map("updated")
-  updatedBy Int?      @map("updated_by")
-
-  // Relações
-  empresa      Empresa              @relation("EmpresaGrupos", fields: [idEmpresa], references: [id], onDelete: Cascade)
+  id           Int                  @id @default(autoincrement()) @map("id_grupo")
+  nome         String               @map("nome")
+  idEmpresa    Int                  @map("id_empresa")
+  ativo        Int?                 @map("ativo")
+  created      DateTime?            @map("created")
+  createdBy    Int?                 @map("created_by")
+  deleted      DateTime?            @map("deleted")
+  deletedBy    Int?                 @map("deleted_by")
+  updated      DateTime?            @map("updated")
+  updatedBy    Int?                 @map("updated_by")
   funcionarios EmpresaFuncionario[] @relation("GrupoFuncionarios")
+  empresa      Empresa              @relation("EmpresaGrupos", fields: [idEmpresa], references: [id], onDelete: Cascade)
 
-  // Um mesmo nome de grupo não se repete dentro da mesma empresa
   @@unique([idEmpresa, nome])
   @@map("tab_empresa_grupo")
 }
 
-// ---- tab_empresa_has_trilha.prisma ----
-// prisma/models/empresa_has_trilha.prisma
 model EmpresaHasTrilha {
-  idEmpresa Int @map("id_empresa")
-  idTrilha  Int @map("id_trilha")
+  idEmpresa Int     @map("id_empresa")
+  idTrilha  Int     @map("id_trilha")
+  empresa   Empresa @relation("EmpresaTrilhas", fields: [idEmpresa], references: [id], onDelete: Cascade)
+  trilha    Trilha  @relation("TrilhaEmpresas", fields: [idTrilha], references: [id], onDelete: Cascade)
 
-  // relations
-  empresa Empresa @relation("EmpresaTrilhas", fields: [idEmpresa], references: [id], onDelete: Cascade)
-  trilha  Trilha  @relation("TrilhaEmpresas", fields: [idTrilha], references: [id], onDelete: Cascade)
-
-  @@id([idEmpresa, idTrilha]) // chave composta (não há id autonumérico no diagrama)
+  @@id([idEmpresa, idTrilha])
+  @@index([idTrilha], map: "tab_empresa_has_trilha_id_trilha_fkey")
   @@map("tab_empresa_has_trilha")
 }
 
-// ---- tab_empresa_relatorio.prisma ----
-// prisma/models/empresa_relatorio.prisma
 model EmpresaRelatorio {
   id             Int       @id @default(autoincrement()) @map("id_relatorio")
   titulo         String    @map("titulo")
@@ -146,20 +116,15 @@ model EmpresaRelatorio {
   deletedBy      Int?      @map("deleted_by")
   updated        DateTime? @map("updated")
   updatedBy      Int?      @map("updated_by")
+  fileKey        String?   @map("file_key")
+  fileName       String?   @map("file_name")
+  versionSuffix  Int?      @default(1) @map("version_suffix")
+  empresa        Empresa   @relation("EmpresaRelatorios", fields: [idEmpresa], references: [id], onDelete: Cascade)
 
-  // novos campos (apenas estes três)
-  fileKey       String? @map("file_key")
-  fileName      String? @map("file_name")
-  versionSuffix Int?    @default(1) @map("version_suffix")
-
-  // Relação com Empresa
-  empresa Empresa @relation("EmpresaRelatorios", fields: [idEmpresa], references: [id], onDelete: Cascade)
-
+  @@index([idEmpresa], map: "tab_empresa_relatorio_id_empresa_fkey")
   @@map("tab_empresa_relatorio")
 }
 
-// ---- tab_empresa_usuario.prisma ----
-// prisma/models/empresa_usuario.prisma
 model EmpresaUsuario {
   id_usuario_rh   Int       @id @default(autoincrement()) @map("id_usuario_rh")
   nome            String?   @map("nome")
@@ -169,194 +134,142 @@ model EmpresaUsuario {
   gestor          String?   @map("gestor")
   cidade          String?   @map("cidade")
   senha_hash      String?   @map("senha_hash")
+  id_empresa      Int?      @map("id_empresa")
+  ativo           Int?      @map("ativo")
+  created         DateTime? @map("created")
+  created_by      Int?      @map("created_by")
+  deleted         DateTime? @map("deleted")
+  deleted_by      Int?      @map("deleted_by")
+  updated         DateTime? @map("updated")
+  updated_by      Int?      @map("updated_by")
+  empresa         Empresa?  @relation("EmpresaUsuarios", fields: [id_empresa], references: [id])
 
-  id_empresa Int?     @map("id_empresa")
-  empresa    Empresa? @relation("EmpresaUsuarios", fields: [id_empresa], references: [id])
-
-  ativo      Int?      @map("ativo")
-  created    DateTime? @map("created")
-  created_by Int?      @map("created_by")
-  deleted    DateTime? @map("deleted")
-  deleted_by Int?      @map("deleted_by")
-  updated    DateTime? @map("updated")
-  updated_by Int?      @map("updated_by")
-
+  @@index([id_empresa], map: "tab_empresa_usuario_id_empresa_fkey")
   @@map("tab_empresa_usuario")
 }
 
-// ---- tab_escala.prisma ----
-// ---- tab_escala.prisma ----
-// prisma/models/escala.prisma
 model Escala {
-  id             Int       @id @default(autoincrement()) @map("id_escala")
-  nome           String    @map("nome")
-  dataVencimento DateTime? @map("data_vencimento")
-  ativo          Int?      @map("ativo")
-  created        DateTime? @map("created")
-  createdBy      Int?      @map("created_by")
-  deleted        DateTime? @map("deleted")
-  deletedBy      Int?      @map("deleted_by")
-  updated        DateTime? @map("updated")
-  updatedBy      Int?      @map("updated_by")
-
-  // relations
-  empresas  EscalaHasEmpresa[]    @relation("EscalaEmpresas")
-  perguntas EscalaPergunta[]      @relation("EscalaPerguntas")
-  respostas RespostaFuncionario[] @relation("EscalaRespostas")
-
-  // NOVO: módulos internos da escala
-  modulos EscalaModulo[] @relation("EscalaModulos")
+  id             Int                   @id @default(autoincrement()) @map("id_escala")
+  nome           String                @map("nome")
+  dataVencimento DateTime?             @map("data_vencimento")
+  ativo          Int?                  @map("ativo")
+  created        DateTime?             @map("created")
+  createdBy      Int?                  @map("created_by")
+  deleted        DateTime?             @map("deleted")
+  deletedBy      Int?                  @map("deleted_by")
+  updated        DateTime?             @map("updated")
+  updatedBy      Int?                  @map("updated_by")
+  empresas       EscalaHasEmpresa[]    @relation("EscalaEmpresas")
+  modulos        EscalaModulo[]        @relation("EscalaModulos")
+  perguntas      EscalaPergunta[]      @relation("EscalaPerguntas")
+  respostas      RespostaFuncionario[] @relation("EscalaRespostas")
 
   @@map("tab_escala")
 }
 
-// ---- tab_escala_categoria.prisma ----
-// prisma/models/escala_categoria.prisma
 model EscalaCategoria {
-  id       Int    @id @default(autoincrement()) @map("id_categoria")
-  nome     String @map("nome")
-  idModulo Int    @map("id_modulo")
-
-  ativo     Int?      @map("ativo")
-  created   DateTime? @map("created")
-  createdBy Int?      @map("created_by")
-  deleted   DateTime? @map("deleted")
-  deletedBy Int?      @map("deleted_by")
-  updated   DateTime? @map("updated")
-  updatedBy Int?      @map("updated_by")
-
-  // Relações
-  modulo EscalaModulo @relation("ModuloCategorias", fields: [idModulo], references: [id], onDelete: Cascade)
-
-  // NOVA relação: associações (join) entre categoria <-> pergunta
+  id            Int                          @id @default(autoincrement()) @map("id_categoria")
+  nome          String                       @map("nome")
+  idModulo      Int                          @map("id_modulo")
+  ativo         Int?                         @map("ativo")
+  created       DateTime?                    @map("created")
+  createdBy     Int?                         @map("created_by")
+  deleted       DateTime?                    @map("deleted")
+  deletedBy     Int?                         @map("deleted_by")
+  updated       DateTime?                    @map("updated")
+  updatedBy     Int?                         @map("updated_by")
+  modulo        EscalaModulo                 @relation("ModuloCategorias", fields: [idModulo], references: [id], onDelete: Cascade)
   categoriasRel EscalaPerguntaHasCategoria[] @relation("CategoriaPerguntasJoin")
 
-  // OBS: removido o campo direto perguntas EscalaPergunta[] (antes usado para FK única).
-  // Se você quiser exposer perguntas diretamente (por conveniência), pode obter via join: categoriasRel -> categoria
-
+  @@index([idModulo], map: "tab_escala_categoria_id_modulo_fkey")
   @@map("tab_escala_categoria")
 }
 
-// ---- tab_escala_has_empresa.prisma ----
-// prisma/models/escala_has_empresa.prisma
 model EscalaHasEmpresa {
-  idEscala  Int @map("id_escala")
-  idEmpresa Int @map("id_empresa")
-
-  // NOVO: quantos funcionários foram convidados quando a escala foi disparada
-  totalDestinatarios Int? @map("total_destinatarios")
-
-  // NOVO: quando essa escala foi enviada para essa empresa
-  dataEnvio DateTime? @map("data_envio")
-
-  // relations
-  escala  Escala  @relation("EscalaEmpresas", fields: [idEscala], references: [id], onDelete: Cascade)
-  empresa Empresa @relation("EscalaHasEmpresas", fields: [idEmpresa], references: [id], onDelete: Cascade)
+  idEscala           Int       @map("id_escala")
+  idEmpresa          Int       @map("id_empresa")
+  dataEnvio          DateTime? @map("data_envio")
+  totalDestinatarios Int?      @map("total_destinatarios")
+  empresa            Empresa   @relation("EscalaHasEmpresas", fields: [idEmpresa], references: [id], onDelete: Cascade)
+  escala             Escala    @relation("EscalaEmpresas", fields: [idEscala], references: [id], onDelete: Cascade)
 
   @@id([idEscala, idEmpresa])
+  @@index([idEmpresa], map: "tab_escala_has_empresa_id_empresa_fkey")
   @@map("tab_escala_has_empresa")
 }
 
-// ---- tab_escala_modulo.prisma ----
-// ---- tab_escala_modulo.prisma ----
-// prisma/models/escala_modulo.prisma
 model EscalaModulo {
-  id       Int    @id @default(autoincrement()) @map("id_modulo")
-  nome     String @map("nome")
-  idEscala Int    @map("id_escala")
+  id                        Int               @id @default(autoincrement()) @map("id_modulo")
+  nome                      String            @map("nome")
+  idEscala                  Int               @map("id_escala")
+  valorInicialFavoravel     Decimal?          @map("valor_inicial_favoravel") @db.Decimal(10, 2)
+  valorFinalFavoravel       Decimal?          @map("valor_final_favoravel") @db.Decimal(10, 2)
+  valorInicialIntermediario Decimal?          @map("valor_inicial_intermediario") @db.Decimal(10, 2)
+  valorFinalIntermediario   Decimal?          @map("valor_final_intermediario") @db.Decimal(10, 2)
+  valorInicialRisco         Decimal?          @map("valor_inicial_risco") @db.Decimal(10, 2)
+  valorFinalRisco           Decimal?          @map("valor_final_risco") @db.Decimal(10, 2)
+  ativo                     Int?              @map("ativo")
+  created                   DateTime?         @map("created")
+  createdBy                 Int?              @map("created_by")
+  deleted                   DateTime?         @map("deleted")
+  deletedBy                 Int?              @map("deleted_by")
+  updated                   DateTime?         @map("updated")
+  updatedBy                 Int?              @map("updated_by")
+  categorias                EscalaCategoria[] @relation("ModuloCategorias")
+  escala                    Escala            @relation("EscalaModulos", fields: [idEscala], references: [id], onDelete: Cascade)
+  perguntas                 EscalaPergunta[]  @relation("ModuloPerguntas")
 
-  // Ranges por módulo (usados com a média 1–5 das respostas)
-  valorInicialFavoravel     Decimal? @map("valor_inicial_favoravel") @db.Decimal(10, 2)
-  valorFinalFavoravel       Decimal? @map("valor_final_favoravel") @db.Decimal(10, 2)
-  valorInicialIntermediario Decimal? @map("valor_inicial_intermediario") @db.Decimal(10, 2)
-  valorFinalIntermediario   Decimal? @map("valor_final_intermediario") @db.Decimal(10, 2)
-  valorInicialRisco         Decimal? @map("valor_inicial_risco") @db.Decimal(10, 2)
-  valorFinalRisco           Decimal? @map("valor_final_risco") @db.Decimal(10, 2)
-
-  ativo     Int?      @map("ativo")
-  created   DateTime? @map("created")
-  createdBy Int?      @map("created_by")
-  deleted   DateTime? @map("deleted")
-  deletedBy Int?      @map("deleted_by")
-  updated   DateTime? @map("updated")
-  updatedBy Int?      @map("updated_by")
-
-  // Relações
-  escala     Escala            @relation("EscalaModulos", fields: [idEscala], references: [id], onDelete: Cascade)
-  categorias EscalaCategoria[] @relation("ModuloCategorias")
-  perguntas  EscalaPergunta[]  @relation("ModuloPerguntas")
-
+  @@index([idEscala], map: "tab_escala_modulo_id_escala_fkey")
   @@map("tab_escala_modulo")
 }
 
-// ---- tab_escala_pergunta.prisma ----
-// prisma/models/escala_pergunta.prisma
 model EscalaPergunta {
-  id       Int    @id @default(autoincrement()) @map("id_pergunta")
-  pergunta String @map("pergunta")
-  idEscala Int    @map("id_escala")
-
-  // ordem da pergunta dentro da escala/módulo
-  ordem Int? @map("ordem")
-
-  // módulo ao qual a pergunta pertence (mantido)
-  idModulo Int? @map("id_modulo")
-  // NOTA: idCategoria removido — agora usamos a tabela de relacionamento many-to-many
-
-  ativo     Int?      @map("ativo")
-  created   DateTime? @map("created")
-  createdBy Int?      @map("created_by")
-  deleted   DateTime? @map("deleted")
-  deletedBy Int?      @map("deleted_by")
-  updated   DateTime? @map("updated")
-  updatedBy Int?      @map("updated_by")
-
-  // relations
-  escala Escala @relation("EscalaPerguntas", fields: [idEscala], references: [id], onDelete: Cascade)
-
-  // relação com módulo (permanece)
-  modulo EscalaModulo? @relation("ModuloPerguntas", fields: [idModulo], references: [id])
-
-  // NOVA relação -> join table (pergunta <-> categorias)
-  categoriasRel EscalaPerguntaHasCategoria[] @relation("PerguntaCategorias")
-
-  respostasPossiveis    EscalaPerguntaResposta[] @relation("PerguntaRespostas")
-  respostasFuncionarios RespostaFuncionario[]    @relation("PerguntaRespostasFuncionario")
+  id                    Int                          @id @default(autoincrement()) @map("id_pergunta")
+  pergunta              String                       @map("pergunta")
+  idEscala              Int                          @map("id_escala")
+  ativo                 Int?                         @map("ativo")
+  created               DateTime?                    @map("created")
+  createdBy             Int?                         @map("created_by")
+  deleted               DateTime?                    @map("deleted")
+  deletedBy             Int?                         @map("deleted_by")
+  updated               DateTime?                    @map("updated")
+  updatedBy             Int?                         @map("updated_by")
+  idModulo              Int?                         @map("id_modulo")
+  ordem                 Int?                         @map("ordem")
+  escala                Escala                       @relation("EscalaPerguntas", fields: [idEscala], references: [id], onDelete: Cascade)
+  modulo                EscalaModulo?                @relation("ModuloPerguntas", fields: [idModulo], references: [id])
+  categoriasRel         EscalaPerguntaHasCategoria[] @relation("PerguntaCategorias")
+  respostasPossiveis    EscalaPerguntaResposta[]     @relation("PerguntaRespostas")
+  respostasFuncionarios RespostaFuncionario[]        @relation("PerguntaRespostasFuncionario")
 
   @@index([idEscala], map: "tab_escala_pergunta_id_escala_fkey")
   @@index([idModulo], map: "tab_escala_pergunta_id_modulo_fkey")
   @@map("tab_escala_pergunta")
 }
 
-// ---- tab_escala_pergunta_has_categoria.prisma ----
 model EscalaPerguntaHasCategoria {
-  // FK para pergunta
-  pergunta   EscalaPergunta @relation("PerguntaCategorias", fields: [idPergunta], references: [id], onDelete: Cascade)
-  idPergunta Int            @map("id_pergunta")
-
-  // FK para categoria
-  categoria   EscalaCategoria @relation("CategoriaPerguntasJoin", fields: [idCategoria], references: [id], onDelete: Restrict)
+  idPergunta  Int             @map("id_pergunta")
   idCategoria Int             @map("id_categoria")
+  categoria   EscalaCategoria @relation("CategoriaPerguntasJoin", fields: [idCategoria], references: [id], onDelete: Cascade)
+  pergunta    EscalaPergunta  @relation("PerguntaCategorias", fields: [idPergunta], references: [id], onDelete: Cascade)
 
   @@id([idPergunta, idCategoria])
-  @@index([idCategoria], map: "idx_escala_pergunta_has_categoria_categoria")
+  @@index([idCategoria], map: "tab_escala_pergunta_has_categoria_id_categoria_fkey")
   @@map("tab_escala_pergunta_has_categoria")
 }
 
-// ---- tab_escala_pergunta_resposta.prisma ----
 model EscalaPerguntaResposta {
-  id         Int       @id @default(autoincrement()) @map("id_resposta")
-  resposta   String    @map("resposta")
-  idPergunta Int       @map("id_pergunta")
-  ativo      Int?      @map("ativo")
-  created    DateTime? @map("created")
-  createdBy  Int?      @map("created_by")
-  deleted    DateTime? @map("deleted")
-  deletedBy  Int?      @map("deleted_by")
-  updated    DateTime? @map("updated")
-  updatedBy  Int?      @map("updated_by")
-  valor      Int?      @map("valor")
-
+  id                   Int                   @id @default(autoincrement()) @map("id_resposta")
+  resposta             String                @map("resposta")
+  idPergunta           Int                   @map("id_pergunta")
+  ativo                Int?                  @map("ativo")
+  created              DateTime?             @map("created")
+  createdBy            Int?                  @map("created_by")
+  deleted              DateTime?             @map("deleted")
+  deletedBy            Int?                  @map("deleted_by")
+  updated              DateTime?             @map("updated")
+  updatedBy            Int?                  @map("updated_by")
+  valor                Int?                  @map("valor")
   pergunta             EscalaPergunta        @relation("PerguntaRespostas", fields: [idPergunta], references: [id], onDelete: Cascade)
   respostasFuncionario RespostaFuncionario[] @relation("RespostaPossivelFuncionarios")
 
@@ -364,62 +277,52 @@ model EscalaPerguntaResposta {
   @@map("tab_escala_pergunta_resposta")
 }
 
-// ---- tab_resposta_funcionario.prisma ----
 model RespostaFuncionario {
-  id           Int       @id @default(autoincrement()) @map("id_resposta_funcionario")
-  dataResposta DateTime? @map("data_resposta")
+  id               Int                     @id @default(autoincrement()) @map("id_resposta_funcionario")
+  dataResposta     DateTime?               @map("data_resposta")
+  idResposta       Int?                    @map("id_resposta")
+  idPergunta       Int?                    @map("id_pergunta")
+  idEscala         Int?                    @map("id_escala")
+  ativo            Int?                    @map("ativo")
+  created          DateTime?               @map("created")
+  createdBy        Int?                    @map("created_by")
+  deleted          DateTime?               @map("deleted")
+  deletedBy        Int?                    @map("deleted_by")
+  updated          DateTime?               @map("updated")
+  updatedBy        Int?                    @map("updated_by")
+  idEmpresa        Int?                    @map("id_empresa")
+  idFuncionario    Int?                    @map("id_funcionario")
+  empresa          Empresa?                @relation("EmpresaRespostasFuncionario", fields: [idEmpresa], references: [id])
+  escala           Escala?                 @relation("EscalaRespostas", fields: [idEscala], references: [id])
+  funcionario      EmpresaFuncionario?     @relation("FuncionarioRespostas", fields: [idFuncionario], references: [id_funcionario])
+  pergunta         EscalaPergunta?         @relation("PerguntaRespostasFuncionario", fields: [idPergunta], references: [id])
+  respostaPossivel EscalaPerguntaResposta? @relation("RespostaPossivelFuncionarios", fields: [idResposta], references: [id])
 
-  idResposta Int? @map("id_resposta") // FK para resposta possível
-  idPergunta Int? @map("id_pergunta") // FK para pergunta
-  idEscala   Int? @map("id_escala") // FK para escala
-
-  // Empresa da resposta
-  idEmpresa Int? @map("id_empresa")
-
-  // NOVO: funcionário que respondeu
-  idFuncionario Int? @map("id_funcionario")
-
-  ativo     Int?      @map("ativo")
-  created   DateTime? @map("created")
-  createdBy Int?      @map("created_by")
-  deleted   DateTime? @map("deleted")
-  deletedBy Int?      @map("deleted_by")
-  updated   DateTime? @map("updated")
-  updatedBy Int?      @map("updated_by")
-
-  // relations
-  respostaPossivel EscalaPerguntaResposta? @relation("RespostaPossivelFuncionarios", fields: [idResposta], references: [id], onDelete: SetNull)
-  pergunta         EscalaPergunta?         @relation("PerguntaRespostasFuncionario", fields: [idPergunta], references: [id], onDelete: SetNull)
-  escala           Escala?                 @relation("EscalaRespostas", fields: [idEscala], references: [id], onDelete: SetNull)
-  empresa          Empresa?                @relation("EmpresaRespostasFuncionario", fields: [idEmpresa], references: [id], onDelete: SetNull)
-  funcionario      EmpresaFuncionario?     @relation("FuncionarioRespostas", fields: [idFuncionario], references: [id_funcionario], onDelete: SetNull)
-
+  @@index([idEmpresa], map: "tab_resposta_funcionario_id_empresa_fkey")
+  @@index([idEscala], map: "tab_resposta_funcionario_id_escala_fkey")
+  @@index([idFuncionario], map: "tab_resposta_funcionario_id_funcionario_fkey")
+  @@index([idPergunta], map: "tab_resposta_funcionario_id_pergunta_fkey")
+  @@index([idResposta], map: "tab_resposta_funcionario_id_resposta_fkey")
   @@map("tab_resposta_funcionario")
 }
 
-// ---- tab_trilha.prisma ----
-// prisma/models/trilha.prisma
 model Trilha {
-  id          Int       @id @default(autoincrement()) @map("id_trilha")
-  nome        String    @map("nome")
-  dataCriacao DateTime? @map("data_criacao") // DATE no diagram, mapeado como DateTime?
-  ativo       Int?      @map("ativo")
-  created     DateTime? @map("created")
-  createdBy   Int?      @map("created_by")
-  deleted     DateTime? @map("deleted")
-  deletedBy   Int?      @map("deleted_by")
-  updated     DateTime? @map("updated")
-  updatedBy   Int?      @map("updated_by")
-
-  // relations
-  empresas EmpresaHasTrilha[] @relation("TrilhaEmpresas")
-  itens    TrilhaItem[]       @relation("TrilhaItens")
+  id          Int                @id @default(autoincrement()) @map("id_trilha")
+  nome        String             @map("nome")
+  dataCriacao DateTime?          @map("data_criacao")
+  ativo       Int?               @map("ativo")
+  created     DateTime?          @map("created")
+  createdBy   Int?               @map("created_by")
+  deleted     DateTime?          @map("deleted")
+  deletedBy   Int?               @map("deleted_by")
+  updated     DateTime?          @map("updated")
+  updatedBy   Int?               @map("updated_by")
+  empresas    EmpresaHasTrilha[] @relation("TrilhaEmpresas")
+  itens       TrilhaItem[]       @relation("TrilhaItens")
 
   @@map("tab_trilha")
 }
 
-// ---- tab_trilha_item.prisma ----
-// prisma/models/trilha_item.prisma
 model TrilhaItem {
   id        Int       @id @default(autoincrement()) @map("id_itens")
   nome      String    @map("nome")
@@ -434,9 +337,8 @@ model TrilhaItem {
   deletedBy Int?      @map("deleted_by")
   updated   DateTime? @map("updated")
   updatedBy Int?      @map("updated_by")
+  trilha    Trilha    @relation("TrilhaItens", fields: [idTrilha], references: [id], onDelete: Cascade)
 
-  // relation to Trilha
-  trilha Trilha @relation("TrilhaItens", fields: [idTrilha], references: [id], onDelete: Cascade)
-
+  @@index([idTrilha], map: "tab_trilha_item_id_trilha_fkey")
   @@map("tab_trilha_item")
 }

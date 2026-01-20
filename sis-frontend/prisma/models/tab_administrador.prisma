@@ -1,9 +1,0 @@
-// prisma/models/administrador.prisma
-model Administrador {
-  id         Int    @id @default(autoincrement()) @map("id_administrador")
-  nome       String @map("nome")
-  email      String @map("email")
-  senhaHash  String @map("senha_hash")
-
-  @@map("tab_administrador")
-}
