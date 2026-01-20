@@ -19,6 +19,7 @@ import {
   ChevronRightOutlined,
 } from "@mui/icons-material";
 import CompanyLink from "@/components/common/CompanyLink";
+import { useCompanyInfo } from "@/hooks/useCompanyInfo";
 
 export type Variant = "client" | "admin";
 
@@ -73,6 +74,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname?.() ?? "";
   const menu = menuItems ?? DEFAULT_MENUS[variant];
+  const { company, loading } = useCompanyInfo(variant);
 
   // persisted collapse state (user can pin collapsed)
   const [collapsed, setCollapsed] = useState<boolean>(false);
@@ -171,30 +173,37 @@ export default function Sidebar({
     </ul>
   );
 
-  const Logo = () => (
-    <div className="flex items-center justify-center px-6 py-1 border-b border-white/10">
-      {/* Logo icon - sempre visível e centralizado */}
-      <div className="flex-shrink-0">
-        <img
-          src="/logos/sis_white.png"
-          alt="Logo"
-          className="w-30 h-30 object-contain"
-        />
-      </div>
+  const Logo = () => {
+    const logoSrc = company?.logoUrl || "/logos/sis_white.png";
+    const logoAlt = company?.name || "Logo";
 
-      {/* Botão de colapsar - só aparece quando expandido */}
-      {isExpanded && (
-        <button
-          aria-label={collapsed ? "Expandir barra lateral" : "Reduzir barra lateral"}
-          title={collapsed ? "Expandir" : "Reduzir"}
-          onClick={handleToggleCollapse}
-          className="absolute right-4 flex items-center justify-center rounded-md p-1 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/20"
-        >
-          <ChevronLeftOutlined className="text-[#F3F4FF]" />
-        </button>
-      )}
-    </div>
-  );
+    return (
+      <div className="flex items-center justify-center px-6 py-1 border-b border-white/10">
+        {/* Logo icon - só aparece quando expandido */}
+        {isExpanded && (
+          <div className="flex-shrink-0">
+            <img
+              src={logoSrc}
+              alt={logoAlt}
+              className="w-30 h-30 object-contain"
+            />
+          </div>
+        )}
+
+        {/* Botão de colapsar - só aparece quando expandido */}
+        {isExpanded && (
+          <button
+            aria-label={collapsed ? "Expandir barra lateral" : "Reduzir barra lateral"}
+            title={collapsed ? "Expandir" : "Reduzir"}
+            onClick={handleToggleCollapse}
+            className="absolute right-4 flex items-center justify-center rounded-md p-1 hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white/20"
+          >
+            <ChevronLeftOutlined className="text-[#F3F4FF]" />
+          </button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -227,7 +236,11 @@ export default function Sidebar({
           <div className="fixed inset-0 bg-black/40" onClick={onRequestClose} />
           <aside className="relative z-50 w-72 bg-[#421E97] h-full text-[#F3F4FF] shadow-xl">
             <div className="relative flex items-center justify-center border-b border-white/10 px-4 py-6">
-              <img src="/logos/sis_white.png" alt="Logo" className="w-22 h-12" />
+              <img 
+                src={company?.logoUrl || "/logos/sis_white.png"} 
+                alt={company?.name || "Logo"} 
+                className="w-22 h-12" 
+              />
               <button 
                 onClick={onRequestClose} 
                 aria-label="Fechar menu" 

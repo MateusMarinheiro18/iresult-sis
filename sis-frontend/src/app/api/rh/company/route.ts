@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
         empresa: {
           select: {
             id: true,
-            razaoSocial: true
+            razaoSocial: true,
+            logoFileName: true
           }
         }
       }
@@ -50,7 +51,8 @@ export async function GET(request: NextRequest) {
     // 3) retornar dados da empresa no formato esperado pelo Headbar
     return NextResponse.json({
       id: user.empresa.id,
-      name: user.empresa.razaoSocial
+      name: user.empresa.razaoSocial,
+      logoFileName: user.empresa.logoFileName
     }, { status: 200 });
 
   } catch (err) {
