@@ -140,6 +140,16 @@ export async function POST(
     const adminId = Number(payload.sub);
     if (!adminId || Number.isNaN(adminId)) return NextResponse.json({ error: 'ID do administrador inválido' }, { status: 401 });
 
+    // --- buscar empresa para pegar o nome
+    const company = await prisma.empresa.findUnique({
+      where: { id: companyId },
+      select: { razaoSocial: true }
+    });
+
+    if (!company) {
+      return NextResponse.json({ error: 'Empresa não encontrada' }, { status: 404 });
+    }
+
     // --- body parsing & validation
     const body = (await request.json()) as CreateBody;
 
@@ -150,8 +160,6 @@ export async function POST(
     const cidade = body.cidade?.toString().trim() ?? null;
     const gestor = body.gestor?.toString().trim() ?? null;
     const ativo = body.ativo === undefined ? 1 : body.ativo ? 1 : 0;
-    // ignore created_by from client; server controls audit
-    // const created_by = body.created_by ?? null;
 
     if (!nome || nome.length < 2) {
       return NextResponse.json(
@@ -166,17 +174,151 @@ export async function POST(
       return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
     }
 
-    // email único por empresa
-    const exists = await prisma.empresaUsuario.findFirst({
+    // Verificar se email já existe (ativo ou deletado)
+    const existingUser = await prisma.empresaUsuario.findFirst({
       where: { id_empresa: companyId, email: email },
+      select: { id_usuario_rh: true, deleted: true }
     });
-    if (exists) {
-      return NextResponse.json(
-        { error: 'Email já cadastrado para esta empresa.' },
-        { status: 409 }
-      );
+
+    if (existingUser) {
+      // Se existe e NÃO está deletado (ativo), retornar erro
+      if (!existingUser.deleted) {
+        return NextResponse.json(
+          { error: 'Email já cadastrado para esta empresa.' },
+          { status: 409 }
+        );
+      }
+
+      // Se existe mas está DELETADO, vamos reativar com as novas informações
+      if (data_nascimento) {
+        const d = new Date(data_nascimento + 'T12:00:00.000Z');
+        if (Number.isNaN(d.getTime())) {
+          return NextResponse.json({ error: 'Data de nascimento inválida.' }, { status: 400 });
+        }
+        if (d.getTime() > Date.now()) {
+          return NextResponse.json({ error: 'Data de nascimento não pode ser no futuro.' }, { status: 400 });
+        }
+      }
+
+      // Gerar nova senha
+      const plainPassword = generateRandomPassword(12);
+      const saltRounds = 10;
+      const salt = await bcrypt.genSalt(saltRounds);
+      const senha_hash = await bcrypt.hash(plainPassword, salt);
+
+      const now = getBrasiliaDate();
+
+      // Dados para atualização (reativação)
+      const updateData: any = {
+        nome,
+        email: email || null,
+        telefone,
+        data_nascimento: data_nascimento ? new Date(data_nascimento + 'T12:00:00.000Z') : null,
+        cidade,
+        gestor,
+        ativo: ativo ?? 1,
+        senha_hash,
+        deleted: null,
+        deleted_by: null,
+      };
+
+      const withAuditCamel = {
+        ...updateData,
+        updated: now,
+        updatedBy: adminId,
+      };
+
+      const withAuditSnake = {
+        ...updateData,
+        updated: now,
+        updated_by: adminId,
+      };
+
+      let reactivatedUser: any;
+      try {
+        reactivatedUser = await prisma.empresaUsuario.update({
+          where: { id_usuario_rh: existingUser.id_usuario_rh },
+          data: withAuditCamel,
+          select: {
+            id_usuario_rh: true,
+            nome: true,
+            email: true,
+            telefone: true,
+            data_nascimento: true,
+            gestor: true,
+            cidade: true,
+            ativo: true,
+            created: true,
+            updated: true,
+          },
+        });
+      } catch (err: any) {
+        if (isPrismaUnknownArgError(err)) {
+          try {
+            reactivatedUser = await prisma.empresaUsuario.update({
+              where: { id_usuario_rh: existingUser.id_usuario_rh },
+              data: withAuditSnake,
+              select: {
+                id_usuario_rh: true,
+                nome: true,
+                email: true,
+                telefone: true,
+                data_nascimento: true,
+                gestor: true,
+                cidade: true,
+                ativo: true,
+                created: true,
+                updated: true,
+              },
+            });
+          } catch (err2: any) {
+            if (isPrismaUnknownArgError(err2)) {
+              reactivatedUser = await prisma.empresaUsuario.update({
+                where: { id_usuario_rh: existingUser.id_usuario_rh },
+                data: updateData,
+                select: {
+                  id_usuario_rh: true,
+                  nome: true,
+                  email: true,
+                  telefone: true,
+                  data_nascimento: true,
+                  gestor: true,
+                  cidade: true,
+                  ativo: true,
+                  created: true,
+                  updated: true,
+                },
+              });
+            } else {
+              throw err2;
+            }
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      // Enviar e-mail de acesso
+      try {
+        const to = reactivatedUser?.email ?? '';
+        const name = reactivatedUser?.nome ?? nome;
+        sendUserAccessEmail({
+          to,
+          name,
+          email: to,
+          plainPassword,
+          companyName: company.razaoSocial ?? 'SIS',
+        }).catch((sendErr) => {
+          console.error('Erro enviando e-mail de acesso ao usuário RH reativado:', sendErr);
+        });
+      } catch (err) {
+        console.error('Erro iniciando envio de e-mail (não fatal):', err);
+      }
+
+      return NextResponse.json({ data: reactivatedUser }, { status: 201 });
     }
 
+    // Se não existe, criar novo usuário
     if (data_nascimento) {
       const d = new Date(data_nascimento + 'T12:00:00.000Z');
       if (Number.isNaN(d.getTime())) {
@@ -193,11 +335,8 @@ export async function POST(
     const salt = await bcrypt.genSalt(saltRounds);
     const senha_hash = await bcrypt.hash(plainPassword, salt);
 
-    // --- criar usuário: tentamos primeiro inserindo audit fields em camelCase,
-    // se o prisma reclamar que o campo não existe, fazemos fallback (sem audit)
     const now = getBrasiliaDate();
 
-    // dados base que sempre queremos inserir
     const baseData: any = {
       id_empresa: companyId,
       nome,
@@ -210,7 +349,6 @@ export async function POST(
       senha_hash,
     };
 
-    // tentativa 1: incluir audit campos camelCase (created, createdBy, updated, updatedBy)
     const withAuditCamel = {
       ...baseData,
       created: now,
@@ -219,7 +357,6 @@ export async function POST(
       updatedBy: adminId,
     };
 
-    // tentativa 2 fallback: incluir audit em snake_case (created, created_by, updated, updated_by)
     const withAuditSnake = {
       ...baseData,
       created: now,
@@ -246,7 +383,6 @@ export async function POST(
         },
       });
     } catch (err: any) {
-      // se for erro de campo desconhecido, tentar fallback snake_case
       if (isPrismaUnknownArgError(err)) {
         try {
           createdUser = await prisma.empresaUsuario.create({
@@ -265,7 +401,6 @@ export async function POST(
             },
           });
         } catch (err2: any) {
-          // se novamente falhar, tentar sem campos de audit (último recurso)
           if (isPrismaUnknownArgError(err2)) {
             createdUser = await prisma.empresaUsuario.create({
               data: baseData,
@@ -293,14 +428,14 @@ export async function POST(
 
     // Dispara envio de e-mail em background (fire-and-forget)
     try {
-      // se createdUser.email for null/undefined, enviamos para '' e logamos
       const to = createdUser?.email ?? '';
       const name = createdUser?.nome ?? nome;
       sendUserAccessEmail({
         to,
         name,
         email: to,
-        plainPassword, // só em memória, para envio
+        plainPassword,
+        companyName: company.razaoSocial ?? 'SIS',
       }).catch((sendErr) => {
         console.error('Erro enviando e-mail de acesso ao usuário RH:', sendErr);
       });
@@ -308,12 +443,10 @@ export async function POST(
       console.error('Erro iniciando envio de e-mail (não fatal):', err);
     }
 
-    // IMPORTANTE: NÃO retornamos a senha gerada.
     return NextResponse.json({ data: createdUser }, { status: 201 });
   } catch (err: any) {
     console.error('POST /usersrh error', err);
 
-    // se erro de validação do prisma (ex.: foreign key) podemos repassar info útil
     if (err?.code === 'P2003') {
       return NextResponse.json({ error: 'Chave estrangeira inválida (company pode não existir).' }, { status: 400 });
     }

@@ -11,6 +11,7 @@ type Opts = {
   name?: string | null;
   email: string; // login (email)
   plainPassword: string; // senha temporária
+  companyName?: string; // nome da empresa
 };
 
 type BuiltEmail = {
@@ -27,15 +28,15 @@ const BRAND_COLOR = '#421E97';
  * Usa apenas as variáveis fornecidas dinamicamente: to, name?, email, plainPassword
  */
 function buildUserAccessPayload(opts: Opts): BuiltEmail {
-  const { to, name, email, plainPassword } = opts;
+  const { to, name, email, plainPassword, companyName } = opts;
   const safeTo = escapeHtml(to);
   const safeName = name ? escapeHtml(name) : '';
   const safeLogin = escapeHtml(email);
   const safePassword = escapeHtml(plainPassword);
+  const safeCompanyName = escapeHtml(companyName ?? 'SIS');
 
-  const subject = 'Acesso ao portal — sua conta foi criada';
+  const subject = `Acesso ao portal — ${safeCompanyName}`;
   const preheader = 'Sua conta no portal foi criada. Use as credenciais abaixo para acessar.';
-  const companyName = 'SIS';
   const portal = process.env.FRONTEND_BASE_URL ?? 'http://146.190.121.239:3001';
 
   const html = `<!doctype html>
@@ -76,7 +77,7 @@ function buildUserAccessPayload(opts: Opts): BuiltEmail {
       <td align="center">
         <div class="email-container" role="main" aria-label="Acesso ao portal">
           <div class="top-bar">
-            <div class="logo">${escapeHtml(companyName)}</div>
+            <div class="logo">${safeCompanyName}</div>
           </div>
 
           <div class="content">
@@ -92,7 +93,7 @@ function buildUserAccessPayload(opts: Opts): BuiltEmail {
 
             <p>Olá ${safeName || ''}${safeName ? ',' : ''}</p>
 
-            <p>Sua conta no portal foi criada. Seguem os dados de acesso:</p>
+            <p>Sua conta no portal ${safeCompanyName} foi criada. Seguem os dados de acesso:</p>
 
             <div class="credentials" role="group" aria-label="Credenciais de acesso">
               <div class="cred-row"><span class="label">Login: </span><div class="value">${safeLogin}</div></div>
@@ -109,7 +110,7 @@ function buildUserAccessPayload(opts: Opts): BuiltEmail {
           <div class="footer">
             <div class="small">Se você recebeu este email por engano, apenas ignore-o.</div>
             <div style="height:6px;"></div>
-            <div class="small">© ${escapeHtml(companyName)}</div>
+            <div class="small">© ${safeCompanyName}</div>
           </div>
 
         </div>
@@ -124,7 +125,7 @@ function buildUserAccessPayload(opts: Opts): BuiltEmail {
     '',
     `Olá ${safeName || ''}`,
     '',
-    `Sua conta no portal foi criada. Use as credenciais abaixo para acessar e, por segurança, altere sua senha assim que fizer login.`,
+    `Sua conta no portal ${safeCompanyName} foi criada. Use as credenciais abaixo para acessar e, por segurança, altere sua senha assim que fizer login.`,
     '',
     `Login: ${safeLogin}`,
     `Senha temporária: ${safePassword}`,
