@@ -23,7 +23,16 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.empresaUsuario.findFirst({
       where: { email: rawEmail },
-      select: { id_usuario_rh: true, nome: true, email: true },
+      select: { 
+        id_usuario_rh: true, 
+        nome: true, 
+        email: true,
+        empresa: {
+          select: {
+            razaoSocial: true
+          }
+        }
+      },
     });
 
     if (!user) {
@@ -43,6 +52,7 @@ export async function POST(request: NextRequest) {
       await sendRhPasswordResetEmail({
         to: user.email ?? '',
         name: user.nome ?? '',
+        companyName: user.empresa?.razaoSocial ?? 'SIS',
         resetLink,
         expiresSeconds: EXPIRES_SECONDS,
       });

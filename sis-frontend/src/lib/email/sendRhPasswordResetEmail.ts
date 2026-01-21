@@ -6,6 +6,7 @@ import { sendEmailViaBrevo, escapeHtml } from './brevoClient';
 type Payload = {
   to: string;
   name?: string | null;
+  companyName?: string;
   resetLink: string;
   expiresSeconds: number;
 };
@@ -13,12 +14,12 @@ type Payload = {
 const BRAND_COLOR = '#421E97';
 
 function buildRhResetHtmlText(payload: Payload) {
-  const { name, resetLink, expiresSeconds } = payload;
+  const { name, companyName, resetLink, expiresSeconds } = payload;
   const safeName = name ? escapeHtml(name) : '';
   const safeLink = escapeHtml(resetLink);
-  const subject = 'Redefinição de senha — SIS (RH)';
+  const safeCompanyName = escapeHtml(companyName ?? 'SIS');
+  const subject = `Redefinição de senha — ${safeCompanyName} (RH)`;
   const preheader = 'Recebemos uma solicitação para redefinir sua senha do painel RH.';
-  const companyName = 'SIS';
   const hours = Math.round((expiresSeconds ?? 3600) / 3600) || 1;
 
   const html = `<!doctype html>
@@ -62,7 +63,7 @@ function buildRhResetHtmlText(payload: Payload) {
       <td align="center">
         <div class="email-container" role="main" aria-label="Redefinição de senha RH">
           <div class="top-bar">
-            <div class="logo">${escapeHtml(companyName)}</div>
+            <div class="logo">${safeCompanyName}</div>
           </div>
 
           <div class="content">
@@ -78,7 +79,7 @@ function buildRhResetHtmlText(payload: Payload) {
 
             <p>Olá ${safeName || ''}${safeName ? ',' : ''}</p>
 
-            <p>Recebemos uma solicitação para redefinir sua senha do painel RH do SIS. Clique no botão abaixo para definir uma nova senha. O link é válido por ${hours} hora(s).</p>
+            <p>Recebemos uma solicitação para redefinir sua senha do painel RH do ${safeCompanyName}. Clique no botão abaixo para definir uma nova senha. O link é válido por ${hours} hora(s).</p>
 
             <div class="cta-wrap">
               <a class="btn" href="${safeLink}" target="_blank" rel="noopener noreferrer" style="color:#ffffff !important; text-decoration:none;" aria-label="Redefinir senha RH">Redefinir senha</a>
@@ -94,7 +95,7 @@ function buildRhResetHtmlText(payload: Payload) {
           </div>
 
           <div class="footer">
-            <div class="small">© ${escapeHtml(companyName)}</div>
+            <div class="small">© ${safeCompanyName}</div>
           </div>
 
         </div>
@@ -109,7 +110,7 @@ function buildRhResetHtmlText(payload: Payload) {
     '',
     `Olá ${name ?? ''}`,
     '',
-    `Recebemos uma solicitação para redefinir sua senha do painel RH do SIS. Use o link abaixo (válido por ${hours} hora(s)):`,
+    `Recebemos uma solicitação para redefinir sua senha do painel RH do ${safeCompanyName}. Use o link abaixo (válido por ${hours} hora(s)):`,
     '',
     resetLink,
     '',
@@ -120,8 +121,8 @@ function buildRhResetHtmlText(payload: Payload) {
   return { subject, html, text };
 }
 
-export async function sendRhPasswordResetEmail({ to, name, resetLink, expiresSeconds }: Payload) {
-  const { subject, html, text } = buildRhResetHtmlText({ to, name, resetLink, expiresSeconds });
+export async function sendRhPasswordResetEmail({ to, name, companyName, resetLink, expiresSeconds }: Payload) {
+  const { subject, html, text } = buildRhResetHtmlText({ to, name, companyName, resetLink, expiresSeconds });
 
   await sendEmailViaBrevo({
     to,
