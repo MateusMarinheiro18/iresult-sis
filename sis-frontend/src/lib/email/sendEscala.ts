@@ -36,6 +36,7 @@ export type EscalaRecipient = {
   email: string;
   nome?: string | null;
   empresa?: string | null;
+  empresaLogo?: string | null; // mantém para compatibilidade, mas não será usado
   link: string;
 };
 
@@ -61,7 +62,7 @@ export async function sendEscalaEmails({
     const safeEmpresa = r.empresa ? escapeHtml(r.empresa) : '';
 
     const preheader = 'Convite para participação no questionário';
-    const companyName = 'SIS';
+    const companyName = safeEmpresa || 'SIS';
 
     // plain-text
     const plain = [

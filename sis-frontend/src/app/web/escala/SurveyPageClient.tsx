@@ -18,8 +18,10 @@ type Question = {
 type Props = {
   escalaId?: number;
   empresaId?: number;
-  funcionarioId?: number; // NOVO
+  funcionarioId?: number;
   escalaNome?: string;
+  empresaNome?: string; // NOVO
+  empresaLogo?: string; // NOVO
   initialQuestions?: Question[];
   error?: string;
 };
@@ -27,8 +29,10 @@ type Props = {
 export default function SurveyPageClient({
   escalaId,
   empresaId,
-  funcionarioId, // NOVO
+  funcionarioId,
   escalaNome,
+  empresaNome, // NOVO
+  empresaLogo, // NOVO
   initialQuestions,
   error,
 }: Props) {
@@ -93,7 +97,7 @@ export default function SurveyPageClient({
         body: JSON.stringify({
           escalaId,
           empresaId,
-          funcionarioId, // NOVO
+          funcionarioId,
           respostas: respostasArray,
         }),
       });
@@ -141,15 +145,26 @@ export default function SurveyPageClient({
       {/* LADO ESQUERDO */}
       <aside className={styles.leftPanel}>
         <div className={styles.brand}>
-          <img
-            src="/logos/sis_white.png"
-            alt="SIS"
-            className={styles.logoImage}
-          />
+          {empresaLogo ? (
+            <img
+              src={`/uploads/logos/${empresaLogo}`}
+              alt={empresaNome || 'Logo da empresa'}
+              className={styles.logoImage}
+            />
+          ) : (
+            <img
+              src="/logos/sis_white.png"
+              alt="SIS"
+              className={styles.logoImage}
+            />
+          )}
         </div>
 
         <div className={styles.leftContent}>
           <h2 className={styles.enqueteTitle}>ENQUETE</h2>
+          {empresaNome && (
+            <p className={styles.empresaNome}>{empresaNome}</p>
+          )}
 
           <section className={styles.infoBox}>
             <h3 className={styles.infoTitle}>IMPORTANTE</h3>

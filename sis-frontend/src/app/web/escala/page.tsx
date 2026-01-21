@@ -103,6 +103,8 @@ export default async function SurveyPage(props: Props) {
         empresaId={empresaId}
         funcionarioId={funcionarioId}
         escalaNome={escala.nome}
+        empresaNome={empresa.razaoSocial ?? undefined} // NOVO
+        empresaLogo={empresa.logoFileName ?? undefined} // NOVO
         initialQuestions={filteredQuestions}
       />
     );

@@ -145,6 +145,7 @@ export async function POST(
         email: emp.email as string,
         nome: emp.nome,
         empresa: empresa.razaoSocial,
+        empresaLogo: empresa.logoFileName,
         link: buildEscalaLink({
           baseUrl,
           escalaId,
