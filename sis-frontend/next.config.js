@@ -17,6 +17,16 @@ const nextConfig = {
     ];
   },
 
+  // Configurar rewrites para servir uploads
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/api/serve-upload/:path*',
+      },
+    ];
+  },
+
   // Garantir que a pasta public seja copiada corretamente
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
 };
