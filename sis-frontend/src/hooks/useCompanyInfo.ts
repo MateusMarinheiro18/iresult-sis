@@ -23,12 +23,21 @@ export function useCompanyInfo(variant: "client" | "admin") {
         const res = await fetch("/api/rh/company");
         if (res.ok) {
           const data = await res.json();
+          
+          // Construir URL absoluta para a logo
+          let logoUrl: string | undefined;
+          if (data.logoFileName) {
+            // Em produção, usar URL absoluta
+            const baseUrl = typeof window !== 'undefined' 
+              ? window.location.origin 
+              : '';
+            logoUrl = `${baseUrl}/uploads/logos/${data.logoFileName}`;
+          }
+          
           setCompany({
             id: data.id,
             name: data.name,
-            logoUrl: data.logoFileName 
-              ? `/uploads/logos/${data.logoFileName}`
-              : undefined,
+            logoUrl,
           });
         }
       } catch (err) {
