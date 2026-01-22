@@ -58,6 +58,13 @@ function startsWithAny(pathname: string, list: string[]) {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Em produção, permitir explicitamente /uploads e seus recursos estáticos.
+  // Isso garante que arquivos em public/uploads/* não sejam interceptados pelo middleware
+  // em produção, sem alterar o comportamento em development.
+  if (process.env.NODE_ENV === 'production' && (pathname === '/uploads' || pathname.startsWith('/uploads/'))) {
+    return NextResponse.next();
+  }
+
   // permitir recursos públicos/estáticos
   if (startsWithAny(pathname, PUBLIC_PREFIXES)) return NextResponse.next();
 
