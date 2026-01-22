@@ -5,10 +5,11 @@ import { existsSync } from 'fs';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const filePath = params.path.join('/');
+    const { path } = await params;
+    const filePath = path.join('/');
     
     // Caminho absoluto para a pasta public/uploads
     const publicPath = join(process.cwd(), 'public', 'uploads', filePath);
