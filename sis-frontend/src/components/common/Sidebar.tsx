@@ -174,17 +174,14 @@ export default function Sidebar({
   );
 
   const Logo = () => {
-    const logoSrc = company?.logoUrl || "/logos/sis_white.png";
-    const logoAlt = company?.name || "Logo";
-
     return (
       <div className="flex items-center justify-center px-6 py-1 border-b border-white/10">
-        {/* Logo icon - só aparece quando expandido */}
+        {/* Logo SIS - só aparece quando expandido */}
         {isExpanded && (
           <div className="flex-shrink-0">
             <img
-              src={logoSrc}
-              alt={logoAlt}
+              src="/logos/sis_white.png"
+              alt="SIS Logo"
               className="w-30 h-30 object-contain"
             />
           </div>
@@ -237,8 +234,8 @@ export default function Sidebar({
           <aside className="relative z-50 w-72 bg-[#421E97] h-full text-[#F3F4FF] shadow-xl">
             <div className="relative flex items-center justify-center border-b border-white/10 px-4 py-6">
               <img 
-                src={company?.logoUrl || "/logos/sis_white.png"} 
-                alt={company?.name || "Logo"} 
+                src="/logos/sis_white.png"
+                alt="SIS Logo"
                 className="w-22 h-12" 
               />
               <button 

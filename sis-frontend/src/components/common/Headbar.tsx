@@ -15,6 +15,7 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast from "react-hot-toast";
+import { useCompanyInfo } from "@/hooks/useCompanyInfo";
 
 type Variant = "client" | "admin";
 
@@ -31,7 +32,7 @@ interface HeadbarProps {
   logoutUrl?: string;
 }
 
-type Company = { id: number; name: string };
+type Company = { id: number; name: string; logoUrl?: string };
 
 export default function Headbar({
   variant = "client",
@@ -56,6 +57,9 @@ export default function Headbar({
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+
+  // Use o mesmo hook que a Sidebar usa para buscar info da empresa
+  const { company, loading: loadingCompanyInfo } = useCompanyInfo(variant);
 
   // focus search with Ctrl+K (or Cmd+K)
   useEffect(() => {
@@ -132,27 +136,34 @@ export default function Headbar({
           if (!mounted) return;
           setCompanies(data);
         } else {
-          // Client: busca apenas a empresa do RH logado
-          const res = await fetch("/api/rh/company");
-          if (!res.ok) throw new Error("no api");
-          const data = (await res.json()) as Company;
+          // Client: usa os dados do hook useCompanyInfo
           if (!mounted) return;
-          setCompanies([data]);
-          setSelectedCompany(data); // já seleciona automaticamente
+          if (company) {
+            console.log("✅ Company data from useCompanyInfo:", company);
+            const companyData: Company = {
+              id: company.id,
+              name: company.name,
+              logoUrl: company.logoUrl,
+            };
+            setCompanies([companyData]);
+            setSelectedCompany(companyData);
+          }
         }
       } catch (e) {
+        console.log("⚠️ API error, using fallback:", e);
         // fallback sample list while API is not ready
         if (!mounted) return;
         if (variant === "admin") {
           setCompanies([
             { id: 0, name: "EMPRESA" },
-            { id: 1, name: "Nova Empresa" },
-            { id: 2, name: "Empresa Beta" },
-            { id: 3, name: "Empresa Gamma" },
+            { id: 1, name: "Nike", logoUrl: "/logos/sis_white.png" },
+            { id: 2, name: "Empresa Beta", logoUrl: "/logos/sis_white.png" },
+            { id: 3, name: "Empresa Gamma", logoUrl: "/logos/sis_white.png" },
           ]);
         } else {
           // Client fallback: empresa fictícia
-          const fallback = { id: 1, name: "Minha Empresa" };
+          const fallback = { id: 1, name: "Nike", logoUrl: "/logos/sis_white.png" };
+          console.log("📦 Using fallback company:", fallback);
           setCompanies([fallback]);
           setSelectedCompany(fallback);
         }
@@ -165,7 +176,7 @@ export default function Headbar({
     return () => {
       mounted = false;
     };
-  }, [variant]);
+  }, [variant, company]);
 
   // --- UPDATED: sync selectedCompany from URL (route param takes priority) ---
   useEffect(() => {
@@ -234,6 +245,11 @@ export default function Headbar({
   const filteredCompanies =
     companies?.filter((c) => c.name.toLowerCase().includes(companyQuery.toLowerCase())) ?? [];
 
+  // Log quando selectedCompany mudar
+  useEffect(() => {
+    console.log("🏢 Selected company updated:", selectedCompany);
+  }, [selectedCompany]);
+
   return (
     <header className="w-full backdrop-blur-sm border-b border-gray-100 bg-[#F3F4FF]">
       <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center gap-4">
@@ -260,10 +276,27 @@ export default function Headbar({
               aria-label="Empresa"
               title={variant === "client" ? "Sua empresa" : "Selecionar Empresa"}
             >
+              {/* Logo da empresa - aparece quando tem empresa selecionada */}
+              {selectedCompany && selectedCompany.id !== 0 && (
+                <img 
+                  src={selectedCompany.logoUrl || "/logos/sis_white.png"} 
+                  alt={selectedCompany.name}
+                  className="w-6 h-6 object-contain flex-shrink-0 rounded p-0.5"
+                  onError={(e) => {
+                    console.error("❌ Error loading logo:", selectedCompany.logoUrl);
+                    // Fallback se a imagem falhar ao carregar
+                    e.currentTarget.src = "/logos/sis_white.png";
+                  }}
+                  onLoad={() => {
+                    console.log("✅ Logo loaded successfully:", selectedCompany.logoUrl);
+                  }}
+                />
+              )}
+              
               <span className="truncate max-w-[160px]">
                 {selectedCompany ? selectedCompany.name : "EMPRESA"}
               </span>
-              {variant === "admin" && <ArrowDropDownIcon className="text-[20px]" />}
+              {variant === "admin" && <ArrowDropDownIcon className="text-[20px] flex-shrink-0" />}
             </button>
 
             {/* Menu apenas para admin */}
@@ -311,9 +344,21 @@ export default function Headbar({
                         onClick={() => handleCompanySelect(c)}
                         selected={selectedCompany?.id === c.id}
                       >
-                        <div className="flex flex-col">
-                          <span className="text-sm">{c.name}</span>
-                          <span className="text-xs text-gray-400">ID: {c.id}</span>
+                        <div className="flex items-center gap-3 w-full">
+                          {c.id !== 0 && (
+                            <img 
+                              src={c.logoUrl || "/logos/sis_white.png"} 
+                              alt={c.name}
+                              className="w-8 h-8 object-contain flex-shrink-0 bg-[#421E97] rounded p-1"
+                              onError={(e) => {
+                                e.currentTarget.src = "/logos/sis_white.png";
+                              }}
+                            />
+                          )} 
+                          <div className="flex flex-col flex-1">
+                            <span className="text-sm">{c.name}</span>
+                            <span className="text-xs text-gray-400">ID: {c.id}</span>
+                          </div>
                         </div>
                       </MenuItem>
                     ))}
