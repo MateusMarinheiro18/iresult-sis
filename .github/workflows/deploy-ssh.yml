@@ -1,4 +1,4 @@
-name: Deploy (git pull + build + pm2)
+name: Build & Deploy to VM (rsync)
 
 on:
   push:
@@ -6,17 +6,44 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout (apenas para logs)
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # ==========================
-      # PRODUÇÃO
-      # ==========================
-      - name: Deploy PROD
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'     # ajuste se necessário
+
+      - name: Install deps & build (runner)
+        working-directory: ./sis-frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Setup SSH agent (for rsync)
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Rsync project to server
+        # usa rsync para enviar (exclui node_modules e .git)
+        run: |
+          # cria destino remoto (garante que exista)
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p '${{ secrets.DEPLOY_PATH }}'"
+
+          # enviar arquivos (ajuste paths se quiser enviar só build/.next)
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            ./sis-frontend/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH }}/
+
+      - name: Restart PM2 on server
         uses: appleboy/ssh-action@v0.1.8
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -25,19 +52,47 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            cd "${{ secrets.DEPLOY_PATH }}"
-            git fetch --all
-            git reset --hard origin/${{ secrets.BRANCH }}
-            npm ci
-            npm run build
-            pm2 describe sis-frontend > /dev/null 2>&1 \
-              && pm2 restart sis-frontend --update-env \
-              || pm2 start npm --name "sis-frontend" -- start -- -p 3001 -H 0.0.0.0
+            cd ${{ secrets.DEPLOY_PATH }}
+            # instalar apenas prod deps (opcional)
+            # npm ci --production
+            # reiniciar processo (ajuste comando se necessário)
+            pm2 restart sis-frontend || pm2 start npm --name "sis-frontend" -- start -- -p 3001 -H 0.0.0.0
 
-      # ==========================
-      # HOMOLOGAÇÃO
-      # ==========================
-      - name: Deploy HML
+  deploy-homolog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps & build (runner)
+        working-directory: ./sis-frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Setup SSH agent (for rsync)
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Rsync project to homolog server
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.SERVER_PORT }} ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p '${{ secrets.DEPLOY_PATH_HML }}'"
+
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            ./sis-frontend/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH_HML }}/
+
+      - name: Restart PM2 on homolog
         uses: appleboy/ssh-action@v0.1.8
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -46,11 +101,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            cd "${{ secrets.DEPLOY_PATH_HML }}"
-            git fetch --all
-            git reset --hard origin/${{ secrets.BRANCH }}
-            npm ci
-            npm run build
-            pm2 describe sis-frontend-hml > /dev/null 2>&1 \
-              && pm2 restart sis-frontend-hml --update-env \
-              || pm2 start npm --name "sis-frontend-hml" -- start -- -p 3002 -H 0.0.0.0
+            cd ${{ secrets.DEPLOY_PATH_HML }}
+            pm2 restart sis-frontend-hml || pm2 start npm --name "sis-frontend-hml" -- start -- -p 3002 -H 0.0.0.0
